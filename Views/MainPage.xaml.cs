@@ -1,12 +1,8 @@
-using System.Xml.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using PhotoView.Models;
 using PhotoView.ViewModels;
-using Windows.Foundation;
-using static System.Net.Mime.MediaTypeNames;
-using Image = Microsoft.UI.Xaml.Controls.Image;
 
 namespace PhotoView.Views;
 
@@ -21,27 +17,50 @@ public sealed partial class MainPage : Page
     {
         ViewModel = App.GetService<MainViewModel>();
         InitializeComponent();
-    }
-    private void ShowMenu(bool isTransient, UIElement element)
-    {
-        FlyoutShowOptions myOption = new FlyoutShowOptions();
-        myOption.ShowMode = isTransient ? FlyoutShowMode.Transient : FlyoutShowMode.Standard;
-        CommandBarFlyout1.ShowAt(element, myOption);
+        FolderTreeView.DataContext = ViewModel;
     }
 
-
-    private void imageButton_ContextRequested(UIElement sender, Microsoft.UI.Xaml.Input.ContextRequestedEventArgs args)
+    private async void FolderTreeView_Expanding(TreeView sender, TreeViewExpandingEventArgs args)
     {
-        //var element = templateRoot.FindName("ItemImage") as Image;        
-        ShowMenu(false, sender);
+        if (args.Item is FolderNode node)
+        {
+            await ViewModel.LoadChildrenAsync(node);
+        }
     }
 
-    private void ResizeButton1_Click(object sender, RoutedEventArgs e)
+    private async void FolderTreeView_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
     {
-
+        if (args.InvokedItem is FolderNode node)
+        {
+            await ViewModel.LoadImagesAsync(node);
+        }
     }
-    private void OnElementClicked(object sender, RoutedEventArgs e)
-    {
 
+    private async void BreadcrumbBar_ItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)
+    {
+        if (args.Item is FolderNode node)
+        {
+            await ViewModel.LoadImagesAsync(node);
+        }
+    }
+
+    private void Image_RightTapped(object sender, Microsoft.UI.Xaml.Input.RightTappedRoutedEventArgs e)
+    {
+        if (sender is FrameworkElement element)
+        {
+            FlyoutBase.ShowAttachedFlyout(element);
+        }
+    }
+
+    private void Share_Click(object sender, RoutedEventArgs e)
+    {
+    }
+
+    private void Save_Click(object sender, RoutedEventArgs e)
+    {
+    }
+
+    private void Delete_Click(object sender, RoutedEventArgs e)
+    {
     }
 }

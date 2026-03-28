@@ -5,72 +5,116 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:PhotoView.Models"
-    xmlns:common="using:PhotoView.Common"
     mc:Ignorable="d">
-    <Page.Resources>
-        <DataTemplate x:Key="ItemsRepeater_ItemTemplate" x:DataType="models:ImageFileInfo">
-            <StackPanel Width="{x:Bind Width}" Height="{x:Bind Height}">
-                <Button ContextRequested="imageButton_ContextRequested" x:Name="imageButton" AutomationProperties.Name="mountain" Padding="0">
-                    <Image x:Name="ItemImage" Source="{x:Bind ImageFile.Path}" Stretch="Uniform"/>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="250"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TreeView
+            Grid.Column="0"
+            Grid.Row="0"
+            Grid.RowSpan="2"
+            x:Name="FolderTreeView"
+            ItemsSource="{x:Bind ViewModel.FolderTree}"
+            Expanding="FolderTreeView_Expanding"
+            ItemInvoked="FolderTreeView_ItemInvoked"
+            Margin="4">
+
+            <TreeView.ItemTemplate>
+                <DataTemplate x:DataType="models:FolderNode">
+                    <TreeViewItem
+                        ItemsSource="{x:Bind Children}"
+                        Content="{x:Bind Name}" />
+                </DataTemplate>
+            </TreeView.ItemTemplate>
+        </TreeView>
+
+        <Grid Grid.Column="1" Grid.Row="0" Margin="4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <BreadcrumbBar
+                Grid.Column="0"
+                x:Name="BreadcrumbBar"
+                ItemsSource="{x:Bind ViewModel.BreadcrumbPath}"
+                ItemClicked="BreadcrumbBar_ItemClicked">
+                <BreadcrumbBar.ItemTemplate>
+                    <DataTemplate x:DataType="models:FolderNode">
+                        <TextBlock Text="{x:Bind Name}"/>
+                    </DataTemplate>
+                </BreadcrumbBar.ItemTemplate>
+            </BreadcrumbBar>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <Button x:Name="EditButton" Content="编辑">
+                    <Button.Flyout>
+                        <MenuFlyout>
+                            <MenuFlyoutItem Text="分享" Icon="Share"/>
+                            <MenuFlyoutItem Text="复制" Icon="Copy"/>
+                            <MenuFlyoutItem Text="删除" Icon="Delete"/>
+                            <MenuFlyoutSeparator/>
+                            <MenuFlyoutItem Text="重命名"/>
+                            <MenuFlyoutItem Text="选择"/>
+                        </MenuFlyout>
+                    </Button.Flyout>
                 </Button>
             </StackPanel>
-        </DataTemplate>
-        <common:ActivityWaterfallFlowLayout x:Key="ItemsRepeater_ItemLayout" ColumnSpacing="12"
-                          RowSpacing="12" MinItemSize="300, 200"/>
-        <CommandBarFlyout Placement="Right" x:Name="CommandBarFlyout1">
-            <AppBarButton Label="Share" Icon="Share" ToolTipService.ToolTip="Share" Click="OnElementClicked" />
-            <AppBarButton Label="Save" Icon="Save" ToolTipService.ToolTip="Save" Click="OnElementClicked" />
-            <AppBarButton Label="Delete" Icon="Delete" ToolTipService.ToolTip="Delete" Click="OnElementClicked" />
-            <CommandBarFlyout.SecondaryCommands>
-                <AppBarButton x:Name="ResizeButton1" Label="Resize" Click="ResizeButton1_Click" />
-                <AppBarButton x:Name="MoveButton1" Label="Move" Click="OnElementClicked" />
-            </CommandBarFlyout.SecondaryCommands>
-        </CommandBarFlyout>
+        </Grid>
 
-    </Page.Resources>
-    <StackPanel>
-        <RelativePanel>
-            <Button x:Name="BarButtom1" Content="Edit Options 1" Height="50" RelativePanel.AlignRightWithPanel="True">
-                <Button.Flyout>
-                    <MenuFlyout>
-                        <MenuFlyoutItem Text="Share">
-                            <MenuFlyoutItem.Icon>
-                                <FontIcon Glyph="&#xE72D;"/>
-                            </MenuFlyoutItem.Icon>
-                        </MenuFlyoutItem>
-                        <MenuFlyoutItem Text="Copy" Icon="Copy"/>
-                        <MenuFlyoutItem Text="Delete" Icon="Delete"/>
-                        <MenuFlyoutSeparator/>
-                        <MenuFlyoutItem Text="Rename"/>
-                        <MenuFlyoutItem Text="Select"/>
-                    </MenuFlyout>
-                </Button.Flyout>
-            </Button>
-            <Button x:Name="BarButtom2" Content="Edit Options 2" Height="50" RelativePanel.AlignRightWithPanel="True" RelativePanel.LeftOf="BarButtom1">
-                <Button.Flyout>
-                    <MenuFlyout>
-                        <MenuFlyoutItem Text="Share">
-                            <MenuFlyoutItem.Icon>
-                                <FontIcon Glyph="&#xE72D;"/>
-                            </MenuFlyoutItem.Icon>
-                        </MenuFlyoutItem>
-                        <MenuFlyoutItem Text="Copy" Icon="Copy"/>
-                        <MenuFlyoutItem Text="Delete" Icon="Delete"/>
-                        <MenuFlyoutSeparator/>
-                        <MenuFlyoutItem Text="Rename"/>
-                        <MenuFlyoutItem Text="Select"/>
-                    </MenuFlyout>
-                </Button.Flyout>
-            </Button>
-            <!--<Rectangle x:Name="Rectangle1" Fill="Red" Height="50" Width="50"/>
-            <Rectangle x:Name="Rectangle2" Fill="Blue" Height="50" Width="50" RelativePanel.RightOf="Rectangle1" Margin="8,0,0,0"/>
-            <Rectangle x:Name="Rectangle3" Fill="Green" Height="50" Width="50" RelativePanel.AlignRightWithPanel="True"/>
-            <Rectangle x:Name="Rectangle4" Fill="Yellow" Height="50" Width="50" RelativePanel.Below="Rectangle3" RelativePanel.AlignHorizontalCenterWith="Rectangle3" Margin="0,8,0,0"/>-->
-        </RelativePanel>
-        <ScrollViewer x:Name="scrollViewer"
-                IsVerticalScrollChainingEnabled="False"
-                Padding="0,0,16,0">
-            <ItemsRepeater x:Name="ImageItemsRepeater" ItemsSource="{x:Bind ViewModel.Images}" Layout="{StaticResource ItemsRepeater_ItemLayout}" ItemTemplate="{StaticResource ItemsRepeater_ItemTemplate}"/>
-        </ScrollViewer>
-    </StackPanel>
+        <GridView
+            Grid.Column="1"
+            Grid.Row="1"
+            x:Name="ImageGridView"
+            ItemsSource="{x:Bind ViewModel.Images}"
+            Padding="4">
+            <GridView.ItemTemplate>
+                <DataTemplate x:DataType="models:ImageFileInfo">
+                    <Border
+                        Margin="4"
+                        CornerRadius="8"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1">
+                        <Grid>
+                            <Image
+                                Source="{x:Bind ImageFile.Path}"
+                                Stretch="UniformToFill"
+                                Height="200"
+                                Width="{x:Bind AutoWidth}"/>
+                            <Border
+                                Background="Transparent"
+                                RightTapped="Image_RightTapped">
+                                <FlyoutBase.AttachedFlyout>
+                                    <MenuFlyout>
+                                        <MenuFlyoutItem Text="分享" Icon="Share" Click="Share_Click"/>
+                                        <MenuFlyoutItem Text="保存" Icon="Save" Click="Save_Click"/>
+                                        <MenuFlyoutItem Text="删除" Icon="Delete" Click="Delete_Click"/>
+                                        <MenuFlyoutSeparator/>
+                                        <MenuFlyoutItem Text="调整大小"/>
+                                        <MenuFlyoutItem Text="移动"/>
+                                    </MenuFlyout>
+                                </FlyoutBase.AttachedFlyout>
+                            </Border>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </GridView.ItemTemplate>
+            <GridView.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <ItemsWrapGrid
+                        Orientation="Horizontal"
+                        ItemHeight="200"/>
+                </ItemsPanelTemplate>
+            </GridView.ItemsPanel>
+        </GridView>
+    </Grid>
 </Page>

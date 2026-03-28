@@ -1,24 +1,42 @@
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using PhotoView.Models;
-using Windows.ApplicationModel;
 using Windows.Storage.Search;
 using Windows.Storage;
+using System.Collections.ObjectModel;
 
 namespace PhotoView.ViewModels;
+
 public class CollectViewModel : ObservableRecipient
 {
     public ObservableCollection<ImageFileInfo> Images
     {
         get;
-    } = new ObservableCollection<ImageFileInfo>();
+        set;
+    }
     public CollectViewModel()
     {
+        Images = new ObservableCollection<ImageFileInfo>();
+        _ = GetItemsAsync();
+    }
+    private async Task GetItemsAsync()
+    {
+        StorageFolder picturesFolder = await StorageFolder.GetFolderFromPathAsync("D:\\test");
 
+        var result = picturesFolder.CreateFileQueryWithOptions(new QueryOptions());
+
+        IReadOnlyList<StorageFile> imageFiles = await result.GetFilesAsync();
+        foreach (StorageFile file in imageFiles)
+        {
+            Images.Add(await LoadImageInfo(file));
+        }
+    }
+
+    public static async Task<ImageFileInfo> LoadImageInfo(StorageFile file)
+    {
+        var properties = await file.Properties.GetImagePropertiesAsync();
+        ImageFileInfo info = new(properties,
+                                 file, file.DisplayName, file.DisplayType);
+
+        return info;
     }
 }
