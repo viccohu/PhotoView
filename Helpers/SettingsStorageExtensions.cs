@@ -1,5 +1,3 @@
-using PhotoView.Core.Helpers;
-
 using Windows.Storage;
 using Windows.Storage.Streams;
 

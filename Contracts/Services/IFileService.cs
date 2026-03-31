@@ -1,4 +1,4 @@
-namespace PhotoView.Core.Contracts.Services;
+namespace PhotoView.Contracts.Services;
 
 public interface IFileService
 {

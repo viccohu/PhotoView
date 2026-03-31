@@ -1,8 +1,6 @@
 using Microsoft.Extensions.Options;
 
 using PhotoView.Contracts.Services;
-using PhotoView.Core.Contracts.Services;
-using PhotoView.Core.Helpers;
 using PhotoView.Helpers;
 using PhotoView.Models;
 

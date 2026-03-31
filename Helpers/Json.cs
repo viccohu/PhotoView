@@ -1,6 +1,6 @@
 using Newtonsoft.Json;
 
-namespace PhotoView.Core.Helpers;
+namespace PhotoView.Helpers;
 
 public static class Json
 {

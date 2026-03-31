@@ -2,9 +2,9 @@ using System.Text;
 
 using Newtonsoft.Json;
 
-using PhotoView.Core.Contracts.Services;
+using PhotoView.Contracts.Services;
 
-namespace PhotoView.Core.Services;
+namespace PhotoView.Services;
 
 public class FileService : IFileService
 {

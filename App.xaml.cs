@@ -4,8 +4,6 @@ using Microsoft.UI.Xaml;
 
 using PhotoView.Activation;
 using PhotoView.Contracts.Services;
-using PhotoView.Core.Contracts.Services;
-using PhotoView.Core.Services;
 using PhotoView.Helpers;
 using PhotoView.Models;
 using PhotoView.Services;
