@@ -15,7 +15,6 @@ namespace PhotoView.Models;
 public class ImageFileInfo : INotifyPropertyChanged
 {
     private BitmapImage? _thumbnail;
-    private bool _isLoading;
     private int _loadVersion;
     private CancellationTokenSource? _thumbnailLoadCts;
     private bool _isSelected;
@@ -138,7 +137,6 @@ public class ImageFileInfo : INotifyPropertyChanged
         _thumbnailLoadCts = new CancellationTokenSource();
         var cancellationToken = _thumbnailLoadCts.Token;
 
-        _isLoading = true;
         var version = ++_loadVersion;
 
         try
@@ -156,10 +154,6 @@ public class ImageFileInfo : INotifyPropertyChanged
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"EnsureThumbnailAsync error: {ex}");
-        }
-        finally
-        {
-            _isLoading = false;
         }
     }
 

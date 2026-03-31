@@ -129,7 +129,7 @@ public sealed partial class MainPage : Page
     private void SelectionService_SelectionChanged(object? sender, Services.SelectionChangedEventArgs e)
     {
         // 清除之前选择的项
-        foreach (var deselected in e.DeselectedItems)
+        foreach (var deselected in e.RemovedItems)
         {
             if (deselected is ImageFileInfo imageInfo)
             {
@@ -138,7 +138,7 @@ public sealed partial class MainPage : Page
         }
 
         // 设置新选择的项
-        foreach (var selected in e.SelectedItems)
+        foreach (var selected in e.AddedItems)
         {
             if (selected is ImageFileInfo imageInfo)
             {
