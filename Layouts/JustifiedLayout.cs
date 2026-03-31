@@ -114,7 +114,6 @@ public class JustifiedLayout : VirtualizingLayout
 
         var realizationRect = context.RealizationRect;
         var startY = 0.0;
-        var rowSpacing = 20.0;
 
         for (var rowIndex = 0; rowIndex < _rows.Count; rowIndex++)
         {

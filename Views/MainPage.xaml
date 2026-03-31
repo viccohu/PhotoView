@@ -127,13 +127,9 @@
                                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                     BorderThickness="1">
                                     <Grid>
-                                        <Border CornerRadius="8">
-                                            <Grid>
-                                                <Image
-                                                    Source="{x:Bind Thumbnail, Mode=OneWay}"
-                                                    Stretch="UniformToFill"/>
-                                            </Grid>
-                                        </Border>
+                                        <Image
+                                            Source="{x:Bind Thumbnail, Mode=OneWay}"
+                                            Stretch="UniformToFill"/>
                                         <ProgressRing
                                             Width="24"
                                             Height="24"

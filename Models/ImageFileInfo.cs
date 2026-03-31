@@ -52,16 +52,14 @@ public class ImageFileInfo : INotifyPropertyChanged
             var requestedSize = (uint)size;
             var optimalSize = GetOptimalThumbnailSize(requestedSize);
 
-            StorageItemThumbnail thumbnail = await ImageFile.GetThumbnailAsync(
+            var thumbnail = await ImageFile.GetThumbnailAsync(
                 ThumbnailMode.PicturesView,
                 optimalSize,
                 ThumbnailOptions.UseCurrentScale).AsTask(cancellationToken);
 
             if (thumbnail != null && thumbnail.Size > 0)
             {
-                var bitmapImage = await CreateBitmapOnUIThreadAsync(thumbnail, cancellationToken);
-                thumbnail.Dispose();
-                return bitmapImage;
+                return await CreateBitmapOnUIThreadAsync(thumbnail, cancellationToken);
             }
 
             return new BitmapImage();
@@ -84,8 +82,11 @@ public class ImageFileInfo : INotifyPropertyChanged
         var dispatcherQueue = App.MainWindow.DispatcherQueue;
         if (dispatcherQueue == null)
         {
-            bitmap = new BitmapImage();
-            bitmap.SetSource(stream);
+            using (stream)
+            {
+                bitmap = new BitmapImage();
+                bitmap.SetSource(stream);
+            }
             return bitmap;
         }
 
@@ -99,16 +100,21 @@ public class ImageFileInfo : INotifyPropertyChanged
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
+                    stream.Dispose();
                     tcs.TrySetCanceled();
                     return;
                 }
 
-                bitmap = new BitmapImage();
-                bitmap.SetSource(stream);
+                using (stream)
+                {
+                    bitmap = new BitmapImage();
+                    bitmap.SetSource(stream);
+                }
                 tcs.SetResult(true);
             }
             catch (Exception ex)
             {
+                stream.Dispose();
                 tcs.SetException(ex);
             }
         });
