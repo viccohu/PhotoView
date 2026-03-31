@@ -23,6 +23,13 @@ public class JustifiedLayout : VirtualizingLayout
             typeof(JustifiedLayout),
             new PropertyMetadata(4.0, OnLayoutPropertyChanged));
 
+    public static readonly DependencyProperty MinimumSpacingProperty =
+        DependencyProperty.Register(
+            nameof(MinimumSpacing),
+            typeof(double),
+            typeof(JustifiedLayout),
+            new PropertyMetadata(4.0, OnLayoutPropertyChanged));
+
     public double LineHeight
     {
         get => (double)GetValue(LineHeightProperty);
@@ -33,6 +40,12 @@ public class JustifiedLayout : VirtualizingLayout
     {
         get => (double)GetValue(SpacingProperty);
         set => SetValue(SpacingProperty, value);
+    }
+
+    public double MinimumSpacing
+    {
+        get => (double)GetValue(MinimumSpacingProperty);
+        set => SetValue(MinimumSpacingProperty, value);
     }
 
     private static void OnLayoutPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -89,18 +102,19 @@ public class JustifiedLayout : VirtualizingLayout
         }
 
         var totalHeight = 0.0;
+        var rowSpacing = 20.0;
         foreach (var row in _rows)
         {
-            totalHeight += row.Height + Spacing;
-        }
-
-        if (_rows.Count > 0)
-        {
-            totalHeight -= Spacing;
+            totalHeight += row.Height;
+            if (row != _rows.Last())
+            {
+                totalHeight += rowSpacing;
+            }
         }
 
         var realizationRect = context.RealizationRect;
         var startY = 0.0;
+        var rowSpacing = 20.0;
 
         for (var rowIndex = 0; rowIndex < _rows.Count; rowIndex++)
         {
@@ -116,7 +130,7 @@ public class JustifiedLayout : VirtualizingLayout
                 }
             }
 
-            startY = rowEndY + Spacing;
+            startY = rowEndY + rowSpacing;
         }
 
         return new Size(containerWidth, Math.Max(0, totalHeight));
@@ -131,6 +145,7 @@ public class JustifiedLayout : VirtualizingLayout
 
         var realizationRect = context.RealizationRect;
         var startY = 0.0;
+        var rowSpacing = 20.0;
 
         for (var rowIndex = 0; rowIndex < _rows.Count; rowIndex++)
         {
@@ -152,11 +167,11 @@ public class JustifiedLayout : VirtualizingLayout
                     var width = row.Height * aspectRatio;
 
                     element.Arrange(new Rect(x, startY, width, row.Height));
-                    x += width + Spacing;
+                    x += width + row.ActualSpacing;
                 }
             }
 
-            startY = rowEndY + Spacing;
+            startY = rowEndY + rowSpacing;
         }
 
         return finalSize;
@@ -166,37 +181,74 @@ public class JustifiedLayout : VirtualizingLayout
     {
         _rows.Clear();
 
-        var currentRow = new Row { Indices = new List<int>() };
+        var currentRow = new Row { Indices = new List<int>(), AspectRatios = new List<double>() };
         var currentRowWidth = 0.0;
         var lineHeight = LineHeight;
+        var minimumSpacing = MinimumSpacing;
 
         for (var i = 0; i < context.ItemCount; i++)
         {
             var aspectRatio = GetAspectRatio(context, i);
             var itemWidth = lineHeight * aspectRatio;
 
-            if (currentRowWidth > 0 && currentRowWidth + itemWidth + Spacing > containerWidth)
+            if (currentRowWidth > 0 && currentRowWidth + itemWidth + minimumSpacing > containerWidth)
             {
-                currentRow.Height = lineHeight;
+                FinalizeRow(currentRow, containerWidth, minimumSpacing);
                 _rows.Add(currentRow);
 
-                currentRow = new Row { Indices = new List<int>() };
+                currentRow = new Row { Indices = new List<int>(), AspectRatios = new List<double>() };
                 currentRowWidth = 0;
             }
 
             currentRow.Indices.Add(i);
+            currentRow.AspectRatios.Add(aspectRatio);
             currentRowWidth += itemWidth;
 
             if (currentRow.Indices.Count > 1)
             {
-                currentRowWidth += Spacing;
+                currentRowWidth += minimumSpacing;
             }
         }
 
         if (currentRow.Indices.Count > 0)
         {
             currentRow.Height = lineHeight;
+            currentRow.ActualSpacing = minimumSpacing;
             _rows.Add(currentRow);
+        }
+    }
+
+    private void FinalizeRow(Row row, double containerWidth, double minimumSpacing)
+    {
+        row.Height = LineHeight;
+        
+        if (row.Indices.Count <= 1)
+        {
+            row.ActualSpacing = 0;
+            return;
+        }
+
+        var totalItemWidth = 0.0;
+        for (var i = 0; i < row.Indices.Count; i++)
+        {
+            if (i > 0)
+            {
+                totalItemWidth += minimumSpacing;
+            }
+            
+            totalItemWidth += LineHeight * row.AspectRatios[i];
+        }
+
+        var extraWidth = containerWidth - totalItemWidth;
+        var gapCount = row.Indices.Count - 1;
+        
+        if (gapCount > 0 && extraWidth > 0)
+        {
+            row.ActualSpacing = minimumSpacing + extraWidth / gapCount;
+        }
+        else
+        {
+            row.ActualSpacing = minimumSpacing;
         }
     }
 
@@ -213,6 +265,8 @@ public class JustifiedLayout : VirtualizingLayout
     private class Row
     {
         public List<int> Indices { get; set; } = new();
+        public List<double> AspectRatios { get; set; } = new();
         public double Height { get; set; }
+        public double ActualSpacing { get; set; }
     }
 }

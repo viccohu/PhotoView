@@ -101,7 +101,7 @@
                 <ItemsRepeater.Layout>
                     <layouts:JustifiedLayout
                         LineHeight="{x:Bind ViewModel.ThumbnailHeight, Mode=OneWay}"
-                        Spacing="4"/>
+                        MinimumSpacing="4"/>
                 </ItemsRepeater.Layout>
                 <ItemsRepeater.ItemTemplate>
                     <DataTemplate x:DataType="models:ImageFileInfo">
@@ -127,9 +127,13 @@
                                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                     BorderThickness="1">
                                     <Grid>
-                                        <Image
-                                            Source="{x:Bind Thumbnail, Mode=OneWay}"
-                                            Stretch="UniformToFill"/>
+                                        <Border CornerRadius="8">
+                                            <Grid>
+                                                <Image
+                                                    Source="{x:Bind Thumbnail, Mode=OneWay}"
+                                                    Stretch="UniformToFill"/>
+                                            </Grid>
+                                        </Border>
                                         <ProgressRing
                                             Width="24"
                                             Height="24"

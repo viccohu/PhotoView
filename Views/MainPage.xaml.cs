@@ -37,12 +37,6 @@ public sealed partial class MainPage : Page
 
         try
         {
-            // 首先清除所有已加载的缩略图
-            foreach (var imageInfo in ViewModel.Images)
-            {
-                imageInfo.ClearThumbnail();
-            }
-
             // 仅加载当前可见区域的缩略图
             for (var i = 0; i < ImageRepeater.ItemsSourceView.Count; i++)
             {

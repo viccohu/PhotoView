@@ -18,6 +18,8 @@ public class ImageFileInfo : INotifyPropertyChanged
     private int _loadVersion;
     private CancellationTokenSource? _thumbnailLoadCts;
     private bool _isSelected;
+    private readonly object _thumbnailLoadLock = new();
+    private ThumbnailSize? _loadedThumbnailSize;
 
     private static readonly uint[] SystemThumbnailSizes = { 96, 160, 256, 512, 1024 };
     private static readonly Random _random = new();
@@ -89,10 +91,10 @@ public class ImageFileInfo : INotifyPropertyChanged
 
         var tcs = new TaskCompletionSource<bool>();
 
-        var registration = cancellationToken.Register(() => tcs.TrySetCanceled());
-
         dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
         {
+            using var registration = cancellationToken.Register(() => tcs.TrySetCanceled());
+            
             try
             {
                 if (cancellationToken.IsCancellationRequested)
@@ -108,10 +110,6 @@ public class ImageFileInfo : INotifyPropertyChanged
             catch (Exception ex)
             {
                 tcs.SetException(ex);
-            }
-            finally
-            {
-                registration.Dispose();
             }
         });
 
@@ -133,20 +131,37 @@ public class ImageFileInfo : INotifyPropertyChanged
 
     public async Task EnsureThumbnailAsync(ThumbnailSize size)
     {
-        _thumbnailLoadCts?.Cancel();
-        _thumbnailLoadCts = new CancellationTokenSource();
-        var cancellationToken = _thumbnailLoadCts.Token;
+        lock (_thumbnailLoadLock)
+        {
+            if (Thumbnail != null && _loadedThumbnailSize == size)
+                return;
+        }
 
-        var version = ++_loadVersion;
+        CancellationTokenSource localCts;
+        int localVersion;
+
+        lock (_thumbnailLoadLock)
+        {
+            _thumbnailLoadCts?.Cancel();
+            _thumbnailLoadCts = new CancellationTokenSource();
+            localCts = _thumbnailLoadCts;
+            localVersion = ++_loadVersion;
+        }
+
+        var cancellationToken = localCts.Token;
 
         try
         {
             var result = await GetThumbnailAsync(size, cancellationToken);
 
-            if (version != _loadVersion || cancellationToken.IsCancellationRequested)
-                return;
+            lock (_thumbnailLoadLock)
+            {
+                if (localVersion != _loadVersion || cancellationToken.IsCancellationRequested)
+                    return;
 
-            Thumbnail = result;
+                Thumbnail = result;
+                _loadedThumbnailSize = size;
+            }
         }
         catch (OperationCanceledException)
         {
@@ -159,15 +174,22 @@ public class ImageFileInfo : INotifyPropertyChanged
 
     public void CancelThumbnailLoad()
     {
-        _thumbnailLoadCts?.Cancel();
-        _loadVersion++;
+        lock (_thumbnailLoadLock)
+        {
+            _thumbnailLoadCts?.Cancel();
+            _loadVersion++;
+        }
     }
 
     public void ClearThumbnail()
     {
-        _thumbnailLoadCts?.Cancel();
-        _loadVersion++;
-        Thumbnail = null;
+        lock (_thumbnailLoadLock)
+        {
+            _thumbnailLoadCts?.Cancel();
+            _loadVersion++;
+            Thumbnail = null;
+            _loadedThumbnailSize = null;
+        }
     }
 
     private void SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
