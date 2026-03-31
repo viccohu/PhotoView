@@ -32,15 +32,18 @@ public partial class FolderNode : ObservableObject
     [ObservableProperty]
     private NodeType _nodeType;
 
-    public StorageFolder Folder { get; set; }
+    public StorageFolder? Folder { get; set; }
+
+    public FolderNode? Parent { get; set; }
 
     public bool HasDummyChild { get; set; }
 
-    public FolderNode(StorageFolder folder = null, NodeType nodeType = NodeType.Folder)
+    public FolderNode(StorageFolder? folder = null, NodeType nodeType = NodeType.Folder, FolderNode? parent = null)
     {
         Name = folder?.DisplayName ?? "This PC";
         Folder = folder;
         NodeType = nodeType;
+        Parent = parent;
         Children = new ObservableCollection<FolderNode>();
         AllChildren = new ObservableCollection<FolderNode>();
         HasDummyChild = true;

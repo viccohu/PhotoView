@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using PhotoView.Models;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Threading;
 using Windows.Storage;
 using Windows.Storage.Search;
 
@@ -9,6 +10,17 @@ namespace PhotoView.ViewModels;
 
 public partial class MainViewModel : ObservableRecipient
 {
+    private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp"
+    };
+
+    private const uint PageSize = 100;
+    private CancellationTokenSource? _loadImagesCts;
+
+    public event EventHandler? ImagesChanged;
+    public event EventHandler? ThumbnailSizeChanged;
+
     [ObservableProperty]
     private ObservableCollection<FolderNode> _folderTree;
 
@@ -20,6 +32,17 @@ public partial class MainViewModel : ObservableRecipient
 
     [ObservableProperty]
     private ObservableCollection<ImageFileInfo> _images;
+
+    [ObservableProperty]
+    private ThumbnailSize _thumbnailSize = ThumbnailSize.Medium;
+
+    public double ThumbnailHeight => (int)ThumbnailSize;
+
+    partial void OnThumbnailSizeChanged(ThumbnailSize value)
+    {
+        OnPropertyChanged(nameof(ThumbnailHeight));
+        ThumbnailSizeChanged?.Invoke(this, EventArgs.Empty);
+    }
 
     public MainViewModel()
     {
@@ -48,8 +71,9 @@ public partial class MainViewModel : ObservableRecipient
             FolderTree.Add(thisPCNode);
             FolderTree.Add(externalDeviceNode);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"LoadDrivesAsync error: {ex}");
         }
     }
 
@@ -75,11 +99,11 @@ public partial class MainViewModel : ObservableRecipient
                     try
                     {
                         var storageFolder = await StorageFolder.GetFolderFromPathAsync(drive.Name);
-                        var driveNode = new FolderNode(storageFolder, NodeType.Drive)
+                        var driveNode = new FolderNode(storageFolder, NodeType.Drive, node)
                         {
                             Name = $"{drive.Name} ({drive.VolumeLabel})"
                         };
-                        driveNode.Children.Add(new FolderNode(null, NodeType.Folder) { Name = "" });
+                        driveNode.Children.Add(new FolderNode(null, NodeType.Folder, driveNode) { Name = "" });
                         driveNode.HasDummyChild = true;
 
                         bool isRemovable = drive.DriveType == DriveType.Removable;
@@ -90,8 +114,9 @@ public partial class MainViewModel : ObservableRecipient
                             node.Children.Add(driveNode);
                         }
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                        System.Diagnostics.Debug.WriteLine($"LoadChildrenAsync drive error: {ex}");
                     }
                 }
             }
@@ -100,15 +125,16 @@ public partial class MainViewModel : ObservableRecipient
                 var folders = await node.Folder.GetFoldersAsync();
                 foreach (var folder in folders)
                 {
-                    var childNode = new FolderNode(folder, NodeType.Folder);
-                    childNode.Children.Add(new FolderNode(null, NodeType.Folder) { Name = "" });
+                    var childNode = new FolderNode(folder, NodeType.Folder, node);
+                    childNode.Children.Add(new FolderNode(null, NodeType.Folder, childNode) { Name = "" });
                     childNode.HasDummyChild = true;
                     node.Children.Add(childNode);
                 }
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"LoadChildrenAsync error: {ex}");
         }
         finally
         {
@@ -118,10 +144,14 @@ public partial class MainViewModel : ObservableRecipient
 
     public async System.Threading.Tasks.Task LoadImagesAsync(FolderNode folderNode)
     {
+        _loadImagesCts?.Cancel();
+        _loadImagesCts = new CancellationTokenSource();
+        var cancellationToken = _loadImagesCts.Token;
+
         Images.Clear();
         SelectedFolder = folderNode;
-
         UpdateBreadcrumbPath(folderNode);
+        ImagesChanged?.Invoke(this, EventArgs.Empty);
 
         if (folderNode?.Folder == null)
             return;
@@ -129,17 +159,50 @@ public partial class MainViewModel : ObservableRecipient
         try
         {
             var result = folderNode.Folder.CreateFileQueryWithOptions(new QueryOptions());
-            var imageFiles = await result.GetFilesAsync();
-            foreach (var file in imageFiles)
+            uint index = 0;
+
+            while (!cancellationToken.IsCancellationRequested)
             {
-                if (IsImageFile(file))
+                var batch = await result.GetFilesAsync(index, PageSize);
+                if (batch.Count == 0)
+                    break;
+
+                var imageInfos = await System.Threading.Tasks.Task.Run(async () =>
                 {
-                    Images.Add(await LoadImageInfo(file));
+                    var tasks = new List<Task<ImageFileInfo?>>();
+
+                    foreach (var file in batch)
+                    {
+                        if (cancellationToken.IsCancellationRequested)
+                            break;
+
+                        if (IsImageFile(file))
+                        {
+                            tasks.Add(LoadImageInfoSafeAsync(file, cancellationToken));
+                        }
+                    }
+
+                    var results = await Task.WhenAll(tasks);
+                    return results.Where(r => r != null).Cast<ImageFileInfo>().ToList();
+                }, cancellationToken);
+
+                if (!cancellationToken.IsCancellationRequested)
+                {
+                    foreach (var info in imageInfos)
+                    {
+                        Images.Add(info);
+                    }
                 }
+
+                index += PageSize;
             }
         }
-        catch (Exception)
+        catch (OperationCanceledException)
         {
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"LoadImagesAsync error: {ex}");
         }
     }
 
@@ -154,7 +217,7 @@ public partial class MainViewModel : ObservableRecipient
         while (current != null)
         {
             path.Insert(0, current);
-            current = FindParentNode(FolderTree, current);
+            current = current.Parent;
         }
         foreach (var node in path)
         {
@@ -162,23 +225,9 @@ public partial class MainViewModel : ObservableRecipient
         }
     }
 
-    private FolderNode FindParentNode(ObservableCollection<FolderNode> nodes, FolderNode target)
+    private static bool IsImageFile(StorageFile file)
     {
-        foreach (var node in nodes)
-        {
-            if (node.Children.Contains(target))
-                return node;
-            var parent = FindParentNode(node.Children, target);
-            if (parent != null)
-                return parent;
-        }
-        return null;
-    }
-
-    private bool IsImageFile(StorageFile file)
-    {
-        var extensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp" };
-        return extensions.Contains(file.FileType.ToLower());
+        return ImageExtensions.Contains(file.FileType);
     }
 
     public static async System.Threading.Tasks.Task<ImageFileInfo> LoadImageInfo(StorageFile file)
@@ -186,5 +235,19 @@ public partial class MainViewModel : ObservableRecipient
         var properties = await file.Properties.GetImagePropertiesAsync();
         ImageFileInfo info = new(properties, file, file.DisplayName, file.DisplayType);
         return info;
+    }
+
+    private static async Task<ImageFileInfo?> LoadImageInfoSafeAsync(StorageFile file, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var properties = await file.Properties.GetImagePropertiesAsync().AsTask(cancellationToken);
+            return new ImageFileInfo(properties, file, file.DisplayName, file.DisplayType);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"LoadImageInfo error: {ex}");
+            return null;
+        }
     }
 }

@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Storage.FileProperties;
 using Windows.Storage.Streams;
@@ -14,6 +14,15 @@ namespace PhotoView.Models;
 
 public class ImageFileInfo : INotifyPropertyChanged
 {
+    private BitmapImage? _thumbnail;
+    private bool _isLoading;
+    private int _loadVersion;
+    private CancellationTokenSource? _thumbnailLoadCts;
+    private bool _isSelected;
+
+    private static readonly uint[] SystemThumbnailSizes = { 96, 160, 256, 512, 1024 };
+    private static readonly Random _random = new();
+
     public ImageFileInfo(ImageProperties properties,
         StorageFile imageFile,
         string name,
@@ -24,56 +33,173 @@ public class ImageFileInfo : INotifyPropertyChanged
         ImageFileType = type;
         ImageFile = imageFile;
         var rating = (int)properties.Rating;
-        var random = new Random();
-        ImageRating = rating == 0 ? random.Next(1, 5) : rating;
+        ImageRating = rating == 0 ? _random.Next(1, 5) : rating;
     }
 
     public int Width => (int)ImageProperties.Width;
 
     public int Height => (int)ImageProperties.Height;
 
-    public StorageFile ImageFile
+    public StorageFile ImageFile { get; }
+
+    public ImageProperties ImageProperties { get; }
+
+    private async Task<BitmapImage> GetThumbnailAsync(ThumbnailSize size, CancellationToken cancellationToken)
     {
-        get;
+        try
+        {
+            var requestedSize = (uint)size;
+            var optimalSize = GetOptimalThumbnailSize(requestedSize);
+
+            StorageItemThumbnail thumbnail = await ImageFile.GetThumbnailAsync(
+                ThumbnailMode.PicturesView,
+                optimalSize,
+                ThumbnailOptions.UseCurrentScale).AsTask(cancellationToken);
+
+            if (thumbnail != null && thumbnail.Size > 0)
+            {
+                var bitmapImage = await CreateBitmapOnUIThreadAsync(thumbnail, cancellationToken);
+                thumbnail.Dispose();
+                return bitmapImage;
+            }
+
+            return new BitmapImage();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"GetThumbnailAsync error: {ex}");
+            return new BitmapImage();
+        }
     }
 
-    public ImageProperties ImageProperties
+    private static async Task<BitmapImage> CreateBitmapOnUIThreadAsync(IRandomAccessStream stream, CancellationToken cancellationToken)
     {
-        get;
+        BitmapImage? bitmap = null;
+
+        var dispatcherQueue = App.MainWindow.DispatcherQueue;
+        if (dispatcherQueue == null)
+        {
+            bitmap = new BitmapImage();
+            bitmap.SetSource(stream);
+            return bitmap;
+        }
+
+        var tcs = new TaskCompletionSource<bool>();
+
+        var registration = cancellationToken.Register(() => tcs.TrySetCanceled());
+
+        dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            try
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    tcs.TrySetCanceled();
+                    return;
+                }
+
+                bitmap = new BitmapImage();
+                bitmap.SetSource(stream);
+                tcs.SetResult(true);
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex);
+            }
+            finally
+            {
+                registration.Dispose();
+            }
+        });
+
+        await tcs.Task;
+        return bitmap!;
     }
 
-    public async Task<BitmapImage> GetImageSourceAsync()
+    public BitmapImage? Thumbnail
     {
-        using IRandomAccessStream fileStream = await ImageFile.OpenReadAsync();
-
-        // Create a bitmap to be the image source.
-        BitmapImage bitmapImage = new();
-        bitmapImage.SetSource(fileStream);
-
-        return bitmapImage;
+        get => _thumbnail;
+        private set => SetProperty(ref _thumbnail, value);
     }
 
-    public async Task<BitmapImage> GetImageThumbnailAsync()
+    public bool IsSelected
     {
-        StorageItemThumbnail thumbnail =
-            await ImageFile.GetThumbnailAsync(ThumbnailMode.PicturesView);
-        // Create a bitmap to be the image source.
-        var bitmapImage = new BitmapImage();
-        bitmapImage.SetSource(thumbnail);
-        thumbnail.Dispose();
-
-        return bitmapImage;
+        get => _isSelected;
+        set => SetProperty(ref _isSelected, value);
     }
 
-    public string ImageName
+    public async Task EnsureThumbnailAsync(ThumbnailSize size)
     {
-        get;
+        _thumbnailLoadCts?.Cancel();
+        _thumbnailLoadCts = new CancellationTokenSource();
+        var cancellationToken = _thumbnailLoadCts.Token;
+
+        _isLoading = true;
+        var version = ++_loadVersion;
+
+        try
+        {
+            var result = await GetThumbnailAsync(size, cancellationToken);
+
+            if (version != _loadVersion || cancellationToken.IsCancellationRequested)
+                return;
+
+            Thumbnail = result;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"EnsureThumbnailAsync error: {ex}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 
-    public string ImageFileType
+    public void CancelThumbnailLoad()
     {
-        get;
+        _thumbnailLoadCts?.Cancel();
+        _loadVersion++;
     }
+
+    public void ClearThumbnail()
+    {
+        _thumbnailLoadCts?.Cancel();
+        _loadVersion++;
+        Thumbnail = null;
+    }
+
+    private void SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (!EqualityComparer<T>.Default.Equals(field, value))
+        {
+            field = value;
+            OnPropertyChanged(propertyName);
+        }
+    }
+
+    private static uint GetOptimalThumbnailSize(uint requestedSize)
+    {
+        foreach (var size in SystemThumbnailSizes)
+        {
+            if (size >= requestedSize)
+            {
+                return size;
+            }
+        }
+        return SystemThumbnailSizes[^1];
+    }
+
+    public string ImageName { get; }
+
+    public string ImageFileType { get; }
 
     public string ImageDimensions => $"{ImageProperties.Width} x {ImageProperties.Height}";
 
@@ -105,10 +231,12 @@ public class ImageFileInfo : INotifyPropertyChanged
         }
     }
 
-    public int AutoWidth => (int)(ImageProperties.Width * 200 / (ImageProperties.Height + 1));
+    public int AutoWidth => Height == 0 ? 200 : (int)(ImageProperties.Width * 200 / Height);
 
-    public event PropertyChangedEventHandler PropertyChanged;
+    public double AspectRatio => Height == 0 ? 1.0 : (double)Width / Height;
 
-    protected void OnPropertyChanged([CallerMemberName] string propertyName = null) =>
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
