@@ -18,12 +18,19 @@ public sealed partial class MainPage : Page
 
     public ImageSelectionService SelectionService { get; }
 
+    private readonly DispatcherTimer _loadImagesThrottleTimer;
+    private FolderNode? _pendingLoadNode;
+
     public MainPage()
     {
         ViewModel = App.GetService<MainViewModel>();
         SelectionService = new ImageSelectionService();
         InitializeComponent();
         FolderTreeView.DataContext = ViewModel;
+
+        _loadImagesThrottleTimer = new DispatcherTimer();
+        _loadImagesThrottleTimer.Interval = TimeSpan.FromMilliseconds(300);
+        _loadImagesThrottleTimer.Tick += LoadImagesThrottleTimer_Tick;
 
         SelectionService.SelectionChanged += SelectionService_SelectionChanged;
         ViewModel.ImagesChanged += ViewModel_ImagesChanged;
@@ -34,10 +41,30 @@ public sealed partial class MainPage : Page
 
     private void MainPage_Unloaded(object sender, RoutedEventArgs e)
     {
+        _loadImagesThrottleTimer.Stop();
         SelectionService.SelectionChanged -= SelectionService_SelectionChanged;
         ViewModel.ImagesChanged -= ViewModel_ImagesChanged;
         ViewModel.ThumbnailSizeChanged -= ViewModel_ThumbnailSizeChanged;
         ViewModel.Dispose();
+    }
+
+    private async void LoadImagesThrottleTimer_Tick(object? sender, object e)
+    {
+        _loadImagesThrottleTimer.Stop();
+
+        if (_pendingLoadNode == null || AppLifetime.IsShuttingDown)
+            return;
+
+        var node = _pendingLoadNode;
+        _pendingLoadNode = null;
+
+        try
+        {
+        await ViewModel.LoadImagesAsync(node);
+        }
+        catch (System.Threading.Tasks.TaskCanceledException)
+        {
+        }
     }
 
     private async void ViewModel_ThumbnailSizeChanged(object? sender, System.EventArgs e)
@@ -47,7 +74,6 @@ public sealed partial class MainPage : Page
 
         try
         {
-            // 仅加载当前可见区域的缩略图
             for (var i = 0; i < ImageRepeater.ItemsSourceView.Count; i++)
             {
                 if (AppLifetime.IsShuttingDown)
@@ -79,24 +105,20 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private DateTime _lastLoadImagesTime = DateTime.MinValue;
-    private FolderNode? _lastLoadedNode;
-    private const int LoadImagesThrottleMs = 300;
-
     private async void FolderTreeView_Expanding(TreeView sender, TreeViewExpandingEventArgs args)
     {
         if (args.Item is FolderNode node)
         {
             FolderTreeView.SelectedItem = node;
             await ViewModel.LoadChildrenAsync(node);
-            await ThrottleLoadImagesAsync(node);
+            ThrottleLoadImages(node);
         }
     }
 
     private DateTime _lastClickTime;
     private FolderNode? _lastClickedNode;
 
-    private async void FolderTreeView_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
+    private void FolderTreeView_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
     {
         if (args.InvokedItem is FolderNode node)
         {
@@ -115,30 +137,15 @@ public sealed partial class MainPage : Page
                 }
             }
 
-            await ThrottleLoadImagesAsync(node);
+            ThrottleLoadImages(node);
         }
     }
 
-    private async System.Threading.Tasks.Task ThrottleLoadImagesAsync(FolderNode node)
+    private void ThrottleLoadImages(FolderNode node)
     {
-        var now = DateTime.Now;
-        var timeSinceLastLoad = (now - _lastLoadImagesTime).TotalMilliseconds;
-
-        if (node == _lastLoadedNode && timeSinceLastLoad < LoadImagesThrottleMs)
-        {
-            return;
-        }
-
-        _lastLoadImagesTime = now;
-        _lastLoadedNode = node;
-
-        try
-        {
-            await ViewModel.LoadImagesAsync(node);
-        }
-        catch (System.Threading.Tasks.TaskCanceledException)
-        {
-        }
+        _pendingLoadNode = node;
+        _loadImagesThrottleTimer.Stop();
+        _loadImagesThrottleTimer.Start();
     }
 
     private async void BreadcrumbBar_ItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)
@@ -146,7 +153,7 @@ public sealed partial class MainPage : Page
         if (args.Item is FolderNode node)
         {
             await ExpandTreeViewPathAsync(node);
-            await ThrottleLoadImagesAsync(node);
+            ThrottleLoadImages(node);
         }
     }
 
@@ -253,7 +260,6 @@ public sealed partial class MainPage : Page
         _isUpdatingSelectionState = true;
         try
         {
-            // 清除之前选择的项
             foreach (var deselected in e.RemovedItems)
             {
                 if (deselected is ImageFileInfo imageInfo)
@@ -262,7 +268,6 @@ public sealed partial class MainPage : Page
                 }
             }
 
-            // 设置新选择的项
             foreach (var selected in e.AddedItems)
             {
                 if (selected is ImageFileInfo imageInfo)
@@ -271,7 +276,6 @@ public sealed partial class MainPage : Page
                 }
             }
 
-            // 仅更新可见元素的 VisualState
             for (var i = 0; i < ImageRepeater.ItemsSourceView.Count; i++)
             {
                 if (ImageRepeater.TryGetElement(i) is ContentControl control)

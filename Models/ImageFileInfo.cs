@@ -60,7 +60,7 @@ public class ImageFileInfo : INotifyPropertyChanged
             var optimalSize = GetOptimalThumbnailSize(requestedSize);
 
             var thumbnail = await ImageFile.GetThumbnailAsync(
-                ThumbnailMode.PicturesView,
+                ThumbnailMode.SingleItem,
                 optimalSize,
                 ThumbnailOptions.UseCurrentScale).AsTask(cancellationToken);
 

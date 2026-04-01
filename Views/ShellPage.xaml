@@ -39,6 +39,7 @@
             SelectedItem="{x:Bind ViewModel.Selected, Mode=OneWay}"
             IsSettingsVisible="True"
             ExpandedModeThresholdWidth="1920"
+            IsTitleBarAutoPaddingEnabled="False"
             ItemInvoked="NavigationViewControl_ItemInvoked">
             <NavigationView.MenuItems>
                 <!--

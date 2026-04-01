@@ -154,21 +154,21 @@
                                     <MenuFlyoutItem Text="移动"/>
                                 </MenuFlyout>
                             </FlyoutBase.AttachedFlyout>
-                            <Grid>
+                            <Grid
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch">
                                 <Border
                                     CornerRadius="8"
                                     Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
                                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                    BorderThickness="1">
-                                    <Grid>
-                                        <Image
-                                            Source="{x:Bind Thumbnail, Mode=OneWay}"
-                                            Stretch="UniformToFill"/>
-                                        <ProgressRing
-                                            Width="24"
-                                            Height="24"
-                                            IsActive="{x:Bind Thumbnail, Converter={StaticResource NullToBoolConverter}, Mode=OneWay}"/>
-                                    </Grid>
+                                    BorderThickness="1"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch">
+                                    <Image
+                                        Source="{x:Bind Thumbnail, Mode=OneWay}"
+                                        Stretch="Uniform"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"/>
                                 </Border>
                                 <Border
                                     x:Name="SelectionBorder"
@@ -176,6 +176,12 @@
                                     BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
                                     BorderThickness="3"
                                     Opacity="0"/>
+                                <ProgressRing
+                                    Width="24"
+                                    Height="24"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    IsActive="{x:Bind Thumbnail, Converter={StaticResource NullToBoolConverter}, Mode=OneWay}"/>
                                 <CheckBox
                                     x:Name="SelectionCheckBox"
                                     HorizontalAlignment="Left"
