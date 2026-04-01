@@ -2,7 +2,7 @@
   "profiles": {
     "PhotoView (Package)": {
       "commandName": "MsixPackage",
-      "nativeDebugging": false
+      "nativeDebugging": true
     },
     "PhotoView (Unpackaged)": {
       "commandName": "Project"

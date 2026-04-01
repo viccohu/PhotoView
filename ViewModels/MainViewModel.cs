@@ -36,11 +36,22 @@ public partial class MainViewModel : ObservableRecipient
     [ObservableProperty]
     private ThumbnailSize _thumbnailSize = ThumbnailSize.Medium;
 
-    public double ThumbnailHeight => (int)ThumbnailSize;
+    public double ThumbnailHeight => ThumbnailSize switch
+    {
+        ThumbnailSize.Small => 120,
+        ThumbnailSize.Medium => 256,
+        ThumbnailSize.Large => 512,
+        _ => 256
+    };
 
     partial void OnThumbnailSizeChanged(ThumbnailSize value)
     {
         OnPropertyChanged(nameof(ThumbnailHeight));
+        foreach (var image in Images)
+        {
+            image.UpdateDisplaySize(value);
+            image.ClearThumbnail();
+        }
         ThumbnailSizeChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -83,6 +94,7 @@ public partial class MainViewModel : ObservableRecipient
             return;
 
         node.IsLoading = true;
+        node.Children.Clear();
 
         try
         {
@@ -130,6 +142,8 @@ public partial class MainViewModel : ObservableRecipient
             }
 
             node.IsLoaded = true;
+            node.HasSubFolders = node.Children.Count > 0;
+            node.RefreshExpandableState();
         }
         catch (Exception ex)
         {
@@ -138,6 +152,7 @@ public partial class MainViewModel : ObservableRecipient
         finally
         {
             node.IsLoading = false;
+            node.RefreshExpandableState();
         }
     }
 
@@ -189,6 +204,7 @@ public partial class MainViewModel : ObservableRecipient
                 {
                     foreach (var info in imageInfos)
                     {
+                        info.UpdateDisplaySize(ThumbnailSize);
                         Images.Add(info);
                     }
                 }

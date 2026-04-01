@@ -21,8 +21,11 @@ public class ImageFileInfo : INotifyPropertyChanged
     private int _loadVersion;
     private CancellationTokenSource? _thumbnailLoadCts;
     private bool _isSelected;
+    private double _displayWidth;
+    private double _displayHeight;
     private readonly object _thumbnailLoadLock = new();
     private ThumbnailSize? _loadedThumbnailSize;
+    private ThumbnailSize? _requestedThumbnailSize;
 
     private static readonly uint[] SystemThumbnailSizes = { 96, 160, 256, 512, 1024 };
     private static readonly Random _random = new();
@@ -44,6 +47,7 @@ public class ImageFileInfo : INotifyPropertyChanged
         ImageName = name;
         ImageFileType = type;
         _isSelected = false;
+        UpdateDisplaySize(ThumbnailSize.Medium);
     }
 
     public int Width { get; }
@@ -118,7 +122,7 @@ public class ImageFileInfo : INotifyPropertyChanged
             }
         }
 
-        dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Normal, () =>
+        if (!dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Normal, () =>
         {
             try
             {
@@ -138,7 +142,10 @@ public class ImageFileInfo : INotifyPropertyChanged
             {
                 tcs.SetException(ex);
             }
-        });
+        }))
+        {
+            throw new OperationCanceledException("Failed to enqueue thumbnail creation.", cancellationToken);
+        }
 
         await tcs.Task;
         return bitmap!;
@@ -156,6 +163,18 @@ public class ImageFileInfo : INotifyPropertyChanged
         set => SetProperty(ref _isSelected, value);
     }
 
+    public double DisplayWidth
+    {
+        get => _displayWidth;
+        private set => SetProperty(ref _displayWidth, value);
+    }
+
+    public double DisplayHeight
+    {
+        get => _displayHeight;
+        private set => SetProperty(ref _displayHeight, value);
+    }
+
     public async Task EnsureThumbnailAsync(ThumbnailSize size)
     {
         if (AppLifetime.IsShuttingDown)
@@ -165,6 +184,13 @@ public class ImageFileInfo : INotifyPropertyChanged
         {
             if (Thumbnail != null && _loadedThumbnailSize == size)
                 return;
+
+            if (_thumbnailLoadCts != null &&
+                !_thumbnailLoadCts.IsCancellationRequested &&
+                _requestedThumbnailSize == size)
+            {
+                return;
+            }
         }
 
         CancellationTokenSource localCts;
@@ -176,6 +202,7 @@ public class ImageFileInfo : INotifyPropertyChanged
             _thumbnailLoadCts = new CancellationTokenSource();
             localCts = _thumbnailLoadCts;
             localVersion = ++_loadVersion;
+            _requestedThumbnailSize = size;
         }
 
         var cancellationToken = localCts.Token;
@@ -205,7 +232,7 @@ public class ImageFileInfo : INotifyPropertyChanged
                 }
                 else
                 {
-                    dispatcher.TryEnqueue(() =>
+                    if (!dispatcher.TryEnqueue(() =>
                     {
                         if (AppLifetime.IsShuttingDown)
                             return;
@@ -218,7 +245,10 @@ public class ImageFileInfo : INotifyPropertyChanged
                             Thumbnail = result;
                             _loadedThumbnailSize = size;
                         }
-                    });
+                    }))
+                    {
+                        return;
+                    }
                 }
             }
             finally
@@ -241,6 +271,7 @@ public class ImageFileInfo : INotifyPropertyChanged
         {
             _thumbnailLoadCts?.Cancel();
             _loadVersion++;
+            _requestedThumbnailSize = null;
         }
     }
 
@@ -252,7 +283,28 @@ public class ImageFileInfo : INotifyPropertyChanged
             _loadVersion++;
             Thumbnail = null;
             _loadedThumbnailSize = null;
+            _requestedThumbnailSize = null;
         }
+    }
+
+    public void UpdateDisplaySize(ThumbnailSize size)
+    {
+        var height = size switch
+        {
+            ThumbnailSize.Small => 120d,
+            ThumbnailSize.Medium => 256d,
+            ThumbnailSize.Large => 512d,
+            _ => 256d
+        };
+
+        var aspectRatio = AspectRatio;
+        if (double.IsNaN(aspectRatio) || double.IsInfinity(aspectRatio) || aspectRatio <= 0)
+        {
+            aspectRatio = 1d;
+        }
+
+        DisplayHeight = height;
+        DisplayWidth = Math.Max(1d, height * aspectRatio);
     }
 
     private void SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
@@ -304,13 +356,16 @@ public class ImageFileInfo : INotifyPropertyChanged
         }
         else
         {
-            dispatcherQueue.TryEnqueue(() =>
+            if (!dispatcherQueue.TryEnqueue(() =>
             {
                 if (AppLifetime.IsShuttingDown)
                     return;
 
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-            });
+            }))
+            {
+                return;
+            }
         }
     }
 }

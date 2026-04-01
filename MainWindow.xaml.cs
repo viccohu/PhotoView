@@ -14,7 +14,7 @@ public sealed partial class MainWindow : WindowEx
 
         this.Closed += (_, __) =>
         {
-            AppLifetime.IsShuttingDown = true;
+            AppLifetime.BeginShutdown();
         };
     }
 }

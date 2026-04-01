@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using PhotoView.Helpers;
 using PhotoView.Models;
 using PhotoView.Services;
@@ -20,11 +21,13 @@ public sealed partial class MainPage : Page
 
     private readonly DispatcherTimer _loadImagesThrottleTimer;
     private FolderNode? _pendingLoadNode;
+    private bool _isUnloaded;
 
     public MainPage()
     {
         ViewModel = App.GetService<MainViewModel>();
         SelectionService = new ImageSelectionService();
+        NavigationCacheMode = NavigationCacheMode.Enabled;
         InitializeComponent();
         FolderTreeView.DataContext = ViewModel;
 
@@ -35,24 +38,27 @@ public sealed partial class MainPage : Page
         SelectionService.SelectionChanged += SelectionService_SelectionChanged;
         ViewModel.ImagesChanged += ViewModel_ImagesChanged;
         ViewModel.ThumbnailSizeChanged += ViewModel_ThumbnailSizeChanged;
+        Loaded += MainPage_Loaded;
         KeyDown += MainPage_KeyDown;
         Unloaded += MainPage_Unloaded;
     }
 
+    private void MainPage_Loaded(object sender, RoutedEventArgs e)
+    {
+        _isUnloaded = false;
+    }
+
     private void MainPage_Unloaded(object sender, RoutedEventArgs e)
     {
+        _isUnloaded = true;
         _loadImagesThrottleTimer.Stop();
-        SelectionService.SelectionChanged -= SelectionService_SelectionChanged;
-        ViewModel.ImagesChanged -= ViewModel_ImagesChanged;
-        ViewModel.ThumbnailSizeChanged -= ViewModel_ThumbnailSizeChanged;
-        ViewModel.Dispose();
     }
 
     private async void LoadImagesThrottleTimer_Tick(object? sender, object e)
     {
         _loadImagesThrottleTimer.Stop();
 
-        if (_pendingLoadNode == null || AppLifetime.IsShuttingDown)
+        if (_pendingLoadNode == null || _isUnloaded || AppLifetime.IsShuttingDown)
             return;
 
         var node = _pendingLoadNode;
@@ -69,22 +75,26 @@ public sealed partial class MainPage : Page
 
     private async void ViewModel_ThumbnailSizeChanged(object? sender, System.EventArgs e)
     {
-        if (ViewModel.Images == null || AppLifetime.IsShuttingDown)
+        if (ViewModel.Images == null || _isUnloaded || AppLifetime.IsShuttingDown)
             return;
 
         try
         {
-            for (var i = 0; i < ImageRepeater.ItemsSourceView.Count; i++)
+            foreach (var imageInfo in ViewModel.Images)
             {
                 if (AppLifetime.IsShuttingDown)
                     return;
 
-                if (ImageRepeater.TryGetElement(i) != null)
+                imageInfo.UpdateDisplaySize(ViewModel.ThumbnailSize);
+            }
+
+            foreach (var control in GetVisibleImageControls())
+            {
+                if (control.DataContext is ImageFileInfo imageInfo)
                 {
-                    if (ImageRepeater.ItemsSourceView.GetAt(i) is ImageFileInfo imageInfo)
-                    {
-                        await imageInfo.EnsureThumbnailAsync(ViewModel.ThumbnailSize);
-                    }
+                    await imageInfo.EnsureThumbnailAsync(ViewModel.ThumbnailSize);
+                    if (_isUnloaded || AppLifetime.IsShuttingDown)
+                        return;
                 }
             }
         }
@@ -111,6 +121,8 @@ public sealed partial class MainPage : Page
         {
             FolderTreeView.SelectedItem = node;
             await ViewModel.LoadChildrenAsync(node);
+            if (_isUnloaded || AppLifetime.IsShuttingDown)
+                return;
             ThrottleLoadImages(node);
         }
     }
@@ -143,9 +155,32 @@ public sealed partial class MainPage : Page
 
     private void ThrottleLoadImages(FolderNode node)
     {
+        if (IsCurrentDisplayedNode(node) || _pendingLoadNode == node)
+        {
+            return;
+        }
+
         _pendingLoadNode = node;
         _loadImagesThrottleTimer.Stop();
         _loadImagesThrottleTimer.Start();
+    }
+
+    private bool IsCurrentDisplayedNode(FolderNode node)
+    {
+        var selectedFolder = ViewModel.SelectedFolder;
+        if (selectedFolder == null)
+        {
+            return false;
+        }
+
+        if (ReferenceEquals(selectedFolder, node))
+        {
+            return true;
+        }
+
+        return selectedFolder.NodeType == node.NodeType
+            && !string.IsNullOrEmpty(selectedFolder.FullPath)
+            && string.Equals(selectedFolder.FullPath, node.FullPath, StringComparison.OrdinalIgnoreCase);
     }
 
     private async void BreadcrumbBar_ItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)
@@ -153,6 +188,8 @@ public sealed partial class MainPage : Page
         if (args.Item is FolderNode node)
         {
             await ExpandTreeViewPathAsync(node);
+            if (_isUnloaded || AppLifetime.IsShuttingDown)
+                return;
             ThrottleLoadImages(node);
         }
     }
@@ -161,6 +198,9 @@ public sealed partial class MainPage : Page
     {
         try
         {
+            if (_isUnloaded || AppLifetime.IsShuttingDown)
+                return;
+
             var path = new List<FolderNode>();
             var current = targetNode;
             while (current != null)
@@ -186,6 +226,8 @@ public sealed partial class MainPage : Page
                 if (!node.IsLoaded && node.NodeType != NodeType.ThisPC && node.NodeType != NodeType.ExternalDevice)
                 {
                     await ViewModel.LoadChildrenAsync(node);
+                    if (_isUnloaded || AppLifetime.IsShuttingDown)
+                        return;
                 }
             }
 
@@ -193,6 +235,8 @@ public sealed partial class MainPage : Page
             {
                 FolderTreeView.SelectedItem = lastNode;
                 await System.Threading.Tasks.Task.Delay(100);
+                if (_isUnloaded || AppLifetime.IsShuttingDown)
+                    return;
                 ScrollToTreeViewItem(lastNode);
             }
         }
@@ -224,19 +268,16 @@ public sealed partial class MainPage : Page
 
     private bool _isUpdatingSelectionState;
 
-    private async void ImageRepeater_ElementPrepared(ItemsRepeater sender, ItemsRepeaterElementPreparedEventArgs args)
+    private async void ImageItem_Loaded(object sender, RoutedEventArgs e)
     {
         try
         {
-            if (AppLifetime.IsShuttingDown)
+            if (_isUnloaded || AppLifetime.IsShuttingDown)
                 return;
 
-            if (args.Index < 0 || args.Index >= sender.ItemsSourceView.Count)
-                return;
-
-            if (sender.ItemsSourceView.GetAt(args.Index) is ImageFileInfo imageInfo)
+            if (sender is ContentControl control && control.DataContext is ImageFileInfo imageInfo)
             {
-                if (args.Element is ContentControl control && !_isUpdatingSelectionState)
+                if (!_isUpdatingSelectionState)
                 {
                     var isSelected = SelectionService.IsSelected(imageInfo);
                     VisualStateManager.GoToState(control, isSelected ? "Selected" : "Unselected", false);
@@ -247,7 +288,18 @@ public sealed partial class MainPage : Page
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"ImageRepeater_ElementPrepared error: {ex}");
+            System.Diagnostics.Debug.WriteLine($"ImageItem_Loaded error: {ex}");
+        }
+    }
+
+    private void ImageItem_Unloaded(object sender, RoutedEventArgs e)
+    {
+        if (_isUnloaded || AppLifetime.IsShuttingDown)
+            return;
+
+        if (sender is ContentControl control && control.DataContext is ImageFileInfo imageInfo)
+        {
+            imageInfo.CancelThumbnailLoad();
         }
     }
 
@@ -276,14 +328,11 @@ public sealed partial class MainPage : Page
                 }
             }
 
-            for (var i = 0; i < ImageRepeater.ItemsSourceView.Count; i++)
+            foreach (var control in GetVisibleImageControls())
             {
-                if (ImageRepeater.TryGetElement(i) is ContentControl control)
+                if (control.DataContext is ImageFileInfo image)
                 {
-                    if (ImageRepeater.ItemsSourceView.GetAt(i) is ImageFileInfo image)
-                    {
-                        VisualStateManager.GoToState(control, image.IsSelected ? "Selected" : "Unselected", false);
-                    }
+                    VisualStateManager.GoToState(control, image.IsSelected ? "Selected" : "Unselected", false);
                 }
             }
         }
@@ -313,6 +362,42 @@ public sealed partial class MainPage : Page
         {
             FlyoutBase.ShowAttachedFlyout(element);
         }
+    }
+
+    private IEnumerable<ContentControl> GetVisibleImageControls()
+    {
+        for (var i = 0; i < ViewModel.Images.Count; i++)
+        {
+            if (ImageGridView.ContainerFromIndex(i) is GridViewItem container)
+            {
+                var control = FindDescendant<ContentControl>(container);
+                if (control != null)
+                {
+                    yield return control;
+                }
+            }
+        }
+    }
+
+    private static T? FindDescendant<T>(DependencyObject root) where T : DependencyObject
+    {
+        var childCount = VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < childCount; i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is T typedChild)
+            {
+                return typedChild;
+            }
+
+            var descendant = FindDescendant<T>(child);
+            if (descendant != null)
+            {
+                return descendant;
+            }
+        }
+
+        return null;
     }
 
     private void Share_Click(object sender, RoutedEventArgs e)

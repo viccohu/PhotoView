@@ -66,6 +66,15 @@ public sealed partial class ShellPage : Page
     private void OnNavigationServiceNavigated(object sender, NavigationEventArgs e)
     {
         _isOnSettingsPage = e.SourcePageType == typeof(SettingsPage);
+
+        if (!_isOnSettingsPage)
+        {
+            var selectedItemKey = ViewModel.NavigationViewService.GetSelectedItemKey();
+            if (!string.IsNullOrEmpty(selectedItemKey))
+            {
+                _lastPageKey = selectedItemKey;
+            }
+        }
     }
 
     private void UpdateTitleBarColor(bool isDeactivated = false)
@@ -128,7 +137,6 @@ public sealed partial class ShellPage : Page
             }
             else
             {
-                _lastPageKey = ViewModel.NavigationViewService.GetSelectedItemKey();
                 _navigationService.NavigateTo(typeof(SettingsViewModel).FullName!);
             }
         }

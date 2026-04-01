@@ -36,6 +36,13 @@ public partial class FolderNode : ObservableObject
     [ObservableProperty]
     private bool _hasSubFolders;
 
+    public bool HasExpandableChildren => IsLoaded ? Children.Count > 0 : HasSubFolders;
+
+    partial void OnHasSubFoldersChanged(bool value)
+    {
+        OnPropertyChanged(nameof(HasExpandableChildren));
+    }
+
     public StorageFolder? Folder { get; set; }
 
     public FolderNode? Parent { get; set; }
@@ -79,5 +86,10 @@ public partial class FolderNode : ObservableObject
         {
             HasSubFolders = false;
         }
+    }
+
+    public void RefreshExpandableState()
+    {
+        OnPropertyChanged(nameof(HasExpandableChildren));
     }
 }

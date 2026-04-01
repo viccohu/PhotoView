@@ -36,6 +36,7 @@
             x:Name="NavigationViewControl"
             Canvas.ZIndex="0"
             IsBackButtonVisible="Collapsed"
+            AlwaysShowHeader="False"
             SelectedItem="{x:Bind ViewModel.Selected, Mode=OneWay}"
             IsSettingsVisible="True"
             ExpandedModeThresholdWidth="1920"
@@ -66,7 +67,7 @@
                 </NavigationViewItem>-->
             </NavigationView.MenuItems>
 
-            <Grid Margin="{StaticResource NavigationViewPageContentMargin}">
+            <Grid Margin="28,0,28,0">
                 <Frame x:Name="NavigationFrame" CacheSize="2" />
             </Grid>
         </NavigationView>
