@@ -79,19 +79,65 @@ public sealed partial class MainPage : Page
         }
     }
 
+    private DateTime _lastLoadImagesTime = DateTime.MinValue;
+    private FolderNode? _lastLoadedNode;
+    private const int LoadImagesThrottleMs = 300;
+
     private async void FolderTreeView_Expanding(TreeView sender, TreeViewExpandingEventArgs args)
     {
         if (args.Item is FolderNode node)
         {
+            FolderTreeView.SelectedItem = node;
             await ViewModel.LoadChildrenAsync(node);
+            await ThrottleLoadImagesAsync(node);
         }
     }
+
+    private DateTime _lastClickTime;
+    private FolderNode? _lastClickedNode;
 
     private async void FolderTreeView_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
     {
         if (args.InvokedItem is FolderNode node)
         {
+            var now = DateTime.Now;
+            var isDoubleClick = (now - _lastClickTime).TotalMilliseconds < 300 
+                               && _lastClickedNode == node;
+            _lastClickTime = now;
+            _lastClickedNode = node;
+
+            if (FolderTreeView.SelectedItem == node || isDoubleClick)
+            {
+                var treeViewItem = sender.ContainerFromItem(node) as TreeViewItem;
+                if (treeViewItem != null)
+                {
+                    treeViewItem.IsExpanded = !treeViewItem.IsExpanded;
+                }
+            }
+
+            await ThrottleLoadImagesAsync(node);
+        }
+    }
+
+    private async System.Threading.Tasks.Task ThrottleLoadImagesAsync(FolderNode node)
+    {
+        var now = DateTime.Now;
+        var timeSinceLastLoad = (now - _lastLoadImagesTime).TotalMilliseconds;
+
+        if (node == _lastLoadedNode && timeSinceLastLoad < LoadImagesThrottleMs)
+        {
+            return;
+        }
+
+        _lastLoadImagesTime = now;
+        _lastLoadedNode = node;
+
+        try
+        {
             await ViewModel.LoadImagesAsync(node);
+        }
+        catch (System.Threading.Tasks.TaskCanceledException)
+        {
         }
     }
 
@@ -99,7 +145,68 @@ public sealed partial class MainPage : Page
     {
         if (args.Item is FolderNode node)
         {
-            await ViewModel.LoadImagesAsync(node);
+            await ExpandTreeViewPathAsync(node);
+            await ThrottleLoadImagesAsync(node);
+        }
+    }
+
+    private async System.Threading.Tasks.Task ExpandTreeViewPathAsync(FolderNode targetNode)
+    {
+        try
+        {
+            var path = new List<FolderNode>();
+            var current = targetNode;
+            while (current != null)
+            {
+                path.Insert(0, current);
+                current = current.Parent;
+            }
+
+            if (path.Count == 0)
+                return;
+
+            FolderNode? lastNode = null;
+            for (int i = 0; i < path.Count; i++)
+            {
+                var node = path[i];
+                lastNode = node;
+
+                if (i < path.Count - 1 && !node.IsExpanded && node.Children.Count > 0)
+                {
+                    node.IsExpanded = true;
+                }
+
+                if (!node.IsLoaded && node.NodeType != NodeType.ThisPC && node.NodeType != NodeType.ExternalDevice)
+                {
+                    await ViewModel.LoadChildrenAsync(node);
+                }
+            }
+
+            if (lastNode != null)
+            {
+                FolderTreeView.SelectedItem = lastNode;
+                await System.Threading.Tasks.Task.Delay(100);
+                ScrollToTreeViewItem(lastNode);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ExpandTreeViewPathAsync error: {ex}");
+        }
+    }
+
+    private void ScrollToTreeViewItem(FolderNode node)
+    {
+        try
+        {
+            if (FolderTreeView.ContainerFromItem(node) is TreeViewItem container)
+            {
+                container.StartBringIntoView();
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ScrollToTreeViewItem error: {ex}");
         }
     }
 
@@ -134,7 +241,8 @@ public sealed partial class MainPage : Page
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"ImageRepeater_ElementPrepared error: {ex}");
-        } }
+        }
+    }
 
 
     private void SelectionService_SelectionChanged(object? sender, Services.SelectionChangedEventArgs e)

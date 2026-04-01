@@ -11,6 +11,8 @@ public class ThemeSelectorService : IThemeSelectorService
 
     public ElementTheme Theme { get; set; } = ElementTheme.Default;
 
+    public event EventHandler? ThemeChanged;
+
     private readonly ILocalSettingsService _localSettingsService;
 
     public ThemeSelectorService(ILocalSettingsService localSettingsService)
@@ -30,6 +32,8 @@ public class ThemeSelectorService : IThemeSelectorService
 
         await SetRequestedThemeAsync();
         await SaveThemeInSettingsAsync(Theme);
+
+        ThemeChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public async Task SetRequestedThemeAsync()

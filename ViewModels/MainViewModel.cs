@@ -58,15 +58,15 @@ public partial class MainViewModel : ObservableRecipient
         {
             var thisPCNode = new FolderNode(null, NodeType.ThisPC)
             {
-                Name = "这台电脑"
+                Name = "这台电脑",
+                HasSubFolders = true
             };
-            thisPCNode.Children.Add(new FolderNode(null, NodeType.Folder) { Name = "" });
 
             var externalDeviceNode = new FolderNode(null, NodeType.ExternalDevice)
             {
-                Name = "外接设备"
+                Name = "外接设备",
+                HasSubFolders = true
             };
-            externalDeviceNode.Children.Add(new FolderNode(null, NodeType.Folder) { Name = "" });
 
             FolderTree.Add(thisPCNode);
             FolderTree.Add(externalDeviceNode);
@@ -79,12 +79,10 @@ public partial class MainViewModel : ObservableRecipient
 
     public async System.Threading.Tasks.Task LoadChildrenAsync(FolderNode node)
     {
-        if (!node.HasDummyChild || node.IsLoading)
+        if (node.IsLoaded || node.IsLoading)
             return;
 
         node.IsLoading = true;
-        node.Children.Clear();
-        node.HasDummyChild = false;
 
         try
         {
@@ -101,13 +99,13 @@ public partial class MainViewModel : ObservableRecipient
                         var storageFolder = await StorageFolder.GetFolderFromPathAsync(drive.Name);
                         var driveNode = new FolderNode(storageFolder, NodeType.Drive, node)
                         {
-                            Name = $"{drive.Name} ({drive.VolumeLabel})"
+                            Name = $"{drive.Name} ({drive.VolumeLabel})",
+                            IsRemovable = drive.DriveType == DriveType.Removable
                         };
-                        driveNode.Children.Add(new FolderNode(null, NodeType.Folder, driveNode) { Name = "" });
-                        driveNode.HasDummyChild = true;
+                        driveNode.CheckHasSubFolders();
 
                         bool isRemovable = drive.DriveType == DriveType.Removable;
-                        
+
                         if ((node.NodeType == NodeType.ThisPC && !isRemovable) ||
                             (node.NodeType == NodeType.ExternalDevice && isRemovable))
                         {
@@ -126,11 +124,12 @@ public partial class MainViewModel : ObservableRecipient
                 foreach (var folder in folders)
                 {
                     var childNode = new FolderNode(folder, NodeType.Folder, node);
-                    childNode.Children.Add(new FolderNode(null, NodeType.Folder, childNode) { Name = "" });
-                    childNode.HasDummyChild = true;
+                    childNode.CheckHasSubFolders();
                     node.Children.Add(childNode);
                 }
             }
+
+            node.IsLoaded = true;
         }
         catch (Exception ex)
         {
@@ -267,10 +266,11 @@ public partial class MainViewModel : ObservableRecipient
     public void Dispose()
     {
         _loadImagesCts?.Cancel();
-        
+
         foreach (var image in Images)
         {
             image.CancelThumbnailLoad();
         }
     }
 }
+

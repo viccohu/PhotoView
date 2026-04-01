@@ -6,18 +6,25 @@ using Microsoft.UI.Xaml.Media;
 using PhotoView.Contracts.Services;
 using PhotoView.Helpers;
 using PhotoView.ViewModels;
+using PhotoView.Views;
 
-using Windows.System;
+using Microsoft.UI;
+using Microsoft.UI.Windowing;
+using Windows.UI;
 
 namespace PhotoView.Views;
 
-// TODO: Update NavigationViewItem titles and icons in ShellPage.xaml.
 public sealed partial class ShellPage : Page
 {
     public ShellViewModel ViewModel
     {
         get;
     }
+
+    private readonly IThemeSelectorService _themeSelectorService;
+    private readonly INavigationService _navigationService;
+    private string? _lastPageKey;
+    private bool _isOnSettingsPage;
 
     public ShellPage(ShellViewModel viewModel)
     {
@@ -27,59 +34,115 @@ public sealed partial class ShellPage : Page
         ViewModel.NavigationService.Frame = NavigationFrame;
         ViewModel.NavigationViewService.Initialize(NavigationViewControl);
 
-        // TODO: Set the title bar icon by updating /Assets/WindowIcon.ico.
-        // A custom title bar is required for full window theme and Mica support.
-        // https://docs.microsoft.com/windows/apps/develop/title-bar?tabs=winui3#full-customization
+        _themeSelectorService = App.GetService<IThemeSelectorService>();
+        _themeSelectorService.ThemeChanged += OnThemeChanged;
+
+        _navigationService = App.GetService<INavigationService>();
+        _navigationService.Navigated += OnNavigationServiceNavigated;
+
         App.MainWindow.ExtendsContentIntoTitleBar = true;
         App.MainWindow.SetTitleBar(AppTitleBar);
         App.MainWindow.Activated += MainWindow_Activated;
         AppTitleBarText.Text = "AppDisplayName".GetLocalized();
+
+        // 立即设置标题栏颜色
+        UpdateTitleBarColor();
     }
 
     private void OnLoaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
-        KeyboardAccelerators.Add(BuildKeyboardAccelerator(VirtualKey.Left, VirtualKeyModifiers.Menu));
-        KeyboardAccelerators.Add(BuildKeyboardAccelerator(VirtualKey.GoBack));
     }
 
     private void MainWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
-        var resource = args.WindowActivationState == WindowActivationState.Deactivated ? "WindowCaptionForegroundDisabled" : "WindowCaptionForeground";
-
-        AppTitleBarText.Foreground = (SolidColorBrush)App.Current.Resources[resource];
+        UpdateTitleBarColor(args.WindowActivationState == WindowActivationState.Deactivated);
     }
 
-    private void NavigationViewControl_DisplayModeChanged(NavigationView sender, NavigationViewDisplayModeChangedEventArgs args)
+    private void OnThemeChanged(object? sender, EventArgs e)
     {
-        AppTitleBar.Margin = new Thickness()
-        {
-            Left = sender.CompactPaneLength * (sender.DisplayMode == NavigationViewDisplayMode.Minimal ? 2 : 1),
-            Top = AppTitleBar.Margin.Top,
-            Right = AppTitleBar.Margin.Right,
-            Bottom = AppTitleBar.Margin.Bottom
-        };
+        UpdateTitleBarColor();
     }
 
-    private static KeyboardAccelerator BuildKeyboardAccelerator(VirtualKey key, VirtualKeyModifiers? modifiers = null)
+    private void OnNavigationServiceNavigated(object sender, NavigationEventArgs e)
     {
-        var keyboardAccelerator = new KeyboardAccelerator() { Key = key };
+        _isOnSettingsPage = e.SourcePageType == typeof(SettingsPage);
+    }
 
-        if (modifiers.HasValue)
+    private void UpdateTitleBarColor(bool isDeactivated = false)
+    {
+        // 更新标题栏文字颜色
+        var resource = isDeactivated ? "WindowCaptionForegroundDisabled" : "WindowCaptionForeground";
+        AppTitleBarText.Foreground = (SolidColorBrush)Application.Current.Resources[resource];
+
+        // 更新标题栏按钮颜色
+        var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+        var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hWnd);
+        var appWindow = AppWindow.GetFromWindowId(windowId);
+
+        if (appWindow?.TitleBar != null)
         {
-            keyboardAccelerator.Modifiers = modifiers.Value;
+            var titleBar = appWindow.TitleBar;
+
+            titleBar.ButtonBackgroundColor = Colors.Transparent;
+            titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
+
+            if (isDeactivated)
+            {
+                titleBar.ButtonForegroundColor = GetThemeColor("WindowCaptionForegroundDisabled");
+                titleBar.ButtonHoverForegroundColor = GetThemeColor("WindowCaptionForegroundDisabled");
+                titleBar.ButtonPressedForegroundColor = GetThemeColor("WindowCaptionForegroundDisabled");
+                titleBar.ButtonHoverBackgroundColor = Color.FromArgb(0x20, 0xFF, 0xFF, 0xFF);
+                titleBar.ButtonPressedBackgroundColor = Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF);
+            }
+            else
+            {
+                titleBar.ButtonForegroundColor = GetThemeColor("WindowCaptionForeground");
+                titleBar.ButtonHoverForegroundColor = GetThemeColor("WindowCaptionForeground");
+                titleBar.ButtonPressedForegroundColor = GetThemeColor("WindowCaptionForeground");
+                titleBar.ButtonHoverBackgroundColor = Color.FromArgb(0x20, 0xFF, 0xFF, 0xFF);
+                titleBar.ButtonPressedBackgroundColor = Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF);
+            }
         }
-
-        keyboardAccelerator.Invoked += OnKeyboardAcceleratorInvoked;
-
-        return keyboardAccelerator;
     }
 
-    private static void OnKeyboardAcceleratorInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    private Color GetThemeColor(string resourceKey)
     {
-        var navigationService = App.GetService<INavigationService>();
+        if (Application.Current.Resources.TryGetValue(resourceKey, out var resource) &&
+            resource is SolidColorBrush brush)
+        {
+            return brush.Color;
+        }
+        return Colors.White;
+    }
 
-        var result = navigationService.GoBack();
-
-        args.Handled = result;
+    private void NavigationViewControl_ItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
+    {
+        if (args.IsSettingsInvoked)
+        {
+            if (_isOnSettingsPage)
+            {
+                if (!string.IsNullOrEmpty(_lastPageKey))
+                {
+                    _navigationService.NavigateTo(_lastPageKey);
+                }
+            }
+            else
+            {
+                _lastPageKey = ViewModel.NavigationViewService.GetSelectedItemKey();
+                _navigationService.NavigateTo(typeof(SettingsViewModel).FullName!);
+            }
+        }
+        else
+        {
+            if (args.InvokedItemContainer != null)
+            {
+                var navItemTag = ViewModel.NavigationViewService.GetNameForItem(args.InvokedItemContainer);
+                if (!string.IsNullOrEmpty(navItemTag))
+                {
+                    _lastPageKey = navItemTag;
+                    _navigationService.NavigateTo(navItemTag);
+                }
+            }
+        }
     }
 }

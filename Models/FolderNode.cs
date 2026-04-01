@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
+using System.IO;
 using Windows.Storage;
 
 namespace PhotoView.Models;
@@ -32,11 +33,18 @@ public partial class FolderNode : ObservableObject
     [ObservableProperty]
     private NodeType _nodeType;
 
+    [ObservableProperty]
+    private bool _hasSubFolders;
+
     public StorageFolder? Folder { get; set; }
 
     public FolderNode? Parent { get; set; }
 
-    public bool HasDummyChild { get; set; }
+    public string? FullPath { get; set; }
+
+    public bool IsLoaded { get; set; }
+
+    public bool IsRemovable { get; set; }
 
     public FolderNode(StorageFolder? folder = null, NodeType nodeType = NodeType.Folder, FolderNode? parent = null)
     {
@@ -44,8 +52,32 @@ public partial class FolderNode : ObservableObject
         Folder = folder;
         NodeType = nodeType;
         Parent = parent;
+        FullPath = folder?.Path;
         Children = new ObservableCollection<FolderNode>();
         AllChildren = new ObservableCollection<FolderNode>();
-        HasDummyChild = true;
+    }
+
+    public void CheckHasSubFolders()
+    {
+        if (NodeType == NodeType.ThisPC || NodeType == NodeType.ExternalDevice)
+        {
+            HasSubFolders = true;
+            return;
+        }
+
+        if (string.IsNullOrEmpty(FullPath))
+        {
+            HasSubFolders = false;
+            return;
+        }
+
+        try
+        {
+            HasSubFolders = Directory.EnumerateDirectories(FullPath, "*", SearchOption.TopDirectoryOnly).Any();
+        }
+        catch
+        {
+            HasSubFolders = false;
+        }
     }
 }

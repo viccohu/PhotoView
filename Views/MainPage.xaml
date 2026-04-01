@@ -12,14 +12,16 @@
     <Page.Resources>
         <converters:ThumbnailConverter x:Key="ThumbnailConverter"/>
         <converters:NullToBoolConverter x:Key="NullToBoolConverter"/>
+        <converters:NodeTypeToIconConverter x:Key="NodeTypeToIconConverter"/>
     </Page.Resources>
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="250"/>
+            <ColumnDefinition Width="220"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
@@ -27,44 +29,63 @@
         <TreeView
             Grid.Column="0"
             Grid.Row="0"
-            Grid.RowSpan="2"
+            Grid.RowSpan="3"
             x:Name="FolderTreeView"
             ItemsSource="{x:Bind ViewModel.FolderTree}"
             Expanding="FolderTreeView_Expanding"
             ItemInvoked="FolderTreeView_ItemInvoked"
-            Margin="4">
+            Margin="-20,20,4,4">
 
             <TreeView.ItemTemplate>
                 <DataTemplate x:DataType="models:FolderNode">
                     <TreeViewItem
                         ItemsSource="{x:Bind Children}"
-                        Content="{x:Bind Name}" />
+                        HasUnrealizedChildren="{x:Bind HasSubFolders, Mode=OneWay}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <FontIcon
+                                Grid.Column="0"
+                                Glyph="{Binding Converter={StaticResource NodeTypeToIconConverter}}"
+                                FontSize="16"
+                                Margin="0,0,4,0"/>
+                            <TextBlock
+                                Grid.Column="1"
+                                Text="{x:Bind Name}"
+                                VerticalAlignment="Center"/>
+                        </Grid>
+                    </TreeViewItem>
                 </DataTemplate>
             </TreeView.ItemTemplate>
         </TreeView>
 
-        <Grid Grid.Column="1" Grid.Row="0" Margin="4">
+        <Grid Grid.Column="1" Grid.Row="0" Margin="12,8,12,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <BreadcrumbBar
-                Grid.Column="0"
-                x:Name="BreadcrumbBar"
-                ItemsSource="{x:Bind ViewModel.BreadcrumbPath}"
-                ItemClicked="BreadcrumbBar_ItemClicked">
-                <BreadcrumbBar.ItemTemplate>
-                    <DataTemplate x:DataType="models:FolderNode">
-                        <TextBlock Text="{x:Bind Name}"/>
-                    </DataTemplate>
-                </BreadcrumbBar.ItemTemplate>
-            </BreadcrumbBar>
+            <StackPanel Grid.Column="0" Orientation="Vertical">
+                <TextBlock
+                    Text="{x:Bind ViewModel.SelectedFolder.Name, Mode=OneWay}"
+                    Style="{ThemeResource TitleTextBlockStyle}"
+                    FontSize="28"
+                    FontWeight="SemiBold"/>
+                <TextBlock
+                    Style="{ThemeResource CaptionTextBlockStyle}"
+                    Margin="0,4,0,8"
+                    Opacity="0.7">
+                    <Run Text="{x:Bind ViewModel.Images.Count, Mode=OneWay}"/>
+                    <Run Text=" 张照片"/>
+                </TextBlock>
+            </StackPanel>
 
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                 <DropDownButton>
                     <DropDownButton.Content>
-                        <FontIcon Glyph="&#xeca5;" FontFamily="Segoe MDL2 Assets"/>
+                        <FontIcon Glyph="&#xeca5;" FontFamily="{StaticResource SymbolThemeFontFamily}"/>
                     </DropDownButton.Content>
                     <DropDownButton.Flyout>
                         <MenuFlyout>
@@ -89,15 +110,28 @@
             </StackPanel>
         </Grid>
 
+        <Grid Grid.Column="1" Grid.Row="1" Margin="12,0,12,4">
+            <BreadcrumbBar
+                x:Name="BreadcrumbBar"
+                ItemsSource="{x:Bind ViewModel.BreadcrumbPath}"
+                ItemClicked="BreadcrumbBar_ItemClicked">
+                <BreadcrumbBar.ItemTemplate>
+                    <DataTemplate x:DataType="models:FolderNode">
+                        <TextBlock Text="{x:Bind Name}"/>
+                    </DataTemplate>
+                </BreadcrumbBar.ItemTemplate>
+            </BreadcrumbBar>
+        </Grid>
+
         <ScrollView
             Grid.Column="1"
-            Grid.Row="1"
+            Grid.Row="2"
             x:Name="ImageScrollView">
             <ItemsRepeater
                 x:Name="ImageRepeater"
                 ItemsSource="{x:Bind ViewModel.Images}"
                 ElementPrepared="ImageRepeater_ElementPrepared"
-                Margin="4">
+                Margin="12,4,12,0">
                 <ItemsRepeater.Layout>
                     <layouts:JustifiedLayout
                         LineHeight="{x:Bind ViewModel.ThumbnailHeight, Mode=OneWay}"

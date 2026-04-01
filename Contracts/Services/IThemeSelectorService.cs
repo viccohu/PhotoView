@@ -9,6 +9,8 @@ public interface IThemeSelectorService
         get;
     }
 
+    event EventHandler? ThemeChanged;
+
     Task InitializeAsync();
 
     Task SetThemeAsync(ElementTheme theme);

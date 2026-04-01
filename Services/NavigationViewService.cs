@@ -31,7 +31,6 @@ public class NavigationViewService : INavigationViewService
     {
         _navigationView = navigationView;
         _navigationView.BackRequested += OnBackRequested;
-        _navigationView.ItemInvoked += OnItemInvoked;
     }
 
     public void UnregisterEvents()
@@ -39,7 +38,6 @@ public class NavigationViewService : INavigationViewService
         if (_navigationView != null)
         {
             _navigationView.BackRequested -= OnBackRequested;
-            _navigationView.ItemInvoked -= OnItemInvoked;
         }
     }
 
@@ -53,24 +51,21 @@ public class NavigationViewService : INavigationViewService
         return null;
     }
 
-    private void OnBackRequested(NavigationView sender, NavigationViewBackRequestedEventArgs args) => _navigationService.GoBack();
-
-    private void OnItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
+    public string? GetSelectedItemKey()
     {
-        if (args.IsSettingsInvoked)
+        if (_navigationView?.SelectedItem is NavigationViewItem selectedItem)
         {
-            _navigationService.NavigateTo(typeof(SettingsViewModel).FullName!);
+            return selectedItem.GetValue(NavigationHelper.NavigateToProperty) as string;
         }
-        else
-        {
-            var selectedItem = args.InvokedItemContainer as NavigationViewItem;
-
-            if (selectedItem?.GetValue(NavigationHelper.NavigateToProperty) is string pageKey)
-            {
-                _navigationService.NavigateTo(pageKey);
-            }
-        }
+        return null;
     }
+
+    public string? GetNameForItem(NavigationViewItemBase item)
+    {
+        return item.GetValue(NavigationHelper.NavigateToProperty) as string;
+    }
+
+    private void OnBackRequested(NavigationView sender, NavigationViewBackRequestedEventArgs args) => _navigationService.GoBack();
 
     private NavigationViewItem? GetSelectedItem(IEnumerable<object> menuItems, Type pageType)
     {
