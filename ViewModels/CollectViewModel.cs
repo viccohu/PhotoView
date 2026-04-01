@@ -34,9 +34,13 @@ public class CollectViewModel : ObservableRecipient
     public static async Task<ImageFileInfo> LoadImageInfo(StorageFile file)
     {
         var properties = await file.Properties.GetImagePropertiesAsync();
-        ImageFileInfo info = new(properties,
-                                 file, file.DisplayName, file.DisplayType);
-
-        return info;
+        return new ImageFileInfo(
+            (int)properties.Width,
+            (int)properties.Height,
+            properties.Title,
+            (int)properties.Rating,
+            file,
+            file.DisplayName,
+            file.DisplayType);
     }
 }

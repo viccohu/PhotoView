@@ -1,16 +1,16 @@
+using System;
 using CommunityToolkit.Mvvm.ComponentModel;
-
 using Microsoft.UI.Xaml.Navigation;
-
 using PhotoView.Contracts.Services;
 using PhotoView.Views;
 
 namespace PhotoView.ViewModels;
 
-public class ShellViewModel : ObservableRecipient
+public class ShellViewModel : ObservableRecipient, IDisposable
 {
     private bool _isBackEnabled;
     private object? _selected;
+    private bool _disposed;
 
     public INavigationService NavigationService
     {
@@ -56,5 +56,14 @@ public class ShellViewModel : ObservableRecipient
         {
             Selected = selectedItem;
         }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        NavigationService.Navigated -= OnNavigated;
+        _disposed = true;
     }
 }

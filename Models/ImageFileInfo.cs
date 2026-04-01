@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Media.Imaging;
+using PhotoView.Helpers;
 using Windows.Storage.FileProperties;
 using Windows.Storage.Streams;
 using Windows.Storage;
@@ -14,6 +15,8 @@ namespace PhotoView.Models;
 
 public class ImageFileInfo : INotifyPropertyChanged
 {
+    private static readonly SemaphoreSlim _globalThumbnailLoadSemaphore = new(8);
+    
     private BitmapImage? _thumbnail;
     private int _loadVersion;
     private CancellationTokenSource? _thumbnailLoadCts;
@@ -24,26 +27,30 @@ public class ImageFileInfo : INotifyPropertyChanged
     private static readonly uint[] SystemThumbnailSizes = { 96, 160, 256, 512, 1024 };
     private static readonly Random _random = new();
 
-    public ImageFileInfo(ImageProperties properties,
+    public ImageFileInfo(
+        int width,
+        int height,
+        string title,
+        int rating,
         StorageFile imageFile,
         string name,
         string type)
     {
-        ImageProperties = properties;
+        Width = width;
+        Height = height;
+        ImageTitle = title;
+        ImageRating = rating == 0 ? _random.Next(1, 5) : rating;
+        ImageFile = imageFile ?? throw new ArgumentNullException(nameof(imageFile));
         ImageName = name;
         ImageFileType = type;
-        ImageFile = imageFile;
-        var rating = (int)properties.Rating;
-        ImageRating = rating == 0 ? _random.Next(1, 5) : rating;
+        _isSelected = false;
     }
 
-    public int Width => (int)ImageProperties.Width;
+    public int Width { get; }
 
-    public int Height => (int)ImageProperties.Height;
+    public int Height { get; }
 
     public StorageFile ImageFile { get; }
-
-    public ImageProperties ImageProperties { get; }
 
     private async Task<BitmapImage> GetThumbnailAsync(ThumbnailSize size, CancellationToken cancellationToken)
     {
@@ -59,7 +66,10 @@ public class ImageFileInfo : INotifyPropertyChanged
 
             if (thumbnail != null && thumbnail.Size > 0)
             {
-                return await CreateBitmapOnUIThreadAsync(thumbnail, cancellationToken);
+                using (thumbnail)
+                {
+                    return await CreateBitmapOnUIThreadAsync(thumbnail, optimalSize, cancellationToken);
+                }
             }
 
             return new BitmapImage();
@@ -75,46 +85,57 @@ public class ImageFileInfo : INotifyPropertyChanged
         }
     }
 
-    private static async Task<BitmapImage> CreateBitmapOnUIThreadAsync(IRandomAccessStream stream, CancellationToken cancellationToken)
+    private static async Task<BitmapImage> CreateBitmapOnUIThreadAsync(
+        IRandomAccessStream stream, 
+        uint decodePixelWidth,
+        CancellationToken cancellationToken)
     {
+        if (AppLifetime.IsShuttingDown)
+            return new BitmapImage();
+
         BitmapImage? bitmap = null;
-
         var dispatcherQueue = App.MainWindow.DispatcherQueue;
-        if (dispatcherQueue == null)
-        {
-            using (stream)
-            {
-                bitmap = new BitmapImage();
-                bitmap.SetSource(stream);
-            }
-            return bitmap;
-        }
-
         var tcs = new TaskCompletionSource<bool>();
 
-        dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        if (dispatcherQueue.HasThreadAccess)
         {
-            using var registration = cancellationToken.Register(() => tcs.TrySetCanceled());
-            
             try
             {
-                if (cancellationToken.IsCancellationRequested)
+                if (cancellationToken.IsCancellationRequested || AppLifetime.IsShuttingDown)
                 {
-                    stream.Dispose();
+                    return new BitmapImage();
+                }
+
+                bitmap = new BitmapImage();
+                bitmap.DecodePixelWidth = (int)decodePixelWidth;
+                bitmap.SetSource(stream);
+                return bitmap;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"CreateBitmapOnUIThreadAsync error: {ex}");
+                return new BitmapImage();
+            }
+        }
+
+        dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Normal, () =>
+        {
+            try
+            {
+                if (cancellationToken.IsCancellationRequested || AppLifetime.IsShuttingDown)
+                {
                     tcs.TrySetCanceled();
                     return;
                 }
 
-                using (stream)
-                {
-                    bitmap = new BitmapImage();
-                    bitmap.SetSource(stream);
-                }
+                bitmap = new BitmapImage();
+                bitmap.DecodePixelWidth = (int)decodePixelWidth;
+                bitmap.SetSource(stream);
+
                 tcs.SetResult(true);
             }
             catch (Exception ex)
             {
-                stream.Dispose();
                 tcs.SetException(ex);
             }
         });
@@ -137,6 +158,9 @@ public class ImageFileInfo : INotifyPropertyChanged
 
     public async Task EnsureThumbnailAsync(ThumbnailSize size)
     {
+        if (AppLifetime.IsShuttingDown)
+            return;
+
         lock (_thumbnailLoadLock)
         {
             if (Thumbnail != null && _loadedThumbnailSize == size)
@@ -158,15 +182,48 @@ public class ImageFileInfo : INotifyPropertyChanged
 
         try
         {
-            var result = await GetThumbnailAsync(size, cancellationToken);
-
-            lock (_thumbnailLoadLock)
+            await _globalThumbnailLoadSemaphore.WaitAsync(cancellationToken);
+            
+            try
             {
-                if (localVersion != _loadVersion || cancellationToken.IsCancellationRequested)
+                if (AppLifetime.IsShuttingDown)
                     return;
 
-                Thumbnail = result;
-                _loadedThumbnailSize = size;
+                var result = await GetThumbnailAsync(size, cancellationToken);
+
+                var dispatcher = App.MainWindow.DispatcherQueue;
+                if (dispatcher.HasThreadAccess)
+                {
+                    lock (_thumbnailLoadLock)
+                    {
+                        if (localVersion != _loadVersion || cancellationToken.IsCancellationRequested || AppLifetime.IsShuttingDown)
+                            return;
+
+                        Thumbnail = result;
+                        _loadedThumbnailSize = size;
+                    }
+                }
+                else
+                {
+                    dispatcher.TryEnqueue(() =>
+                    {
+                        if (AppLifetime.IsShuttingDown)
+                            return;
+
+                        lock (_thumbnailLoadLock)
+                        {
+                            if (localVersion != _loadVersion || cancellationToken.IsCancellationRequested)
+                                return;
+
+                            Thumbnail = result;
+                            _loadedThumbnailSize = size;
+                        }
+                    });
+                }
+            }
+            finally
+            {
+                _globalThumbnailLoadSemaphore.Release();
             }
         }
         catch (OperationCanceledException)
@@ -223,42 +280,37 @@ public class ImageFileInfo : INotifyPropertyChanged
 
     public string ImageFileType { get; }
 
-    public string ImageDimensions => $"{ImageProperties.Width} x {ImageProperties.Height}";
+    public string ImageDimensions => $"{Width} x {Height}";
 
-    public string ImageTitle
-    {
-        get => string.IsNullOrEmpty(ImageProperties.Title) ? ImageName : ImageProperties.Title;
-        set
-        {
-            if (ImageProperties.Title != value)
-            {
-                ImageProperties.Title = value;
-                _ = ImageProperties.SavePropertiesAsync();
-                OnPropertyChanged();
-            }
-        }
-    }
+    public string ImageTitle { get; }
 
-    public int ImageRating
-    {
-        get => (int)ImageProperties.Rating;
-        set
-        {
-            if (ImageProperties.Rating != value)
-            {
-                ImageProperties.Rating = (uint)value;
-                _ = ImageProperties.SavePropertiesAsync();
-                OnPropertyChanged();
-            }
-        }
-    }
+    public int ImageRating { get; }
 
-    public int AutoWidth => Height == 0 ? 200 : (int)(ImageProperties.Width * 200 / Height);
+    public int AutoWidth => Height == 0 ? 200 : (int)((Width * 200.0) / Height);
 
     public double AspectRatio => Height == 0 ? 1.0 : (double)Width / Height;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        if (AppLifetime.IsShuttingDown)
+            return;
+
+        var dispatcherQueue = App.MainWindow.DispatcherQueue;
+        if (dispatcherQueue.HasThreadAccess)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+        else
+        {
+            dispatcherQueue.TryEnqueue(() =>
+            {
+                if (AppLifetime.IsShuttingDown)
+                    return;
+
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            });
+        }
+    }
 }

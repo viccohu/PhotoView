@@ -11,5 +11,10 @@ public sealed partial class MainWindow : WindowEx
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets/WindowIcon.ico"));
         Content = null;
         Title = "AppDisplayName".GetLocalized();
+
+        this.Closed += (_, __) =>
+        {
+            AppLifetime.IsShuttingDown = true;
+        };
     }
 }

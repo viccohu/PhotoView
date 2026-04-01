@@ -233,8 +233,14 @@ public partial class MainViewModel : ObservableRecipient
     public static async System.Threading.Tasks.Task<ImageFileInfo> LoadImageInfo(StorageFile file)
     {
         var properties = await file.Properties.GetImagePropertiesAsync();
-        ImageFileInfo info = new(properties, file, file.DisplayName, file.DisplayType);
-        return info;
+        return new ImageFileInfo(
+            (int)properties.Width,
+            (int)properties.Height,
+            properties.Title,
+            (int)properties.Rating,
+            file,
+            file.DisplayName,
+            file.DisplayType);
     }
 
     private static async Task<ImageFileInfo?> LoadImageInfoSafeAsync(StorageFile file, CancellationToken cancellationToken)
@@ -242,12 +248,29 @@ public partial class MainViewModel : ObservableRecipient
         try
         {
             var properties = await file.Properties.GetImagePropertiesAsync().AsTask(cancellationToken);
-            return new ImageFileInfo(properties, file, file.DisplayName, file.DisplayType);
+            return new ImageFileInfo(
+                (int)properties.Width,
+                (int)properties.Height,
+                properties.Title,
+                (int)properties.Rating,
+                file,
+                file.DisplayName,
+                file.DisplayType);
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"LoadImageInfo error: {ex}");
             return null;
+        }
+    }
+
+    public void Dispose()
+    {
+        _loadImagesCts?.Cancel();
+        
+        foreach (var image in Images)
+        {
+            image.CancelThumbnailLoad();
         }
     }
 }

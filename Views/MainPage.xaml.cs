@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
+using PhotoView.Helpers;
 using PhotoView.Models;
 using PhotoView.Services;
 using PhotoView.ViewModels;
@@ -28,11 +29,20 @@ public sealed partial class MainPage : Page
         ViewModel.ImagesChanged += ViewModel_ImagesChanged;
         ViewModel.ThumbnailSizeChanged += ViewModel_ThumbnailSizeChanged;
         KeyDown += MainPage_KeyDown;
+        Unloaded += MainPage_Unloaded;
+    }
+
+    private void MainPage_Unloaded(object sender, RoutedEventArgs e)
+    {
+        SelectionService.SelectionChanged -= SelectionService_SelectionChanged;
+        ViewModel.ImagesChanged -= ViewModel_ImagesChanged;
+        ViewModel.ThumbnailSizeChanged -= ViewModel_ThumbnailSizeChanged;
+        ViewModel.Dispose();
     }
 
     private async void ViewModel_ThumbnailSizeChanged(object? sender, System.EventArgs e)
     {
-        if (ViewModel.Images == null)
+        if (ViewModel.Images == null || AppLifetime.IsShuttingDown)
             return;
 
         try
@@ -40,6 +50,9 @@ public sealed partial class MainPage : Page
             // 仅加载当前可见区域的缩略图
             for (var i = 0; i < ImageRepeater.ItemsSourceView.Count; i++)
             {
+                if (AppLifetime.IsShuttingDown)
+                    return;
+
                 if (ImageRepeater.TryGetElement(i) != null)
                 {
                     if (ImageRepeater.ItemsSourceView.GetAt(i) is ImageFileInfo imageInfo)
@@ -49,8 +62,9 @@ public sealed partial class MainPage : Page
                 }
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"ViewModel_ThumbnailSizeChanged error: {ex}");
         }
     }
 
@@ -94,17 +108,21 @@ public sealed partial class MainPage : Page
         SelectionService.ClearSelection();
     }
 
+    private bool _isUpdatingSelectionState;
+
     private async void ImageRepeater_ElementPrepared(ItemsRepeater sender, ItemsRepeaterElementPreparedEventArgs args)
     {
         try
         {
+            if (AppLifetime.IsShuttingDown)
+                return;
+
             if (args.Index < 0 || args.Index >= sender.ItemsSourceView.Count)
                 return;
 
             if (sender.ItemsSourceView.GetAt(args.Index) is ImageFileInfo imageInfo)
             {
-                // 设置选择状态
-                if (args.Element is ContentControl control)
+                if (args.Element is ContentControl control && !_isUpdatingSelectionState)
                 {
                     var isSelected = SelectionService.IsSelected(imageInfo);
                     VisualStateManager.GoToState(control, isSelected ? "Selected" : "Unselected", false);
@@ -113,61 +131,57 @@ public sealed partial class MainPage : Page
                 await imageInfo.EnsureThumbnailAsync(ViewModel.ThumbnailSize);
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-        }
-    }
-
+            System.Diagnostics.Debug.WriteLine($"ImageRepeater_ElementPrepared error: {ex}");
+        } }
 
 
     private void SelectionService_SelectionChanged(object? sender, Services.SelectionChangedEventArgs e)
     {
-        // 清除之前选择的项
-        foreach (var deselected in e.RemovedItems)
-        {
-            if (deselected is ImageFileInfo imageInfo)
-            {
-                imageInfo.IsSelected = false;
-            }
-        }
+        if (_isUpdatingSelectionState)
+            return;
 
-        // 设置新选择的项
-        foreach (var selected in e.AddedItems)
+        _isUpdatingSelectionState = true;
+        try
         {
-            if (selected is ImageFileInfo imageInfo)
+            // 清除之前选择的项
+            foreach (var deselected in e.RemovedItems)
             {
-                imageInfo.IsSelected = true;
-            }
-        }
-
-        // 仅更新可见元素的 VisualState
-        for (var i = 0; i < ImageRepeater.ItemsSourceView.Count; i++)
-        {
-            if (ImageRepeater.TryGetElement(i) is ContentControl control)
-            {
-                if (ImageRepeater.ItemsSourceView.GetAt(i) is ImageFileInfo image)
+                if (deselected is ImageFileInfo imageInfo)
                 {
-                    VisualStateManager.GoToState(control, image.IsSelected ? "Selected" : "Unselected", false);
+                    imageInfo.IsSelected = false;
+                }
+            }
+
+            // 设置新选择的项
+            foreach (var selected in e.AddedItems)
+            {
+                if (selected is ImageFileInfo imageInfo)
+                {
+                    imageInfo.IsSelected = true;
+                }
+            }
+
+            // 仅更新可见元素的 VisualState
+            for (var i = 0; i < ImageRepeater.ItemsSourceView.Count; i++)
+            {
+                if (ImageRepeater.TryGetElement(i) is ContentControl control)
+                {
+                    if (ImageRepeater.ItemsSourceView.GetAt(i) is ImageFileInfo image)
+                    {
+                        VisualStateManager.GoToState(control, image.IsSelected ? "Selected" : "Unselected", false);
+                    }
                 }
             }
         }
-    }
-
-    private void UpdateItemSelectionStates()
-    {
-        if (ImageRepeater.ItemsSource == null)
-            return;
-
-        for (var i = 0; i < ImageRepeater.ItemsSourceView.Count; i++)
+        finally
         {
-            if (ImageRepeater.TryGetElement(i) is ContentControl control)
-            {
-                var image = ImageRepeater.ItemsSourceView.GetAt(i) as ImageFileInfo;
-                var isSelected = image != null && SelectionService.IsSelected(image);
-                VisualStateManager.GoToState(control, isSelected ? "Selected" : "Unselected", false);
-            }
+            _isUpdatingSelectionState = false;
         }
     }
+
+
 
     private void ImageBorder_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
