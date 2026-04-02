@@ -6,7 +6,6 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using PhotoView.Helpers;
 using PhotoView.Models;
-using PhotoView.Services;
 using PhotoView.ViewModels;
 using System.Linq;
 using Windows.System;
@@ -17,25 +16,29 @@ public sealed partial class MainPage : Page
 {
     public MainViewModel ViewModel { get; }
 
-    public ImageSelectionService SelectionService { get; }
-
     private readonly DispatcherTimer _loadImagesThrottleTimer;
     private FolderNode? _pendingLoadNode;
+    private ScrollView? _imageScrollView;
     private bool _isUnloaded;
+    private bool _isUpdatingSelectionState;
+    private bool _isThumbnailBatchRunning;
+    private bool _hasPendingThumbnailBatch;
+    private DateTime _lastClickTime;
+    private FolderNode? _lastClickedNode;
 
     public MainPage()
     {
         ViewModel = App.GetService<MainViewModel>();
-        SelectionService = new ImageSelectionService();
         NavigationCacheMode = NavigationCacheMode.Enabled;
         InitializeComponent();
         FolderTreeView.DataContext = ViewModel;
 
-        _loadImagesThrottleTimer = new DispatcherTimer();
-        _loadImagesThrottleTimer.Interval = TimeSpan.FromMilliseconds(300);
+        _loadImagesThrottleTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(300)
+        };
         _loadImagesThrottleTimer.Tick += LoadImagesThrottleTimer_Tick;
 
-        SelectionService.SelectionChanged += SelectionService_SelectionChanged;
         ViewModel.ImagesChanged += ViewModel_ImagesChanged;
         ViewModel.ThumbnailSizeChanged += ViewModel_ThumbnailSizeChanged;
         Loaded += MainPage_Loaded;
@@ -46,12 +49,20 @@ public sealed partial class MainPage : Page
     private void MainPage_Loaded(object sender, RoutedEventArgs e)
     {
         _isUnloaded = false;
+        AttachItemsViewScrollView();
+        QueueVisibleThumbnailLoad();
     }
 
     private void MainPage_Unloaded(object sender, RoutedEventArgs e)
     {
         _isUnloaded = true;
         _loadImagesThrottleTimer.Stop();
+
+        if (_imageScrollView != null)
+        {
+            _imageScrollView.ViewChanged -= ImageScrollView_ViewChanged;
+            _imageScrollView = null;
+        }
     }
 
     private async void LoadImagesThrottleTimer_Tick(object? sender, object e)
@@ -59,49 +70,31 @@ public sealed partial class MainPage : Page
         _loadImagesThrottleTimer.Stop();
 
         if (_pendingLoadNode == null || _isUnloaded || AppLifetime.IsShuttingDown)
+        {
             return;
+        }
 
         var node = _pendingLoadNode;
         _pendingLoadNode = null;
 
         try
         {
-        await ViewModel.LoadImagesAsync(node);
+            await ViewModel.LoadImagesAsync(node);
         }
         catch (System.Threading.Tasks.TaskCanceledException)
         {
         }
     }
 
-    private async void ViewModel_ThumbnailSizeChanged(object? sender, System.EventArgs e)
+    private void ViewModel_ThumbnailSizeChanged(object? sender, EventArgs e)
     {
-        if (ViewModel.Images == null || _isUnloaded || AppLifetime.IsShuttingDown)
+        if (_isUnloaded || AppLifetime.IsShuttingDown)
+        {
             return;
-
-        try
-        {
-            foreach (var imageInfo in ViewModel.Images)
-            {
-                if (AppLifetime.IsShuttingDown)
-                    return;
-
-                imageInfo.UpdateDisplaySize(ViewModel.ThumbnailSize);
-            }
-
-            foreach (var control in GetVisibleImageControls())
-            {
-                if (control.DataContext is ImageFileInfo imageInfo)
-                {
-                    await imageInfo.EnsureThumbnailAsync(ViewModel.ThumbnailSize);
-                    if (_isUnloaded || AppLifetime.IsShuttingDown)
-                        return;
-                }
-            }
         }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"ViewModel_ThumbnailSizeChanged error: {ex}");
-        }
+
+        ImageLinedFlowLayout.InvalidateItemsInfo();
+        QueueVisibleThumbnailLoad();
     }
 
     private void ThumbnailSize_Click(object sender, RoutedEventArgs e)
@@ -122,21 +115,21 @@ public sealed partial class MainPage : Page
             FolderTreeView.SelectedItem = node;
             await ViewModel.LoadChildrenAsync(node);
             if (_isUnloaded || AppLifetime.IsShuttingDown)
+            {
                 return;
+            }
+
             ThrottleLoadImages(node);
         }
     }
-
-    private DateTime _lastClickTime;
-    private FolderNode? _lastClickedNode;
 
     private void FolderTreeView_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
     {
         if (args.InvokedItem is FolderNode node)
         {
             var now = DateTime.Now;
-            var isDoubleClick = (now - _lastClickTime).TotalMilliseconds < 300 
-                               && _lastClickedNode == node;
+            var isDoubleClick = (now - _lastClickTime).TotalMilliseconds < 300
+                && _lastClickedNode == node;
             _lastClickTime = now;
             _lastClickedNode = node;
 
@@ -189,7 +182,10 @@ public sealed partial class MainPage : Page
         {
             await ExpandTreeViewPathAsync(node);
             if (_isUnloaded || AppLifetime.IsShuttingDown)
+            {
                 return;
+            }
+
             ThrottleLoadImages(node);
         }
     }
@@ -199,7 +195,9 @@ public sealed partial class MainPage : Page
         try
         {
             if (_isUnloaded || AppLifetime.IsShuttingDown)
+            {
                 return;
+            }
 
             var path = new List<FolderNode>();
             var current = targetNode;
@@ -210,10 +208,12 @@ public sealed partial class MainPage : Page
             }
 
             if (path.Count == 0)
+            {
                 return;
+            }
 
             FolderNode? lastNode = null;
-            for (int i = 0; i < path.Count; i++)
+            for (var i = 0; i < path.Count; i++)
             {
                 var node = path[i];
                 lastNode = node;
@@ -227,7 +227,9 @@ public sealed partial class MainPage : Page
                 {
                     await ViewModel.LoadChildrenAsync(node);
                     if (_isUnloaded || AppLifetime.IsShuttingDown)
+                    {
                         return;
+                    }
                 }
             }
 
@@ -236,7 +238,10 @@ public sealed partial class MainPage : Page
                 FolderTreeView.SelectedItem = lastNode;
                 await System.Threading.Tasks.Task.Delay(100);
                 if (_isUnloaded || AppLifetime.IsShuttingDown)
+                {
                     return;
+                }
+
                 ScrollToTreeViewItem(lastNode);
             }
         }
@@ -261,78 +266,85 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private void ViewModel_ImagesChanged(object? sender, System.EventArgs e)
+    private void ViewModel_ImagesChanged(object? sender, EventArgs e)
     {
-        SelectionService.ClearSelection();
+        ClearItemsViewSelection();
+        SyncSelectedStateFromItemsView();
+        ImageLinedFlowLayout.InvalidateItemsInfo();
+        QueueVisibleThumbnailLoad();
     }
 
-    private bool _isUpdatingSelectionState;
-
-    private async void ImageItem_Loaded(object sender, RoutedEventArgs e)
+    private void ImageItem_Loaded(object sender, RoutedEventArgs e)
     {
-        try
-        {
-            if (_isUnloaded || AppLifetime.IsShuttingDown)
-                return;
-
-            if (sender is ContentControl control && control.DataContext is ImageFileInfo imageInfo)
-            {
-                if (!_isUpdatingSelectionState)
-                {
-                    var isSelected = SelectionService.IsSelected(imageInfo);
-                    VisualStateManager.GoToState(control, isSelected ? "Selected" : "Unselected", false);
-                }
-
-                await imageInfo.EnsureThumbnailAsync(ViewModel.ThumbnailSize);
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"ImageItem_Loaded error: {ex}");
-        }
+        QueueVisibleThumbnailLoad();
     }
 
     private void ImageItem_Unloaded(object sender, RoutedEventArgs e)
     {
         if (_isUnloaded || AppLifetime.IsShuttingDown)
+        {
             return;
+        }
 
-        if (sender is ContentControl control && control.DataContext is ImageFileInfo imageInfo)
+        if (TryGetImageInfo(sender) is ImageFileInfo imageInfo)
         {
             imageInfo.CancelThumbnailLoad();
         }
     }
 
+    private void ImageItemsView_SelectionChanged(ItemsView sender, ItemsViewSelectionChangedEventArgs args)
+    {
+        SyncSelectedStateFromItemsView();
+    }
 
-    private void SelectionService_SelectionChanged(object? sender, Services.SelectionChangedEventArgs e)
+    private void ImageLinedFlowLayout_ItemsInfoRequested(LinedFlowLayout sender, LinedFlowLayoutItemsInfoRequestedEventArgs args)
+    {
+        if (ViewModel.Images.Count == 0)
+        {
+            return;
+        }
+
+        var aspectRatios = new double[ViewModel.Images.Count];
+        for (var i = 0; i < ViewModel.Images.Count; i++)
+        {
+            var aspectRatio = ViewModel.Images[i].AspectRatio;
+            if (double.IsNaN(aspectRatio) || double.IsInfinity(aspectRatio) || aspectRatio <= 0)
+            {
+                aspectRatio = 1d;
+            }
+
+            aspectRatios[i] = aspectRatio;
+        }
+
+        args.ItemsRangeStartIndex = 0;
+        args.SetDesiredAspectRatios(aspectRatios);
+    }
+
+    private void ImageScrollView_ViewChanged(ScrollView sender, object args)
+    {
+        QueueVisibleThumbnailLoad();
+    }
+
+    private void SyncSelectedStateFromItemsView()
     {
         if (_isUpdatingSelectionState)
+        {
             return;
+        }
 
         _isUpdatingSelectionState = true;
         try
         {
-            foreach (var deselected in e.RemovedItems)
+            foreach (var image in ViewModel.Images)
             {
-                if (deselected is ImageFileInfo imageInfo)
-                {
-                    imageInfo.IsSelected = false;
-                }
+                image.IsSelected = false;
             }
 
-            foreach (var selected in e.AddedItems)
+            foreach (var selectedItem in EnumerateSelectedItems())
             {
-                if (selected is ImageFileInfo imageInfo)
+                if (selectedItem is ImageFileInfo imageInfo)
                 {
                     imageInfo.IsSelected = true;
-                }
-            }
-
-            foreach (var control in GetVisibleImageControls())
-            {
-                if (control.DataContext is ImageFileInfo image)
-                {
-                    VisualStateManager.GoToState(control, image.IsSelected ? "Selected" : "Unselected", false);
                 }
             }
         }
@@ -342,44 +354,135 @@ public sealed partial class MainPage : Page
         }
     }
 
-
-
-    private void ImageBorder_PointerPressed(object sender, PointerRoutedEventArgs e)
+    private void ImageItem_RightTapped(object sender, RightTappedRoutedEventArgs e)
     {
-        if (sender is ContentControl control && control.DataContext is ImageFileInfo image)
+        if (sender is not FrameworkElement element)
         {
-            var isCtrlPressed = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
-            var isShiftPressed = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
-
-            SelectionService.HandleItemClick(image, isCtrlPressed, isShiftPressed);
-            e.Handled = true;
+            return;
         }
-    }
 
-    private void Image_RightTapped(object sender, RightTappedRoutedEventArgs e)
-    {
-        if (sender is FrameworkElement element)
+        if (TryGetImageInfo(element) is ImageFileInfo imageInfo && !IsItemCurrentlySelected(imageInfo))
         {
-            FlyoutBase.ShowAttachedFlyout(element);
-        }
-    }
-
-    private IEnumerable<ContentControl> GetVisibleImageControls()
-    {
-        for (var i = 0; i < ViewModel.Images.Count; i++)
-        {
-            if (ImageGridView.ContainerFromIndex(i) is GridViewItem container)
+            var itemIndex = ViewModel.Images.IndexOf(imageInfo);
+            if (itemIndex >= 0)
             {
-                var control = FindDescendant<ContentControl>(container);
-                if (control != null)
-                {
-                    yield return control;
-                }
+                ImageItemsView.DeselectAll();
+                ImageItemsView.Select(itemIndex);
+                SyncSelectedStateFromItemsView();
+            }
+        }
+
+        FlyoutBase.ShowAttachedFlyout(element);
+        e.Handled = true;
+    }
+
+    private bool IsItemCurrentlySelected(ImageFileInfo imageInfo)
+    {
+        foreach (var selectedItem in EnumerateSelectedItems())
+        {
+            if (ReferenceEquals(selectedItem, imageInfo))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private IEnumerable<object> EnumerateSelectedItems()
+    {
+        return ImageItemsView.SelectedItems?.Cast<object>() ?? Enumerable.Empty<object>();
+    }
+
+    private IEnumerable<ImageFileInfo> GetVisibleImageItems()
+    {
+        foreach (var container in FindDescendants<ItemContainer>(ImageItemsView))
+        {
+            if (TryGetImageInfo(container) is ImageFileInfo imageInfo)
+            {
+                yield return imageInfo;
             }
         }
     }
 
-    private static T? FindDescendant<T>(DependencyObject root) where T : DependencyObject
+    private void ClearItemsViewSelection()
+    {
+        var selectedItems = EnumerateSelectedItems().ToList();
+        if (selectedItems.Count == 0)
+        {
+            return;
+        }
+
+        ImageItemsView.DeselectAll();
+    }
+
+    private void AttachItemsViewScrollView()
+    {
+        var scrollView = ImageItemsView.ScrollView;
+        if (scrollView == null || ReferenceEquals(scrollView, _imageScrollView))
+        {
+            return;
+        }
+
+        if (_imageScrollView != null)
+        {
+            _imageScrollView.ViewChanged -= ImageScrollView_ViewChanged;
+        }
+
+        _imageScrollView = scrollView;
+        _imageScrollView.ViewChanged += ImageScrollView_ViewChanged;
+    }
+
+    private void QueueVisibleThumbnailLoad()
+    {
+        if (_isUnloaded || AppLifetime.IsShuttingDown)
+        {
+            return;
+        }
+
+        AttachItemsViewScrollView();
+        _ = ProcessVisibleThumbnailBatchAsync();
+    }
+
+    private async Task ProcessVisibleThumbnailBatchAsync()
+    {
+        if (_isThumbnailBatchRunning)
+        {
+            _hasPendingThumbnailBatch = true;
+            return;
+        }
+
+        _isThumbnailBatchRunning = true;
+        try
+        {
+            do
+            {
+                _hasPendingThumbnailBatch = false;
+
+                var visibleImages = GetVisibleImageItems()
+                    .Distinct()
+                    .ToList();
+
+                if (visibleImages.Count == 0)
+                {
+                    return;
+                }
+
+                await Task.WhenAll(visibleImages.Select(image => image.EnsureThumbnailAsync(ViewModel.ThumbnailSize)));
+            }
+            while (_hasPendingThumbnailBatch && !_isUnloaded && !AppLifetime.IsShuttingDown);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ProcessVisibleThumbnailBatchAsync error: {ex}");
+        }
+        finally
+        {
+            _isThumbnailBatchRunning = false;
+        }
+    }
+
+    private static IEnumerable<T> FindDescendants<T>(DependencyObject root) where T : DependencyObject
     {
         var childCount = VisualTreeHelper.GetChildrenCount(root);
         for (var i = 0; i < childCount; i++)
@@ -387,17 +490,24 @@ public sealed partial class MainPage : Page
             var child = VisualTreeHelper.GetChild(root, i);
             if (child is T typedChild)
             {
-                return typedChild;
+                yield return typedChild;
             }
 
-            var descendant = FindDescendant<T>(child);
-            if (descendant != null)
+            foreach (var descendant in FindDescendants<T>(child))
             {
-                return descendant;
+                yield return descendant;
             }
         }
+    }
 
-        return null;
+    private static ImageFileInfo? TryGetImageInfo(object sender)
+    {
+        return sender switch
+        {
+            FrameworkElement { Tag: ImageFileInfo imageInfo } => imageInfo,
+            FrameworkElement element => element.DataContext as ImageFileInfo,
+            _ => null
+        };
     }
 
     private void Share_Click(object sender, RoutedEventArgs e)
@@ -416,16 +526,17 @@ public sealed partial class MainPage : Page
     {
         if (e.Key == VirtualKey.A)
         {
-            var isCtrlPressed = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+            var isCtrlPressed = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
+                .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
             if (isCtrlPressed)
             {
-                SelectionService.SelectAll(ViewModel.Images.ToList());
+                ImageItemsView.SelectAll();
                 e.Handled = true;
             }
         }
         else if (e.Key == VirtualKey.Escape)
         {
-            SelectionService.ClearSelection();
+            ClearItemsViewSelection();
             e.Handled = true;
         }
     }

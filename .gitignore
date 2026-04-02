@@ -7,7 +7,7 @@
 *.user
 *.userosscache
 *.sln.docstates
-
+obj_verify/
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/

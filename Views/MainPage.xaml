@@ -122,30 +122,32 @@
             </BreadcrumbBar>
         </Grid>
 
-        <GridView
+        <ItemsView
             Grid.Column="1"
             Grid.Row="2"
-            x:Name="ImageGridView"
+            x:Name="ImageItemsView"
             ItemsSource="{x:Bind ViewModel.Images}"
-            SelectionMode="None"
-            IsItemClickEnabled="False"
+            SelectionMode="Extended"
+            SelectionChanged="ImageItemsView_SelectionChanged"
             Margin="12,4,12,0"
-            Padding="0"
-            ScrollViewer.HorizontalScrollMode="Disabled"
-            ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-            ScrollViewer.VerticalScrollBarVisibility="Auto">
-            <GridView.ItemTemplate>
+            Padding="0">
+            <ItemsView.Layout>
+                <LinedFlowLayout
+                    x:Name="ImageLinedFlowLayout"
+                    ItemsJustification="Start"
+                    ItemsStretch="None"
+                    ItemsInfoRequested="ImageLinedFlowLayout_ItemsInfoRequested"
+                    LineHeight="{x:Bind ViewModel.ThumbnailHeight, Mode=OneWay}"
+                    LineSpacing="8"
+                    MinItemSpacing="8" />
+            </ItemsView.Layout>
+            <ItemsView.ItemTemplate>
                 <DataTemplate x:DataType="models:ImageFileInfo">
-                    <ContentControl
-                        Width="{x:Bind DisplayWidth, Mode=OneWay}"
-                        Height="{x:Bind DisplayHeight, Mode=OneWay}"
-                        Margin="4"
-                        HorizontalContentAlignment="Stretch"
-                        VerticalContentAlignment="Stretch"
+                    <ItemContainer
+                        Tag="{x:Bind}"
                         Loaded="ImageItem_Loaded"
                         Unloaded="ImageItem_Unloaded"
-                        PointerPressed="ImageBorder_PointerPressed"
-                        RightTapped="Image_RightTapped">
+                        RightTapped="ImageItem_RightTapped">
                         <FlyoutBase.AttachedFlyout>
                             <MenuFlyout>
                                 <MenuFlyoutItem Text="Share" Icon="Share" Click="Share_Click"/>
@@ -156,20 +158,25 @@
                                 <MenuFlyoutItem Text="Move"/>
                             </MenuFlyout>
                         </FlyoutBase.AttachedFlyout>
-                        <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                        <Grid
+                            Width="{x:Bind DisplayWidth, Mode=OneWay}"
+                            Height="{x:Bind DisplayHeight, Mode=OneWay}"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch">
                             <Border
                                 CornerRadius="8"
                                 Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                 BorderThickness="1"
+                                Padding="6"
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Stretch">
-                                <Grid>
+                                <Grid Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
                                     <Image
                                         Source="{x:Bind Thumbnail, Mode=OneWay}"
                                         Stretch="Uniform"
-                                        HorizontalAlignment="Stretch"
-                                        VerticalAlignment="Stretch"/>
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"/>
                                 </Grid>
                             </Border>
                             <Border
@@ -184,35 +191,10 @@
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
                                 IsActive="{x:Bind Thumbnail, Converter={StaticResource NullToBoolConverter}, Mode=OneWay}"/>
-                            <CheckBox
-                                x:Name="SelectionCheckBox"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Top"
-                                Margin="8"
-                                Opacity="0"
-                                IsHitTestVisible="False"/>
                         </Grid>
-                        <VisualStateManager.VisualStateGroups>
-                            <VisualStateGroup x:Name="SelectionStates">
-                                <VisualState x:Name="Unselected">
-                                    <VisualState.Setters>
-                                        <Setter Target="SelectionBorder.Opacity" Value="0"/>
-                                        <Setter Target="SelectionCheckBox.Opacity" Value="0"/>
-                                        <Setter Target="SelectionCheckBox.IsChecked" Value="False"/>
-                                    </VisualState.Setters>
-                                </VisualState>
-                                <VisualState x:Name="Selected">
-                                    <VisualState.Setters>
-                                        <Setter Target="SelectionBorder.Opacity" Value="1"/>
-                                        <Setter Target="SelectionCheckBox.Opacity" Value="1"/>
-                                        <Setter Target="SelectionCheckBox.IsChecked" Value="True"/>
-                                    </VisualState.Setters>
-                                </VisualState>
-                            </VisualStateGroup>
-                        </VisualStateManager.VisualStateGroups>
-                    </ContentControl>
+                    </ItemContainer>
                 </DataTemplate>
-            </GridView.ItemTemplate>
-        </GridView>
+            </ItemsView.ItemTemplate>
+        </ItemsView>
     </Grid>
 </Page>
