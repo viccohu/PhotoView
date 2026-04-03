@@ -76,6 +76,12 @@ public sealed partial class MainPage : Page
 
     private void ViewModel_ThumbnailSizeChanged(object? sender, EventArgs e)
     {
+        if (_isUnloaded || AppLifetime.IsShuttingDown)
+        {
+            return;
+        }
+
+        TriggerVisibleItemsThumbnailLoad();
     }
 
     private void TriggerVisibleItemsThumbnailLoad()
@@ -89,16 +95,12 @@ public sealed partial class MainPage : Page
                 _ = firstImage.EnsureThumbnailAsync(ViewModel.ThumbnailSize);
             }
 
-            // 触发可见元素的加载
-            for (int i = 0; i < Math.Min(ImageGridView.Items.Count, 20); i++)
+            // 触发所有元素的加载，确保尺寸切换时所有图片都能重新加载
+            for (int i = 0; i < ImageGridView.Items.Count; i++)
             {
-                var container = ImageGridView.ContainerFromIndex(i) as GridViewItem;
-                if (container != null)
+                if (ImageGridView.Items[i] is ImageFileInfo imageInfo)
                 {
-                    if (ImageGridView.Items[i] is ImageFileInfo imageInfo)
-                    {
-                        _ = imageInfo.EnsureThumbnailAsync(ViewModel.ThumbnailSize);
-                    }
+                    _ = imageInfo.EnsureThumbnailAsync(ViewModel.ThumbnailSize);
                 }
             }
         }
@@ -306,7 +308,7 @@ public sealed partial class MainPage : Page
 
         if (args.Phase == 0)
         {
-            args.RegisterUpdateCallback(1, ImageGridView_ContainerContentChanging);
+            args.RegisterUpdateCallback(1u, ImageGridView_ContainerContentChanging);
         }
         else if (args.Phase == 1)
         {

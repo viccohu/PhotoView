@@ -124,7 +124,7 @@
     <value>PhotoPro</value>
   </data>
   <data name="Shell_Main.Content" xml:space="preserve">
-    <value>Main</value>
+    <value>Album</value>
   </data>
   <data name="Settings_Personalization.Text" xml:space="preserve">
     <value>Personalization</value>
@@ -154,6 +154,6 @@
     <value>https://YourPrivacyUrlGoesHere/</value>
   </data>
   <data name="Shell_Collect.Content" xml:space="preserve">
-    <value>Collect</value>
+    <value>Preview</value>
   </data>
 </root>

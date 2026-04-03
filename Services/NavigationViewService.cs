@@ -20,6 +20,18 @@ public class NavigationViewService : INavigationViewService
 
     public object? SettingsItem => _navigationView?.SettingsItem;
 
+    public NavigationViewPaneDisplayMode PaneDisplayMode
+    {
+        get => _navigationView?.PaneDisplayMode ?? NavigationViewPaneDisplayMode.Top;
+        set
+        {
+            if (_navigationView != null)
+            {
+                _navigationView.PaneDisplayMode = value;
+            }
+        }
+    }
+
     public NavigationViewService(INavigationService navigationService, IPageService pageService)
     {
         _navigationService = navigationService;

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Media.Imaging;
 using PhotoView.Helpers;
+using Windows.Graphics.Display;
 using Windows.Storage.FileProperties;
 using Windows.Storage.Streams;
 using Windows.Storage;
@@ -28,6 +29,8 @@ public class ImageFileInfo : INotifyPropertyChanged
     private ThumbnailSize? _requestedThumbnailSize;
 
     private static readonly uint[] SystemThumbnailSizes = { 96, 160, 256, 512, 1024 };
+
+    private static double DpiScale => DisplayInformation.GetForCurrentView().RawPixelsPerViewPixel;
     private static readonly Random _random = new();
 
     public ImageFileInfo(
@@ -66,7 +69,7 @@ public class ImageFileInfo : INotifyPropertyChanged
             var thumbnail = await ImageFile.GetThumbnailAsync(
                 ThumbnailMode.SingleItem,
                 optimalSize,
-                ThumbnailOptions.UseCurrentScale).AsTask(cancellationToken);
+                ThumbnailOptions.None).AsTask(cancellationToken);
 
             if (thumbnail != null && thumbnail.Size > 0)
             {
@@ -289,7 +292,7 @@ public class ImageFileInfo : INotifyPropertyChanged
 
     public void UpdateDisplaySize(ThumbnailSize size)
     {
-        var height = size switch
+        var designHeight = size switch
         {
             ThumbnailSize.Small => 120d,
             ThumbnailSize.Medium => 256d,
@@ -303,8 +306,10 @@ public class ImageFileInfo : INotifyPropertyChanged
             aspectRatio = 1d;
         }
 
-        DisplayHeight = height;
-        DisplayWidth = Math.Max(1d, height * aspectRatio);
+        // 直接返回设计尺寸，不计算缩放
+        // XAML 中的值转换器会处理缩放
+        DisplayHeight = designHeight;
+        DisplayWidth = Math.Max(1d, designHeight * aspectRatio);
     }
 
     private void SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

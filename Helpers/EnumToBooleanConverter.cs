@@ -11,14 +11,15 @@ public class EnumToBooleanConverter : IValueConverter
 
     public object Convert(object value, Type targetType, object parameter, string language)
     {
-        if (parameter is string enumString)
+        if (parameter is string enumString && value != null)
         {
-            if (!Enum.IsDefined(typeof(ElementTheme), value))
+            var enumType = value.GetType();
+            if (!Enum.IsDefined(enumType, value))
             {
                 throw new ArgumentException("ExceptionEnumToBooleanConverterValueMustBeAnEnum");
             }
 
-            var enumValue = Enum.Parse(typeof(ElementTheme), enumString);
+            var enumValue = Enum.Parse(enumType, enumString);
 
             return enumValue.Equals(value);
         }
@@ -28,9 +29,9 @@ public class EnumToBooleanConverter : IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, string language)
     {
-        if (parameter is string enumString)
+        if (parameter is string enumString && targetType.IsEnum)
         {
-            return Enum.Parse(typeof(ElementTheme), enumString);
+            return Enum.Parse(targetType, enumString);
         }
 
         throw new ArgumentException("ExceptionEnumToBooleanConverterParameterMustBeAnEnumName");

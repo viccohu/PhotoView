@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 
@@ -26,13 +27,20 @@ public sealed partial class ShellPage : Page
     private string? _lastPageKey;
     private bool _isOnSettingsPage;
 
-    public ShellPage(ShellViewModel viewModel)
+    public ShellPage(ShellViewModel viewModel, ISettingsService settingsService)
     {
         ViewModel = viewModel;
+        _settingsService = settingsService;
         InitializeComponent();
 
         ViewModel.NavigationService.Frame = NavigationFrame;
         ViewModel.NavigationViewService.Initialize(NavigationViewControl);
+
+        // 订阅设置变化事件
+        _settingsService.NavigationViewModeChanged += OnNavigationViewModeChanged;
+        
+        // 初始设置
+        NavigationViewControl.PaneDisplayMode = _settingsService.NavigationViewMode;
 
         _themeSelectorService = App.GetService<IThemeSelectorService>();
         _themeSelectorService.ThemeChanged += OnThemeChanged;
@@ -40,13 +48,24 @@ public sealed partial class ShellPage : Page
         _navigationService = App.GetService<INavigationService>();
         _navigationService.Navigated += OnNavigationServiceNavigated;
 
+        // 使用官方 TitleBar
         App.MainWindow.ExtendsContentIntoTitleBar = true;
-        App.MainWindow.SetTitleBar(AppTitleBar);
+        App.MainWindow.SetTitleBar(titleBar);
         App.MainWindow.Activated += MainWindow_Activated;
-        AppTitleBarText.Text = "AppDisplayName".GetLocalized();
+    }
 
-        // 立即设置标题栏颜色
-        UpdateTitleBarColor();
+    private readonly ISettingsService _settingsService;
+
+    private void OnNavigationViewModeChanged(object sender, NavigationViewPaneDisplayMode mode)
+    {
+        // 在 UI 线程上更新
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            var useLeftNavigation = mode == NavigationViewPaneDisplayMode.Left;
+            
+            NavigationViewControl.PaneDisplayMode = mode;
+            NavigationViewControl.IsPaneToggleButtonVisible = useLeftNavigation;
+        });
     }
 
     private void OnLoaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
@@ -79,10 +98,6 @@ public sealed partial class ShellPage : Page
 
     private void UpdateTitleBarColor(bool isDeactivated = false)
     {
-        // 更新标题栏文字颜色
-        var resource = isDeactivated ? "WindowCaptionForegroundDisabled" : "WindowCaptionForeground";
-        AppTitleBarText.Foreground = (SolidColorBrush)Application.Current.Resources[resource];
-
         // 更新标题栏按钮颜色
         var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
         var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hWnd);
@@ -122,6 +137,15 @@ public sealed partial class ShellPage : Page
             return brush.Color;
         }
         return Colors.White;
+    }
+
+    private void TitleBar_BackRequested(TitleBar sender, object args)
+    {
+        // 处理返回逻辑
+        if (NavigationFrame.CanGoBack)
+        {
+            NavigationFrame.GoBack();
+        }
     }
 
     private void NavigationViewControl_ItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)

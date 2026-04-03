@@ -6,62 +6,140 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:helpers="using:PhotoView.Helpers"
     xmlns:xaml="using:Microsoft.UI.Xaml"
+    xmlns:nav="using:Microsoft.UI.Xaml.Controls"
     mc:Ignorable="d">
     <Page.Resources>
         <helpers:EnumToBooleanConverter x:Key="EnumToBooleanConverter" />
+        
+        <!-- 设置项分组样式 -->
+        <Style x:Key="SettingsGroupHeaderStyle" TargetType="ListViewHeaderItem">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{ThemeResource SystemControlPageTextBaseMediumBrush}"/>
+            <Setter Property="Margin" Value="0,20,0,8"/>
+        </Style>
+        
+        <!-- 设置项样式 -->
+        <Style x:Key="SettingsItemStyle" TargetType="ListViewItem">
+            <Setter Property="Padding" Value="0,8,0,8"/>
+            <Setter Property="Margin" Value="0,0,0,0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
     </Page.Resources>
     <Grid>
-        <StackPanel
-            x:Name="ContentArea">
-            <TextBlock x:Uid="Settings_Personalization" Style="{ThemeResource SubtitleTextBlockStyle}" />
-            <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
-                <TextBlock x:Uid="Settings_Theme" />
-
-                <StackPanel Margin="{StaticResource XSmallTopMargin}">
-                    <RadioButton
-                        x:Uid="Settings_Theme_Light"
-                        Command="{x:Bind ViewModel.SwitchThemeCommand}"
-                        IsChecked="{x:Bind ViewModel.ElementTheme, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Light, Mode=OneWay}"
-                        FontSize="15"
-                        GroupName="AppTheme">
-                        <RadioButton.CommandParameter>
-                            <xaml:ElementTheme>Light</xaml:ElementTheme>
-                        </RadioButton.CommandParameter>
-                    </RadioButton>
-                    <RadioButton
-                        x:Uid="Settings_Theme_Dark"
-                        Command="{x:Bind ViewModel.SwitchThemeCommand}"
-                        IsChecked="{x:Bind ViewModel.ElementTheme, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Dark, Mode=OneWay}"
-                        FontSize="15"
-                        GroupName="AppTheme">
-                        <RadioButton.CommandParameter>
-                            <xaml:ElementTheme>Dark</xaml:ElementTheme>
-                        </RadioButton.CommandParameter>
-                    </RadioButton>
-                    <RadioButton
-                        x:Uid="Settings_Theme_Default"
-                        Command="{x:Bind ViewModel.SwitchThemeCommand}"
-                        IsChecked="{x:Bind ViewModel.ElementTheme, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Default, Mode=OneWay}"
-                        FontSize="15"
-                        GroupName="AppTheme">
-                        <RadioButton.CommandParameter>
-                            <xaml:ElementTheme>Default</xaml:ElementTheme>
-                        </RadioButton.CommandParameter>
-                    </RadioButton>
+        <ListView
+            x:Name="SettingsListView"
+            Margin="0,16,0,0"
+            ItemContainerStyle="{StaticResource SettingsItemStyle}">
+            <!-- 个性化设置组 -->
+            <ListViewItem>
+                <StackPanel>
+                    <TextBlock x:Uid="Settings_Personalization" Style="{ThemeResource SubtitleTextBlockStyle}" />
+                    
+                    <!-- 主题设置 -->
+                    <StackPanel Margin="0,8,0,0">
+                        <TextBlock x:Uid="Settings_Theme" Margin="0,0,0,8"/>
+                        <RadioButton
+                            x:Uid="Settings_Theme_Light"
+                            Command="{x:Bind ViewModel.SwitchThemeCommand}"
+                            IsChecked="{x:Bind ViewModel.ElementTheme, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Light, Mode=OneWay}"
+                            FontSize="15"
+                            GroupName="AppTheme"
+                            Margin="0,0,0,8">
+                            <RadioButton.CommandParameter>
+                                <xaml:ElementTheme>Light</xaml:ElementTheme>
+                            </RadioButton.CommandParameter>
+                        </RadioButton>
+                        <RadioButton
+                            x:Uid="Settings_Theme_Dark"
+                            Command="{x:Bind ViewModel.SwitchThemeCommand}"
+                            IsChecked="{x:Bind ViewModel.ElementTheme, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Dark, Mode=OneWay}"
+                            FontSize="15"
+                            GroupName="AppTheme"
+                            Margin="0,0,0,8">
+                            <RadioButton.CommandParameter>
+                                <xaml:ElementTheme>Dark</xaml:ElementTheme>
+                            </RadioButton.CommandParameter>
+                        </RadioButton>
+                        <RadioButton
+                            x:Uid="Settings_Theme_Default"
+                            Command="{x:Bind ViewModel.SwitchThemeCommand}"
+                            IsChecked="{x:Bind ViewModel.ElementTheme, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Default, Mode=OneWay}"
+                            FontSize="15"
+                            GroupName="AppTheme">
+                            <RadioButton.CommandParameter>
+                                <xaml:ElementTheme>Default</xaml:ElementTheme>
+                            </RadioButton.CommandParameter>
+                        </RadioButton>
+                    </StackPanel>
                 </StackPanel>
-            </StackPanel>
-
-            <TextBlock x:Uid="Settings_About" Style="{ThemeResource SubtitleTextBlockStyle}" />
-
-            <StackPanel Margin="{StaticResource XSmallTopMargin}">
-                <TextBlock Text="{x:Bind ViewModel.VersionDescription, Mode=OneWay}" Style="{ThemeResource BodyTextBlockStyle}" />
-
-                <TextBlock
-                    x:Uid="Settings_AboutDescription"
-                    Margin="{StaticResource XSmallTopMargin}"
-                    Style="{ThemeResource BodyTextBlockStyle}" />
-                <HyperlinkButton x:Uid="SettingsPage_PrivacyTermsLink" Margin="{StaticResource SettingsPageHyperlinkButtonMargin}" />
-            </StackPanel>
-        </StackPanel>
+            </ListViewItem>
+            
+            <!-- 性能设置组 -->
+            <ListViewItem>
+                <StackPanel>
+                    <TextBlock Text="性能设置" Style="{ThemeResource SubtitleTextBlockStyle}" />
+                    
+                    <!-- 缩略图缓存 -->
+                    <StackPanel Margin="0,8,0,0">
+                        <TextBlock Text="缩略图缓存" Margin="0,0,0,8"/>
+                        <ToggleSwitch
+                            x:Name="CacheToggleSwitch"
+                            Header="启用缩略图缓存"
+                            IsOn="True"
+                            Margin="0,0,0,8"/>
+                    </StackPanel>
+                    
+                    <!-- 并发加载数 -->
+                    <StackPanel Margin="0,8,0,0">
+                        <TextBlock Text="并发加载数" Margin="0,0,0,8"/>
+                        <ComboBox
+                            x:Name="ConcurrencyComboBox"
+                            Margin="0,0,0,8">
+                            <ComboBoxItem Content="4"/>
+                            <ComboBoxItem Content="8" IsSelected="True"/>
+                            <ComboBoxItem Content="16"/>
+                            <ComboBoxItem Content="32"/>
+                        </ComboBox>
+                    </StackPanel>
+                </StackPanel>
+            </ListViewItem>
+            
+            <!-- 显示设置组 -->
+            <ListViewItem>
+                <StackPanel>
+                    <TextBlock Text="显示设置" Style="{ThemeResource SubtitleTextBlockStyle}" />
+                    
+                    <!-- 默认缩略图大小 -->
+                    <StackPanel Margin="0,8,0,0">
+                        <TextBlock Text="默认缩略图大小" Margin="0,0,0,8"/>
+                        <ComboBox
+                            x:Name="ThumbnailSizeComboBox"
+                            Margin="0,0,0,8">
+                            <ComboBoxItem Content="小" Tag="Small"/>
+                            <ComboBoxItem Content="中" Tag="Medium" IsSelected="True"/>
+                            <ComboBoxItem Content="大" Tag="Large"/>
+                        </ComboBox>
+                    </StackPanel>
+                </StackPanel>
+            </ListViewItem>
+            
+            <!-- 关于设置组 -->
+            <ListViewItem>
+                <StackPanel>
+                    <TextBlock x:Uid="Settings_About" Style="{ThemeResource SubtitleTextBlockStyle}" />
+                    
+                    <StackPanel Margin="0,8,0,0">
+                        <TextBlock Text="{x:Bind ViewModel.VersionDescription, Mode=OneWay}" Style="{ThemeResource BodyTextBlockStyle}" Margin="0,0,0,8" />
+                        <TextBlock
+                            x:Uid="Settings_AboutDescription"
+                            Style="{ThemeResource BodyTextBlockStyle}" 
+                            Margin="0,0,0,8"/>
+                        <HyperlinkButton x:Uid="SettingsPage_PrivacyTermsLink" Margin="0,0,0,8" />
+                    </StackPanel>
+                </StackPanel>
+            </ListViewItem>
+        </ListView>
     </Grid>
 </Page>

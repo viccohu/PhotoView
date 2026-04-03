@@ -14,6 +14,12 @@ public interface INavigationViewService
         get;
     }
 
+    NavigationViewPaneDisplayMode PaneDisplayMode
+    {
+        get;
+        set;
+    }
+
     void Initialize(NavigationView navigationView);
 
     void UnregisterEvents();

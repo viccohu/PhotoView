@@ -151,9 +151,9 @@
     <value>浅色</value>
   </data>
   <data name="Shell_Collect.Content" xml:space="preserve">
-    <value>收藏夹</value>
+    <value>预览</value>
   </data>
   <data name="Shell_Main.Content" xml:space="preserve">
-    <value>全部文件</value>
+    <value>相册</value>
   </data>
 </root>
