@@ -76,13 +76,6 @@ public sealed partial class MainPage : Page
 
     private void ViewModel_ThumbnailSizeChanged(object? sender, EventArgs e)
     {
-        if (_isUnloaded || AppLifetime.IsShuttingDown)
-        {
-            return;
-        }
-
-        ImageGridView.UpdateLayout();
-        TriggerVisibleItemsThumbnailLoad();
     }
 
     private void TriggerVisibleItemsThumbnailLoad()
@@ -291,28 +284,11 @@ public sealed partial class MainPage : Page
 
         DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
         {
-            try
-            {
-                System.Diagnostics.Debug.WriteLine($"[ImagesChanged] 触发, Images.Count={ViewModel.Images.Count}");
+            ClearGridViewSelection();
 
-                ClearGridViewSelection();
-
-                if (ViewModel.Images.Count == 0)
-                {
-                    ImageGridView.ItemsSource = null;
-                }
-                else
-                {
-                    if (ImageGridView.ItemsSource != ViewModel.Images)
-                    {
-                        ImageGridView.ItemsSource = ViewModel.Images;
-                    }
-                    ImageGridView.ScrollIntoView(ViewModel.Images[0]);
-                }
-            }
-            catch (Exception ex)
+            if (ViewModel.Images.Count > 0)
             {
-                System.Diagnostics.Debug.WriteLine($"[ImagesChanged] 异常: {ex}");
+                ImageGridView.ScrollIntoView(ViewModel.Images[0]);
             }
         });
     }

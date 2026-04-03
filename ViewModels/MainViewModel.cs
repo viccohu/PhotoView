@@ -166,8 +166,7 @@ public partial class MainViewModel : ObservableRecipient
         UpdateBreadcrumbPath(folderNode);
 
         Images.Clear();
-
-        System.Diagnostics.Debug.WriteLine($"[LoadImagesAsync] 清空完成");
+        ImagesChanged?.Invoke(this, EventArgs.Empty);
 
         if (folderNode?.Folder == null)
             return;
@@ -215,6 +214,7 @@ public partial class MainViewModel : ObservableRecipient
             }
 
             System.Diagnostics.Debug.WriteLine($"[LoadImagesAsync] 加载完成, Images.Count={Images.Count}");
+            ImagesChanged?.Invoke(this, EventArgs.Empty);
         }
         catch (OperationCanceledException)
         {
