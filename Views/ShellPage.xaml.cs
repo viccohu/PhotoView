@@ -24,6 +24,7 @@ public sealed partial class ShellPage : Page
 
     private readonly IThemeSelectorService _themeSelectorService;
     private readonly INavigationService _navigationService;
+    private readonly ISettingsService _settingsService;
     private string? _lastPageKey;
     private bool _isOnSettingsPage;
 
@@ -39,8 +40,8 @@ public sealed partial class ShellPage : Page
         // 订阅设置变化事件
         _settingsService.NavigationViewModeChanged += OnNavigationViewModeChanged;
         
-        // 初始设置
-        NavigationViewControl.PaneDisplayMode = _settingsService.NavigationViewMode;
+        // 异步加载导航模式设置
+        _ = InitializeNavigationViewModeAsync();
 
         _themeSelectorService = App.GetService<IThemeSelectorService>();
         _themeSelectorService.ThemeChanged += OnThemeChanged;
@@ -54,7 +55,17 @@ public sealed partial class ShellPage : Page
         App.MainWindow.Activated += MainWindow_Activated;
     }
 
-    private readonly ISettingsService _settingsService;
+    private async Task InitializeNavigationViewModeAsync()
+    {
+        var mode = await _settingsService.LoadNavigationViewModeAsync();
+        
+        // 在 UI 线程上更新
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            NavigationViewControl.PaneDisplayMode = mode;
+            NavigationViewControl.IsPaneToggleButtonVisible = mode == NavigationViewPaneDisplayMode.Left;
+        });
+    }
 
     private void OnNavigationViewModeChanged(object sender, NavigationViewPaneDisplayMode mode)
     {

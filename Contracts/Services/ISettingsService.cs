@@ -11,6 +11,6 @@ public interface ISettingsService
 
     event EventHandler<NavigationViewPaneDisplayMode> NavigationViewModeChanged;
 
-    void SaveNavigationViewMode(NavigationViewPaneDisplayMode mode);
-    NavigationViewPaneDisplayMode LoadNavigationViewMode();
+    Task SaveNavigationViewModeAsync(NavigationViewPaneDisplayMode mode);
+    Task<NavigationViewPaneDisplayMode> LoadNavigationViewModeAsync();
 }

@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 
 using PhotoView.Contracts.Services;
 using PhotoView.Helpers;
@@ -16,6 +17,7 @@ namespace PhotoView.ViewModels;
 public class SettingsViewModel : ObservableRecipient
 {
     private readonly IThemeSelectorService _themeSelectorService;
+    private readonly ISettingsService _settingsService;
     private ElementTheme _elementTheme;
     private string _versionDescription;
 
@@ -31,14 +33,33 @@ public class SettingsViewModel : ObservableRecipient
         set => SetProperty(ref _versionDescription, value);
     }
 
+    public NavigationViewPaneDisplayMode NavigationViewMode
+    {
+        get => _settingsService.NavigationViewMode;
+        set
+        {
+            if (_settingsService.NavigationViewMode != value)
+            {
+                _settingsService.NavigationViewMode = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public ICommand SwitchThemeCommand
     {
         get;
     }
 
-    public SettingsViewModel(IThemeSelectorService themeSelectorService)
+    public ICommand SwitchNavigationModeCommand
+    {
+        get;
+    }
+
+    public SettingsViewModel(IThemeSelectorService themeSelectorService, ISettingsService settingsService)
     {
         _themeSelectorService = themeSelectorService;
+        _settingsService = settingsService;
         _elementTheme = _themeSelectorService.Theme;
         _versionDescription = GetVersionDescription();
 
@@ -49,6 +70,16 @@ public class SettingsViewModel : ObservableRecipient
                 {
                     ElementTheme = param;
                     await _themeSelectorService.SetThemeAsync(param);
+                }
+            });
+
+        SwitchNavigationModeCommand = new RelayCommand<NavigationViewPaneDisplayMode>(
+            async (param) =>
+            {
+                if (NavigationViewMode != param)
+                {
+                    NavigationViewMode = param;
+                    await _settingsService.SaveNavigationViewModeAsync(param);
                 }
             });
     }
