@@ -17,6 +17,7 @@ public partial class MainViewModel : ObservableRecipient
 
     private const uint PageSize = 100;
     private CancellationTokenSource? _loadImagesCts;
+    private readonly Stack<FolderNode> _navigationHistory = new();
 
     public event EventHandler? ImagesChanged;
     public event EventHandler? ThumbnailSizeChanged;
@@ -35,6 +36,10 @@ public partial class MainViewModel : ObservableRecipient
 
     [ObservableProperty]
     private ThumbnailSize _thumbnailSize = ThumbnailSize.Medium;
+
+    public bool CanGoBack => _navigationHistory.Count > 1;
+    
+    public bool CanGoUp => SelectedFolder?.Parent != null;
 
     public double ThumbnailHeight => ThumbnailSize switch
     {
@@ -162,8 +167,15 @@ public partial class MainViewModel : ObservableRecipient
         _loadImagesCts = new CancellationTokenSource();
         var cancellationToken = _loadImagesCts.Token;
 
+        if (folderNode != null && folderNode != SelectedFolder)
+        {
+            _navigationHistory.Push(folderNode);
+            OnPropertyChanged(nameof(CanGoBack));
+        }
+
         SelectedFolder = folderNode;
         UpdateBreadcrumbPath(folderNode);
+        OnPropertyChanged(nameof(CanGoUp));
 
         Images.Clear();
         ImagesChanged?.Invoke(this, EventArgs.Empty);
@@ -290,6 +302,113 @@ public partial class MainViewModel : ObservableRecipient
         foreach (var image in Images)
         {
             image.CancelThumbnailLoad();
+        }
+    }
+
+    public async System.Threading.Tasks.Task GoBackAsync()
+    {
+        if (_navigationHistory.Count <= 1)
+            return;
+
+        _navigationHistory.Pop();
+        var previousFolder = _navigationHistory.Peek();
+        
+        SelectedFolder = null;
+        OnPropertyChanged(nameof(CanGoBack));
+        
+        await LoadImagesWithoutHistoryAsync(previousFolder);
+    }
+
+    public async System.Threading.Tasks.Task GoUpAsync()
+    {
+        if (SelectedFolder?.Parent == null)
+            return;
+
+        var parentFolder = SelectedFolder.Parent;
+        await LoadImagesAsync(parentFolder);
+    }
+
+    public async System.Threading.Tasks.Task RefreshAsync()
+    {
+        if (SelectedFolder == null)
+            return;
+
+        var currentFolder = SelectedFolder;
+        
+        SelectedFolder = null;
+        Images.Clear();
+        ImagesChanged?.Invoke(this, EventArgs.Empty);
+        
+        await LoadImagesWithoutHistoryAsync(currentFolder);
+    }
+
+    private async System.Threading.Tasks.Task LoadImagesWithoutHistoryAsync(FolderNode folderNode)
+    {
+        _loadImagesCts?.Cancel();
+        _loadImagesCts = new CancellationTokenSource();
+        var cancellationToken = _loadImagesCts.Token;
+
+        SelectedFolder = folderNode;
+        UpdateBreadcrumbPath(folderNode);
+        OnPropertyChanged(nameof(CanGoUp));
+
+        Images.Clear();
+        ImagesChanged?.Invoke(this, EventArgs.Empty);
+
+        if (folderNode?.Folder == null)
+            return;
+
+        try
+        {
+            var result = folderNode.Folder.CreateFileQueryWithOptions(new QueryOptions());
+            uint index = 0;
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var batch = await result.GetFilesAsync(index, PageSize);
+                if (batch.Count == 0)
+                    break;
+
+                var imageInfos = await System.Threading.Tasks.Task.Run(async () =>
+                {
+                    var tasks = new List<Task<ImageFileInfo?>>();
+
+                    foreach (var file in batch)
+                    {
+                        if (cancellationToken.IsCancellationRequested)
+                            break;
+
+                        if (IsImageFile(file))
+                        {
+                            tasks.Add(LoadImageInfoSafeAsync(file, cancellationToken));
+                        }
+                    }
+
+                    var results = await Task.WhenAll(tasks);
+                    return results.Where(r => r != null).Cast<ImageFileInfo>().ToList();
+                }, cancellationToken);
+
+                if (!cancellationToken.IsCancellationRequested)
+                {
+                    foreach (var info in imageInfos)
+                    {
+                        info.UpdateDisplaySize(ThumbnailSize);
+                        Images.Add(info);
+                    }
+                }
+
+                index += PageSize;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[LoadImagesWithoutHistoryAsync] 加载完成, Images.Count={Images.Count}");
+            ImagesChanged?.Invoke(this, EventArgs.Empty);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"LoadImagesWithoutHistoryAsync error: {ex}");
         }
     }
 }

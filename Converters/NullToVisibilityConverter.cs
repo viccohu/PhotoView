@@ -7,7 +7,13 @@ public class NullToVisibilityConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object parameter, string language)
     {
-        return value is null ? Visibility.Collapsed : Visibility.Visible;
+        if (value is null)
+            return Visibility.Collapsed;
+        
+        if (value is int count)
+            return count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        
+        return Visibility.Visible;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, string language)

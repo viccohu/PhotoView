@@ -382,6 +382,21 @@ public sealed partial class MainPage : Page
     {
     }
 
+    private async void BackButton_Click(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.GoBackAsync();
+    }
+
+    private async void UpButton_Click(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.GoUpAsync();
+    }
+
+    private async void RefreshButton_Click(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.RefreshAsync();
+    }
+
     private void MainPage_KeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key == VirtualKey.A)

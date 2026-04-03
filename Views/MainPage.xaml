@@ -12,6 +12,51 @@
         <converters:ThumbnailConverter x:Key="ThumbnailConverter"/>
         <converters:NullToBoolConverter x:Key="NullToBoolConverter"/>
         <converters:NodeTypeToIconConverter x:Key="NodeTypeToIconConverter"/>
+        
+        <Style x:Key="BreadcrumbButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid Background="{TemplateBinding Background}">
+                            <ContentPresenter 
+                                x:Name="ContentPresenter"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                ContentTransitions="{TemplateBinding ContentTransitions}"
+                                Padding="{TemplateBinding Padding}"
+                                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                            
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CommonStates">
+                                    <VisualState x:Name="Normal"/>
+                                    <VisualState x:Name="PointerOver">
+                                        <VisualState.Setters>
+                                            <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                    <VisualState x:Name="Pressed">
+                                        <VisualState.Setters>
+                                            <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource TextFillColorTertiaryBrush}"/>
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                    <VisualState x:Name="Disabled">
+                                        <VisualState.Setters>
+                                            <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource TextFillColorDisabledBrush}"/>
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Page.Resources>
 
     <Grid>
@@ -118,9 +163,44 @@
             </StackPanel>
         </Grid>
 
-        <Grid Grid.Column="1" Grid.Row="1" Margin="12,0,12,4">
+
+        <StackPanel 
+            Grid.Column="1" 
+            Grid.Row="1" 
+            Margin="12,0,12,4"
+            Orientation="Horizontal"
+            Visibility="{x:Bind ViewModel.BreadcrumbPath.Count, Mode=OneWay, Converter={StaticResource NullToVisibilityConverter}}">
+            
+            <Button
+                x:Name="BackButton"
+                Margin="0,3,0,0"
+                ToolTipService.ToolTip="Back"
+                Click="BackButton_Click"
+                IsEnabled="{x:Bind ViewModel.CanGoBack, Mode=OneWay}"
+                Style="{StaticResource BreadcrumbButtonStyle}">
+                <FontIcon Glyph="&#xE72B;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="12"/>
+            </Button>
+            <Button
+                x:Name="UpButton"
+                Margin="0,3,0,0"
+                ToolTipService.ToolTip="Go up one level"
+                Click="UpButton_Click"
+                IsEnabled="{x:Bind ViewModel.CanGoUp, Mode=OneWay}"
+                Style="{StaticResource BreadcrumbButtonStyle}">
+                <FontIcon Glyph="&#xE74A;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="12"/>
+            </Button>
+            <Button
+                x:Name="RefreshButton"
+                Margin="0,3,0,0"
+                ToolTipService.ToolTip="Refresh"
+                Click="RefreshButton_Click"
+                Style="{StaticResource BreadcrumbButtonStyle}">
+                <FontIcon Glyph="&#xE72C;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="12"/>
+            </Button>
+            
             <BreadcrumbBar
                 x:Name="BreadcrumbBar"
+                Margin="12,0,0,0"
                 ItemsSource="{x:Bind ViewModel.BreadcrumbPath}"
                 ItemClicked="BreadcrumbBar_ItemClicked">
                 <BreadcrumbBar.ItemTemplate>
@@ -129,7 +209,8 @@
                     </DataTemplate>
                 </BreadcrumbBar.ItemTemplate>
             </BreadcrumbBar>
-        </Grid>
+        </StackPanel>
+
 
         <GridView
             x:Name="ImageGridView"
