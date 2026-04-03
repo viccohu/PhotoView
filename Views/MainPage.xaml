@@ -122,31 +122,22 @@
             </BreadcrumbBar>
         </Grid>
 
-        <ItemsView
+        <GridView
+            x:Name="ImageGridView"
             Grid.Column="1"
             Grid.Row="2"
-            x:Name="ImageItemsView"
             ItemsSource="{x:Bind ViewModel.Images}"
             SelectionMode="Extended"
-            SelectionChanged="ImageItemsView_SelectionChanged"
+            SelectionChanged="ImageGridView_SelectionChanged"
+            ContainerContentChanging="ImageGridView_ContainerContentChanging"
             Margin="12,4,12,0"
-            Padding="0">
-            <ItemsView.Layout>
-                <LinedFlowLayout
-                    x:Name="ImageLinedFlowLayout"
-                    ItemsJustification="Start"
-                    ItemsStretch="None"
-                    ItemsInfoRequested="ImageLinedFlowLayout_ItemsInfoRequested"
-                    LineHeight="{x:Bind ViewModel.ThumbnailHeight, Mode=OneWay}"
-                    LineSpacing="8"
-                    MinItemSpacing="8" />
-            </ItemsView.Layout>
-            <ItemsView.ItemTemplate>
+            Padding="4">
+            <GridView.ItemTemplate>
                 <DataTemplate x:DataType="models:ImageFileInfo">
-                    <ItemContainer
+                    <Grid
+                        Width="{x:Bind DisplayWidth, Mode=OneWay}"
+                        Height="{x:Bind DisplayHeight, Mode=OneWay}"
                         Tag="{x:Bind}"
-                        Loaded="ImageItem_Loaded"
-                        Unloaded="ImageItem_Unloaded"
                         RightTapped="ImageItem_RightTapped">
                         <FlyoutBase.AttachedFlyout>
                             <MenuFlyout>
@@ -158,43 +149,48 @@
                                 <MenuFlyoutItem Text="Move"/>
                             </MenuFlyout>
                         </FlyoutBase.AttachedFlyout>
-                        <Grid
-                            Width="{x:Bind DisplayWidth, Mode=OneWay}"
-                            Height="{x:Bind DisplayHeight, Mode=OneWay}"
-                            HorizontalAlignment="Stretch"
-                            VerticalAlignment="Stretch">
-                            <Border
-                                CornerRadius="8"
-                                Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                BorderThickness="1"
-                                Padding="6"
-                                HorizontalAlignment="Stretch"
-                                VerticalAlignment="Stretch">
-                                <Grid Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
-                                    <Image
-                                        Source="{x:Bind Thumbnail, Mode=OneWay}"
-                                        Stretch="Uniform"
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center"/>
-                                </Grid>
-                            </Border>
-                            <Border
-                                x:Name="SelectionBorder"
-                                CornerRadius="8"
-                                BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                                BorderThickness="3"
-                                Opacity="0"/>
-                            <ProgressRing
-                                Width="24"
-                                Height="24"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                IsActive="{x:Bind Thumbnail, Converter={StaticResource NullToBoolConverter}, Mode=OneWay}"/>
-                        </Grid>
-                    </ItemContainer>
+                        <Border
+                            CornerRadius="8"
+                            Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            Padding="6">
+                            <Grid Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
+                                <Image
+                                    Source="{x:Bind Thumbnail, Mode=OneWay}"
+                                    Stretch="UniformToFill"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                        <Border
+                            CornerRadius="8"
+                            BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                            BorderThickness="3"
+                            Opacity="0"/>
+                        <ProgressRing
+                            Width="24"
+                            Height="24"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            IsActive="{x:Bind Thumbnail, Converter={StaticResource NullToBoolConverter}, Mode=OneWay}"/>
+                    </Grid>
                 </DataTemplate>
-            </ItemsView.ItemTemplate>
-        </ItemsView>
+            </GridView.ItemTemplate>
+            <GridView.ItemContainerStyle>
+                <Style TargetType="GridViewItem">
+                    <Setter Property="Margin" Value="4"/>
+                    <Setter Property="Padding" Value="0"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+                </Style>
+            </GridView.ItemContainerStyle>
+            <GridView.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <ItemsWrapGrid
+                        Orientation="Horizontal"/>
+                </ItemsPanelTemplate>
+            </GridView.ItemsPanel>
+        </GridView>
     </Grid>
 </Page>

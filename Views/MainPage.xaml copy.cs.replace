@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using PhotoView.Helpers;
 using PhotoView.Models;
 using PhotoView.ViewModels;
@@ -17,8 +18,11 @@ public sealed partial class MainPage : Page
 
     private readonly DispatcherTimer _loadImagesThrottleTimer;
     private FolderNode? _pendingLoadNode;
+    private ScrollView? _imageScrollView;
     private bool _isUnloaded;
     private bool _isUpdatingSelectionState;
+    private bool _isThumbnailBatchRunning;
+    private bool _hasPendingThumbnailBatch;
     private DateTime _lastClickTime;
     private FolderNode? _lastClickedNode;
 
@@ -45,12 +49,20 @@ public sealed partial class MainPage : Page
     private void MainPage_Loaded(object sender, RoutedEventArgs e)
     {
         _isUnloaded = false;
+        AttachItemsViewScrollView();
+        QueueVisibleThumbnailLoad();
     }
 
     private void MainPage_Unloaded(object sender, RoutedEventArgs e)
     {
         _isUnloaded = true;
         _loadImagesThrottleTimer.Stop();
+
+        if (_imageScrollView != null)
+        {
+            _imageScrollView.ViewChanged -= ImageScrollView_ViewChanged;
+            _imageScrollView = null;
+        }
     }
 
     private async void LoadImagesThrottleTimer_Tick(object? sender, object e)
@@ -81,38 +93,8 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        ImageGridView.UpdateLayout();
-        TriggerVisibleItemsThumbnailLoad();
-    }
-
-    private void TriggerVisibleItemsThumbnailLoad()
-    {
-        try
-        {
-            // 触发第一张图片的加载
-            if (ViewModel.Images.Count > 0)
-            {
-                var firstImage = ViewModel.Images[0];
-                _ = firstImage.EnsureThumbnailAsync(ViewModel.ThumbnailSize);
-            }
-
-            // 触发可见元素的加载
-            for (int i = 0; i < Math.Min(ImageGridView.Items.Count, 20); i++)
-            {
-                var container = ImageGridView.ContainerFromIndex(i) as GridViewItem;
-                if (container != null)
-                {
-                    if (ImageGridView.Items[i] is ImageFileInfo imageInfo)
-                    {
-                        _ = imageInfo.EnsureThumbnailAsync(ViewModel.ThumbnailSize);
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"TriggerVisibleItemsThumbnailLoad error: {ex}");
-        }
+        ImageLinedFlowLayout.InvalidateItemsInfo();
+        QueueVisibleThumbnailLoad();
     }
 
     private void ThumbnailSize_Click(object sender, RoutedEventArgs e)
@@ -286,29 +268,62 @@ public sealed partial class MainPage : Page
 
     private void ViewModel_ImagesChanged(object? sender, EventArgs e)
     {
+        System.Diagnostics.Debug.WriteLine($"[ImagesChanged] 触发, _isUnloaded={_isUnloaded}, IsShuttingDown={AppLifetime.IsShuttingDown}, Images.Count={ViewModel.Images.Count}");
+
         if (_isUnloaded || AppLifetime.IsShuttingDown)
             return;
 
-        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine($"[ImagesChanged] 触发, Images.Count={ViewModel.Images.Count}");
+                ClearItemsViewSelection();
+                SyncSelectedStateFromItemsView();
 
-                ClearGridViewSelection();
+                System.Diagnostics.Debug.WriteLine($"[ImagesChanged] 设置 ItemsSource = null");
+                ImageItemsView.ItemsSource = null;
+
+                System.Diagnostics.Debug.WriteLine($"[ImagesChanged] 等待 UI 线程清空...");
+                await Task.Delay(1);
+                System.Diagnostics.Debug.WriteLine($"[ImagesChanged] UI 线程清空完成");
+
+                ImageLinedFlowLayout?.InvalidateItemsInfo();
 
                 if (ViewModel.Images.Count == 0)
                 {
-                    ImageGridView.ItemsSource = null;
+                    System.Diagnostics.Debug.WriteLine($"[ImagesChanged] Images 为空，只清空不绑定，等待数据加载");
+                    return;
                 }
-                else
+
+                var newLayout = new LinedFlowLayout
                 {
-                    if (ImageGridView.ItemsSource != ViewModel.Images)
-                    {
-                        ImageGridView.ItemsSource = ViewModel.Images;
-                    }
-                    ImageGridView.ScrollIntoView(ViewModel.Images[0]);
+                    LineHeight = ViewModel.ThumbnailHeight,
+                    LineSpacing = 8,
+                    MinItemSpacing = 8,
+                    ItemsStretch = LinedFlowLayoutItemsStretch.None
+                };
+                newLayout.ItemsInfoRequested += ImageLinedFlowLayout_ItemsInfoRequested;
+
+                System.Diagnostics.Debug.WriteLine($"[ImagesChanged] 创建新布局, LineHeight={ViewModel.ThumbnailHeight}");
+                ImageItemsView.Layout = newLayout;
+                ImageLinedFlowLayout = newLayout;
+
+                System.Diagnostics.Debug.WriteLine($"[ImagesChanged] 绑定新数据源, Images.Count={ViewModel.Images.Count}");
+                ImageItemsView.ItemsSource = ViewModel.Images;
+
+                ImageItemsView.InvalidateMeasure();
+                ImageItemsView.UpdateLayout();
+
+                System.Diagnostics.Debug.WriteLine($"[ImagesChanged] 滚动到顶部");
+                if (_imageScrollView != null)
+                {
+                    _imageScrollView.ScrollTo(0, 0);
                 }
+
+                System.Diagnostics.Debug.WriteLine($"[ImagesChanged] 触发缩略图加载");
+                QueueVisibleThumbnailLoad();
+
+                System.Diagnostics.Debug.WriteLine($"[ImagesChanged] 完成");
             }
             catch (Exception ex)
             {
@@ -317,36 +332,68 @@ public sealed partial class MainPage : Page
         });
     }
 
-    private void ImageGridView_ContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
+    private void ImageItem_Loaded(object sender, RoutedEventArgs e)
     {
-        if (args.Item is not ImageFileInfo imageInfo)
-            return;
+        QueueVisibleThumbnailLoad();
+    }
 
-        if (args.InRecycleQueue)
+    private void ImageItem_Unloaded(object sender, RoutedEventArgs e)
+    {
+        if (_isUnloaded || AppLifetime.IsShuttingDown)
+        {
+            return;
+        }
+
+        if (TryGetImageInfo(sender) is ImageFileInfo imageInfo)
         {
             imageInfo.CancelThumbnailLoad();
+        }
+    }
+
+    private void ImageItemsView_SelectionChanged(ItemsView sender, ItemsViewSelectionChangedEventArgs args)
+    {
+        SyncSelectedStateFromItemsView();
+    }
+
+    private void ImageLinedFlowLayout_ItemsInfoRequested(LinedFlowLayout sender, LinedFlowLayoutItemsInfoRequestedEventArgs args)
+    {
+        if (ViewModel.Images.Count == 0)
+        {
             return;
         }
 
-        if (args.Phase == 0)
+        var startIndex = args.ItemsRangeStartIndex;
+        var length = args.ItemsRangeRequestedLength;
+        var aspectRatios = new double[length];
+
+        for (var i = 0; i < length; i++)
         {
-            args.RegisterUpdateCallback(1, ImageGridView_ContainerContentChanging);
+            var realIndex = startIndex + i;
+            if (realIndex >= 0 && realIndex < ViewModel.Images.Count)
+            {
+                var ratio = ViewModel.Images[realIndex].AspectRatio;
+                aspectRatios[i] = ratio > 0 ? ratio : 1.5;
+            }
+            else
+            {
+                aspectRatios[i] = 1.5;
+            }
         }
-        else if (args.Phase == 1)
-        {
-            _ = imageInfo.EnsureThumbnailAsync(ViewModel.ThumbnailSize);
-        }
+
+        args.SetDesiredAspectRatios(aspectRatios);
     }
 
-    private void ImageGridView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void ImageScrollView_ViewChanged(ScrollView sender, object args)
     {
-        SyncSelectedStateFromGridView();
+        QueueVisibleThumbnailLoad();
     }
 
-    private void SyncSelectedStateFromGridView()
+    private void SyncSelectedStateFromItemsView()
     {
         if (_isUpdatingSelectionState)
+        {
             return;
+        }
 
         _isUpdatingSelectionState = true;
         try
@@ -356,7 +403,7 @@ public sealed partial class MainPage : Page
                 image.IsSelected = false;
             }
 
-            foreach (var selectedItem in ImageGridView.SelectedItems)
+            foreach (var selectedItem in EnumerateSelectedItems())
             {
                 if (selectedItem is ImageFileInfo imageInfo)
                 {
@@ -370,26 +417,160 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private void ClearGridViewSelection()
-    {
-        if (ImageGridView.SelectedItems.Count == 0)
-            return;
-
-        ImageGridView.SelectedItem = null;
-    }
-
     private void ImageItem_RightTapped(object sender, RightTappedRoutedEventArgs e)
     {
         if (sender is not FrameworkElement element)
-            return;
-
-        if (element.Tag is ImageFileInfo imageInfo && !ImageGridView.SelectedItems.Contains(imageInfo))
         {
-            ImageGridView.SelectedItem = imageInfo;
+            return;
+        }
+
+        if (TryGetImageInfo(element) is ImageFileInfo imageInfo && !IsItemCurrentlySelected(imageInfo))
+        {
+            var itemIndex = ViewModel.Images.IndexOf(imageInfo);
+            if (itemIndex >= 0)
+            {
+                ImageItemsView.DeselectAll();
+                ImageItemsView.Select(itemIndex);
+                SyncSelectedStateFromItemsView();
+            }
         }
 
         FlyoutBase.ShowAttachedFlyout(element);
         e.Handled = true;
+    }
+
+    private bool IsItemCurrentlySelected(ImageFileInfo imageInfo)
+    {
+        foreach (var selectedItem in EnumerateSelectedItems())
+        {
+            if (ReferenceEquals(selectedItem, imageInfo))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private IEnumerable<object> EnumerateSelectedItems()
+    {
+        return ImageItemsView.SelectedItems?.Cast<object>() ?? Enumerable.Empty<object>();
+    }
+
+    private IEnumerable<ImageFileInfo> GetVisibleImageItems()
+    {
+        foreach (var container in FindDescendants<ItemContainer>(ImageItemsView))
+        {
+            if (TryGetImageInfo(container) is ImageFileInfo imageInfo)
+            {
+                yield return imageInfo;
+            }
+        }
+    }
+
+    private void ClearItemsViewSelection()
+    {
+        var selectedItems = EnumerateSelectedItems().ToList();
+        if (selectedItems.Count == 0)
+        {
+            return;
+        }
+
+        ImageItemsView.DeselectAll();
+    }
+
+    private void AttachItemsViewScrollView()
+    {
+        var scrollView = ImageItemsView.ScrollView;
+        if (scrollView == null || ReferenceEquals(scrollView, _imageScrollView))
+        {
+            return;
+        }
+
+        if (_imageScrollView != null)
+        {
+            _imageScrollView.ViewChanged -= ImageScrollView_ViewChanged;
+        }
+
+        _imageScrollView = scrollView;
+        _imageScrollView.ViewChanged += ImageScrollView_ViewChanged;
+    }
+
+    private void QueueVisibleThumbnailLoad()
+    {
+        if (_isUnloaded || AppLifetime.IsShuttingDown)
+        {
+            return;
+        }
+
+        AttachItemsViewScrollView();
+        _ = ProcessVisibleThumbnailBatchAsync();
+    }
+
+    private async Task ProcessVisibleThumbnailBatchAsync()
+    {
+        if (_isThumbnailBatchRunning)
+        {
+            _hasPendingThumbnailBatch = true;
+            return;
+        }
+
+        _isThumbnailBatchRunning = true;
+        try
+        {
+            do
+            {
+                _hasPendingThumbnailBatch = false;
+
+                var visibleImages = GetVisibleImageItems()
+                    .Distinct()
+                    .ToList();
+
+                if (visibleImages.Count == 0)
+                {
+                    return;
+                }
+
+                await Task.WhenAll(visibleImages.Select(image => image.EnsureThumbnailAsync(ViewModel.ThumbnailSize)));
+            }
+            while (_hasPendingThumbnailBatch && !_isUnloaded && !AppLifetime.IsShuttingDown);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ProcessVisibleThumbnailBatchAsync error: {ex}");
+        }
+        finally
+        {
+            _isThumbnailBatchRunning = false;
+        }
+    }
+
+    private static IEnumerable<T> FindDescendants<T>(DependencyObject root) where T : DependencyObject
+    {
+        var childCount = VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < childCount; i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is T typedChild)
+            {
+                yield return typedChild;
+            }
+
+            foreach (var descendant in FindDescendants<T>(child))
+            {
+                yield return descendant;
+            }
+        }
+    }
+
+    private static ImageFileInfo? TryGetImageInfo(object sender)
+    {
+        return sender switch
+        {
+            FrameworkElement { Tag: ImageFileInfo imageInfo } => imageInfo,
+            FrameworkElement element => element.DataContext as ImageFileInfo,
+            _ => null
+        };
     }
 
     private void Share_Click(object sender, RoutedEventArgs e)
@@ -412,13 +593,13 @@ public sealed partial class MainPage : Page
                 .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
             if (isCtrlPressed)
             {
-                ImageGridView.SelectAll();
+                ImageItemsView.SelectAll();
                 e.Handled = true;
             }
         }
         else if (e.Key == VirtualKey.Escape)
         {
-            ClearGridViewSelection();
+            ClearItemsViewSelection();
             e.Handled = true;
         }
     }

@@ -340,7 +340,7 @@ public class ImageFileInfo : INotifyPropertyChanged
 
     public int AutoWidth => Height == 0 ? 200 : (int)((Width * 200.0) / Height);
 
-    public double AspectRatio => Height == 0 ? 1.0 : (double)Width / Height;
+    public double AspectRatio => Height == 0 ? 1.5 : (double)Width / Height;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

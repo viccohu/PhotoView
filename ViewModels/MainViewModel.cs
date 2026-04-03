@@ -162,10 +162,12 @@ public partial class MainViewModel : ObservableRecipient
         _loadImagesCts = new CancellationTokenSource();
         var cancellationToken = _loadImagesCts.Token;
 
-        Images.Clear();
         SelectedFolder = folderNode;
         UpdateBreadcrumbPath(folderNode);
-        ImagesChanged?.Invoke(this, EventArgs.Empty);
+
+        Images.Clear();
+
+        System.Diagnostics.Debug.WriteLine($"[LoadImagesAsync] 清空完成");
 
         if (folderNode?.Folder == null)
             return;
@@ -211,6 +213,8 @@ public partial class MainViewModel : ObservableRecipient
 
                 index += PageSize;
             }
+
+            System.Diagnostics.Debug.WriteLine($"[LoadImagesAsync] 加载完成, Images.Count={Images.Count}");
         }
         catch (OperationCanceledException)
         {
