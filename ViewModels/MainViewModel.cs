@@ -234,42 +234,109 @@ public partial class MainViewModel : ObservableRecipient
 
             var result = folderNode.Folder.CreateFileQueryWithOptions(queryOptions);
             
-            var allFiles = new List<StorageFile>();
+            var fileNameMap = new Dictionary<string, List<StorageFile>>(StringComparer.OrdinalIgnoreCase);
+            var processedGroups = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            
+            const uint batchSize = 30;
             uint index = 0;
-            const uint batchSize = 500;
-
+            
+            System.Diagnostics.Debug.WriteLine($"[LoadImagesAsync] 开始分批加载, 批次大小={batchSize}");
+            
             while (!cancellationToken.IsCancellationRequested)
             {
                 var batch = await result.GetFilesAsync(index, batchSize);
                 if (batch.Count == 0)
                     break;
-                allFiles.AddRange(batch);
+                
+                var newGroupFiles = new List<StorageFile>();
+                
+                foreach (var file in batch)
+                {
+                    var groupName = ImageGroup.GetGroupName(file.Name);
+                    if (!fileNameMap.TryGetValue(groupName, out var list))
+                    {
+                        list = new List<StorageFile>();
+                        fileNameMap[groupName] = list;
+                    }
+                    list.Add(file);
+                    
+                    if (!processedGroups.Contains(groupName))
+                    {
+                        newGroupFiles.Add(file);
+                    }
+                }
+                
+                var newPrimaryFiles = new List<StorageFile>();
+                var newGroupMap = new Dictionary<string, List<StorageFile>>();
+                
+                foreach (var file in newGroupFiles)
+                {
+                    var groupName = ImageGroup.GetGroupName(file.Name);
+                    if (!processedGroups.Contains(groupName) && fileNameMap.TryGetValue(groupName, out var groupFiles))
+                    {
+                        var sortedFiles = groupFiles.OrderBy(f => ImageGroup.GetFormatPriority(f.FileType)).ToList();
+                        var primaryFile = sortedFiles.First();
+                        
+                        if (!newPrimaryFiles.Contains(primaryFile))
+                        {
+                            newPrimaryFiles.Add(primaryFile);
+                            newGroupMap[groupName] = sortedFiles;
+                            processedGroups.Add(groupName);
+                        }
+                    }
+                }
+                
+                if (newPrimaryFiles.Count > 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[LoadImagesAsync] 批次 {index/batchSize + 1}, 加载新主图片 {newPrimaryFiles.Count} 个");
+                    
+                    var newPrimaryInfos = await System.Threading.Tasks.Task.Run(async () =>
+                    {
+                        var tasks = newPrimaryFiles.Select(f => LoadImageInfoSafeAsync(f, cancellationToken));
+                        var results = await Task.WhenAll(tasks);
+                        return results.Where(r => r != null).Cast<ImageFileInfo>().ToList();
+                    }, cancellationToken);
+                    
+                    var newFinalGroups = new List<ImageGroup>();
+                    
+                    foreach (var primaryInfo in newPrimaryInfos)
+                    {
+                        if (cancellationToken.IsCancellationRequested)
+                            break;
+                        
+                        var groupName = ImageGroup.GetGroupName(primaryInfo.ImageFile.Name);
+                        if (newGroupMap.TryGetValue(groupName, out var allFilesInGroup))
+                        {
+                            var imageInfos = new List<ImageFileInfo> { primaryInfo };
+                            
+                            foreach (var file in allFilesInGroup.Where(f => f != primaryInfo.ImageFile))
+                            {
+                                var dummyInfo = new ImageFileInfo(0, 0, string.Empty, 0, file, file.DisplayName, file.DisplayType);
+                                imageInfos.Add(dummyInfo);
+                            }
+                            
+                            var finalGroup = new ImageGroup(groupName, imageInfos);
+                            newFinalGroups.Add(finalGroup);
+                        }
+                    }
+                    
+                    foreach (var group in newFinalGroups)
+                    {
+                        if (!cancellationToken.IsCancellationRequested)
+                        {
+                            group.PrimaryImage.UpdateDisplaySize(ThumbnailSize);
+                            Images.Add(group.PrimaryImage);
+                        }
+                    }
+                    
+                    System.Diagnostics.Debug.WriteLine($"[LoadImagesAsync] 批次追加完成, 当前 Images.Count={Images.Count}");
+                    ImagesChanged?.Invoke(this, EventArgs.Empty);
+                }
+                
                 index += (uint)batch.Count;
             }
-
-            var imageInfos = await System.Threading.Tasks.Task.Run(async () =>
-            {
-                var tasks = allFiles.Select(f => LoadImageInfoSafeAsync(f, cancellationToken));
-                var results = await Task.WhenAll(tasks);
-                return results.Where(r => r != null).Cast<ImageFileInfo>().ToList();
-            }, cancellationToken);
-
-            var groups = imageInfos
-                .GroupBy(img => ImageGroup.GetGroupName(img.ImageFile.Name))
-                .Select(g => new ImageGroup(g.Key, g))
-                .ToList();
-
-            foreach (var group in groups)
-            {
-                if (!cancellationToken.IsCancellationRequested)
-                {
-                    group.PrimaryImage.UpdateDisplaySize(ThumbnailSize);
-                    Images.Add(group.PrimaryImage);
-                }
-            }
-
-            System.Diagnostics.Debug.WriteLine($"[LoadImagesAsync] 加载完成, Images.Count={Images.Count}, Groups={groups.Count}");
-            ImagesChanged?.Invoke(this, EventArgs.Empty);
+            
+            System.Diagnostics.Debug.WriteLine($"[LoadImagesAsync] 全部加载完成, Images.Count={Images.Count}, 组数={processedGroups.Count}");
         }
         catch (OperationCanceledException)
         {
@@ -333,7 +400,7 @@ public partial class MainViewModel : ObservableRecipient
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"LoadImageInfo error: {ex}");
+            System.Diagnostics.Debug.WriteLine($"[LoadImageInfo] 失败: 文件={file.Name}, 错误={ex.Message}");
             return null;
         }
     }
@@ -412,42 +479,109 @@ public partial class MainViewModel : ObservableRecipient
 
             var result = folderNode.Folder.CreateFileQueryWithOptions(queryOptions);
             
-            var allFiles = new List<StorageFile>();
+            var fileNameMap = new Dictionary<string, List<StorageFile>>(StringComparer.OrdinalIgnoreCase);
+            var processedGroups = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            
+            const uint batchSize = 30;
             uint index = 0;
-            const uint batchSize = 500;
-
+            
+            System.Diagnostics.Debug.WriteLine($"[LoadImagesWithoutHistoryAsync] 开始分批加载, 批次大小={batchSize}");
+            
             while (!cancellationToken.IsCancellationRequested)
             {
                 var batch = await result.GetFilesAsync(index, batchSize);
                 if (batch.Count == 0)
                     break;
-                allFiles.AddRange(batch);
+                
+                var newGroupFiles = new List<StorageFile>();
+                
+                foreach (var file in batch)
+                {
+                    var groupName = ImageGroup.GetGroupName(file.Name);
+                    if (!fileNameMap.TryGetValue(groupName, out var list))
+                    {
+                        list = new List<StorageFile>();
+                        fileNameMap[groupName] = list;
+                    }
+                    list.Add(file);
+                    
+                    if (!processedGroups.Contains(groupName))
+                    {
+                        newGroupFiles.Add(file);
+                    }
+                }
+                
+                var newPrimaryFiles = new List<StorageFile>();
+                var newGroupMap = new Dictionary<string, List<StorageFile>>();
+                
+                foreach (var file in newGroupFiles)
+                {
+                    var groupName = ImageGroup.GetGroupName(file.Name);
+                    if (!processedGroups.Contains(groupName) && fileNameMap.TryGetValue(groupName, out var groupFiles))
+                    {
+                        var sortedFiles = groupFiles.OrderBy(f => ImageGroup.GetFormatPriority(f.FileType)).ToList();
+                        var primaryFile = sortedFiles.First();
+                        
+                        if (!newPrimaryFiles.Contains(primaryFile))
+                        {
+                            newPrimaryFiles.Add(primaryFile);
+                            newGroupMap[groupName] = sortedFiles;
+                            processedGroups.Add(groupName);
+                        }
+                    }
+                }
+                
+                if (newPrimaryFiles.Count > 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[LoadImagesWithoutHistoryAsync] 批次 {index/batchSize + 1}, 加载新主图片 {newPrimaryFiles.Count} 个");
+                    
+                    var newPrimaryInfos = await System.Threading.Tasks.Task.Run(async () =>
+                    {
+                        var tasks = newPrimaryFiles.Select(f => LoadImageInfoSafeAsync(f, cancellationToken));
+                        var results = await Task.WhenAll(tasks);
+                        return results.Where(r => r != null).Cast<ImageFileInfo>().ToList();
+                    }, cancellationToken);
+                    
+                    var newFinalGroups = new List<ImageGroup>();
+                    
+                    foreach (var primaryInfo in newPrimaryInfos)
+                    {
+                        if (cancellationToken.IsCancellationRequested)
+                            break;
+                        
+                        var groupName = ImageGroup.GetGroupName(primaryInfo.ImageFile.Name);
+                        if (newGroupMap.TryGetValue(groupName, out var allFilesInGroup))
+                        {
+                            var imageInfos = new List<ImageFileInfo> { primaryInfo };
+                            
+                            foreach (var file in allFilesInGroup.Where(f => f != primaryInfo.ImageFile))
+                            {
+                                var dummyInfo = new ImageFileInfo(0, 0, string.Empty, 0, file, file.DisplayName, file.DisplayType);
+                                imageInfos.Add(dummyInfo);
+                            }
+                            
+                            var finalGroup = new ImageGroup(groupName, imageInfos);
+                            newFinalGroups.Add(finalGroup);
+                        }
+                    }
+                    
+                    foreach (var group in newFinalGroups)
+                    {
+                        if (!cancellationToken.IsCancellationRequested)
+                        {
+                            group.PrimaryImage.UpdateDisplaySize(ThumbnailSize);
+                            Images.Add(group.PrimaryImage);
+                        }
+                    }
+                    
+                    System.Diagnostics.Debug.WriteLine($"[LoadImagesWithoutHistoryAsync] 批次追加完成, 当前 Images.Count={Images.Count}");
+                    ImagesChanged?.Invoke(this, EventArgs.Empty);
+                }
+                
                 index += (uint)batch.Count;
             }
-
-            var imageInfos = await System.Threading.Tasks.Task.Run(async () =>
-            {
-                var tasks = allFiles.Select(f => LoadImageInfoSafeAsync(f, cancellationToken));
-                var results = await Task.WhenAll(tasks);
-                return results.Where(r => r != null).Cast<ImageFileInfo>().ToList();
-            }, cancellationToken);
-
-            var groups = imageInfos
-                .GroupBy(img => ImageGroup.GetGroupName(img.ImageFile.Name))
-                .Select(g => new ImageGroup(g.Key, g))
-                .ToList();
-
-            foreach (var group in groups)
-            {
-                if (!cancellationToken.IsCancellationRequested)
-                {
-                    group.PrimaryImage.UpdateDisplaySize(ThumbnailSize);
-                    Images.Add(group.PrimaryImage);
-                }
-            }
-
-            System.Diagnostics.Debug.WriteLine($"[LoadImagesWithoutHistoryAsync] 加载完成, Images.Count={Images.Count}, Groups={groups.Count}");
-            ImagesChanged?.Invoke(this, EventArgs.Empty);
+            
+            System.Diagnostics.Debug.WriteLine($"[LoadImagesWithoutHistoryAsync] 全部加载完成, Images.Count={Images.Count}, 组数={processedGroups.Count}");
         }
         catch (OperationCanceledException)
         {

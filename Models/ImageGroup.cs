@@ -60,7 +60,7 @@ public class ImageGroup
             .First();
     }
 
-    private static int GetFormatPriority(string extension)
+    public static int GetFormatPriority(string extension)
     {
         var ext = extension.ToLowerInvariant();
         if (!ext.StartsWith("."))
