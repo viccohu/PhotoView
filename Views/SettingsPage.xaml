@@ -74,22 +74,25 @@
                     <!-- Performance -->
                     <TextBlock Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" Text="Performance" />
                     
-                    <toolkit:SettingsCard Description="Cache thumbnails for faster loading" Header="Thumbnail cache">
+                    <toolkit:SettingsCard Description="Adjust thumbnail loading performance" Header="Performance mode">
                         <toolkit:SettingsCard.HeaderIcon>
-                            <FontIcon Glyph="&#xE7B5;" />
+                            <FontIcon Glyph="&#xE9D9;" />
                         </toolkit:SettingsCard.HeaderIcon>
-                        <ToggleSwitch x:Name="CacheToggleSwitch" IsOn="True" />
+                        <ComboBox x:Name="PerformanceModeComboBox" SelectionChanged="PerformanceModeComboBox_SelectionChanged">
+                            <ComboBoxItem Content="Smart (auto-adjust based on CPU)" Tag="Smart" />
+                            <ComboBoxItem Content="Stable (4 concurrent)" Tag="Stable" />
+                        </ComboBox>
                     </toolkit:SettingsCard>
                     
-                    <toolkit:SettingsCard Description="Number of thumbnails to load at the same time" Header="Concurrent loaders">
+                    <toolkit:SettingsCard Description="Number of images to load per batch" Header="Batch size">
                         <toolkit:SettingsCard.HeaderIcon>
-                            <FontIcon Glyph="&#xE8A9;" />
+                            <FontIcon Glyph="&#xE8FD;" />
                         </toolkit:SettingsCard.HeaderIcon>
-                        <ComboBox x:Name="ConcurrencyComboBox">
-                            <ComboBoxItem Content="4" />
-                            <ComboBoxItem Content="8" IsSelected="True" />
-                            <ComboBoxItem Content="16" />
-                            <ComboBoxItem Content="32" />
+                        <ComboBox x:Name="BatchSizeComboBox" SelectionChanged="BatchSizeComboBox_SelectionChanged">
+                            <ComboBoxItem Content="10" Tag="10" />
+                            <ComboBoxItem Content="30" Tag="30" />
+                            <ComboBoxItem Content="50" Tag="50" />
+                            <ComboBoxItem Content="100" Tag="100" />
                         </ComboBox>
                     </toolkit:SettingsCard>
                     

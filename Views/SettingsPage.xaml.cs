@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 
+using PhotoView.Models;
 using PhotoView.ViewModels;
 
 namespace PhotoView.Views;
@@ -48,6 +49,38 @@ public sealed partial class SettingsPage : Page
         }
 
         lastNavigationSelectionMode = navigationLocation.SelectedIndex;
+
+        UpdateBatchSizeSelection();
+        UpdatePerformanceModeSelection();
+    }
+
+    private void UpdateBatchSizeSelection()
+    {
+        var batchSize = ViewModel.BatchSize;
+        for (int i = 0; i < BatchSizeComboBox.Items.Count; i++)
+        {
+            if (BatchSizeComboBox.Items[i] is ComboBoxItem item &&
+                int.TryParse(item.Tag?.ToString(), out var tagValue) &&
+                tagValue == batchSize)
+            {
+                BatchSizeComboBox.SelectedIndex = i;
+                break;
+            }
+        }
+    }
+
+    private void UpdatePerformanceModeSelection()
+    {
+        var performanceMode = ViewModel.PerformanceMode;
+        for (int i = 0; i < PerformanceModeComboBox.Items.Count; i++)
+        {
+            if (PerformanceModeComboBox.Items[i] is ComboBoxItem item &&
+                item.Tag?.ToString() == performanceMode.ToString())
+            {
+                PerformanceModeComboBox.SelectedIndex = i;
+                break;
+            }
+        }
     }
 
     private void themeMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -68,11 +101,30 @@ public sealed partial class SettingsPage : Page
     {
         if (navigationLocation.SelectedIndex != lastNavigationSelectionMode)
         {
-            var mode = navigationLocation.SelectedIndex == 0 
-                ? Microsoft.UI.Xaml.Controls.NavigationViewPaneDisplayMode.Top 
+            var mode = navigationLocation.SelectedIndex == 0
+                ? Microsoft.UI.Xaml.Controls.NavigationViewPaneDisplayMode.Top
                 : Microsoft.UI.Xaml.Controls.NavigationViewPaneDisplayMode.Left;
             ViewModel.SwitchNavigationModeCommand.Execute(mode);
             lastNavigationSelectionMode = navigationLocation.SelectedIndex;
+        }
+    }
+
+    private void BatchSizeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (BatchSizeComboBox.SelectedItem is ComboBoxItem item &&
+            int.TryParse(item.Tag?.ToString(), out var batchSize))
+        {
+            ViewModel.SetBatchSizeCommand.Execute(batchSize);
+        }
+    }
+
+    private void PerformanceModeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (PerformanceModeComboBox.SelectedItem is ComboBoxItem item &&
+            item.Tag?.ToString() is string tag &&
+            Enum.TryParse<PerformanceMode>(tag, out var mode))
+        {
+            ViewModel.SetPerformanceModeCommand.Execute(mode);
         }
     }
 }

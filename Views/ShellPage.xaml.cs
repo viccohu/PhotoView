@@ -58,6 +58,7 @@ public sealed partial class ShellPage : Page
     private async Task InitializeNavigationViewModeAsync()
     {
         var mode = await _settingsService.LoadNavigationViewModeAsync();
+        _ = await _settingsService.LoadBatchSizeAsync();
         
         // 在 UI 线程上更新
         DispatcherQueue.TryEnqueue(() =>

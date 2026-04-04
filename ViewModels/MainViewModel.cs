@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using PhotoView.Contracts.Services;
 using PhotoView.Models;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -11,6 +12,7 @@ namespace PhotoView.ViewModels;
 
 public partial class MainViewModel : ObservableRecipient
 {
+    private readonly ISettingsService _settingsService;
     private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         // 常见图片格式
@@ -53,6 +55,13 @@ public partial class MainViewModel : ObservableRecipient
         ".erf",      // Epson
         ".dcr",      // Kodak
         ".kdc"       // Kodak
+    };
+
+    private static readonly HashSet<string> RawExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".cr2", ".cr3", ".crw", ".nef", ".nrw", ".arw", ".sr2", ".raf",
+        ".orf", ".rw2", ".pef", ".dng", ".srw", ".raw", ".iiq", ".3fr",
+        ".mef", ".mos", ".x3f", ".erf", ".dcr", ".kdc"
     };
 
     private const uint PageSize = 100;
@@ -100,8 +109,9 @@ public partial class MainViewModel : ObservableRecipient
         ThumbnailSizeChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public MainViewModel()
+    public MainViewModel(ISettingsService settingsService)
     {
+        _settingsService = settingsService;
         _folderTree = new ObservableCollection<FolderNode>();
         _breadcrumbPath = new ObservableCollection<FolderNode>();
         _images = new ObservableCollection<ImageFileInfo>();
@@ -237,7 +247,7 @@ public partial class MainViewModel : ObservableRecipient
             var fileNameMap = new Dictionary<string, List<StorageFile>>(StringComparer.OrdinalIgnoreCase);
             var processedGroups = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             
-            const uint batchSize = 30;
+            var batchSize = (uint)_settingsService.BatchSize;
             uint index = 0;
             
             System.Diagnostics.Debug.WriteLine($"[LoadImagesAsync] 开始分批加载, 批次大小={batchSize}");
@@ -294,7 +304,7 @@ public partial class MainViewModel : ObservableRecipient
                     {
                         var tasks = newPrimaryFiles.Select(f => LoadImageInfoSafeAsync(f, cancellationToken));
                         var results = await Task.WhenAll(tasks);
-                        return results.Where(r => r != null).Cast<ImageFileInfo>().ToList();
+                        return results.ToList();
                     }, cancellationToken);
                     
                     var newFinalGroups = new List<ImageGroup>();
@@ -384,24 +394,71 @@ public partial class MainViewModel : ObservableRecipient
             file.DisplayType);
     }
 
-    private static async Task<ImageFileInfo?> LoadImageInfoSafeAsync(StorageFile file, CancellationToken cancellationToken)
+    private static async Task<ImageFileInfo> LoadImageInfoSafeAsync(StorageFile file, CancellationToken cancellationToken)
     {
         try
         {
-            var properties = await file.Properties.GetImagePropertiesAsync().AsTask(cancellationToken);
+            int width = 200;
+            int height = 200;
+            string title = string.Empty;
+            int rating = 0;
+            var fileExtension = Path.GetExtension(file.Name);
+            var isRaw = RawExtensions.Contains(fileExtension);
+
+            if (!isRaw)
+            {
+                try
+                {
+                    var properties = await file.Properties.GetImagePropertiesAsync().AsTask(cancellationToken);
+                    if (properties.Width > 0 && properties.Height > 0)
+                    {
+                        width = (int)properties.Width;
+                        height = (int)properties.Height;
+                    }
+                    title = properties.Title;
+                    rating = (int)properties.Rating;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[LoadImageInfo] GetImagePropertiesAsync 失败: 文件={file.Name}, 错误={ex.Message}");
+                }
+            }
+
+            if (width == 200 && height == 200)
+            {
+                try
+                {
+                    using var stream = await file.OpenReadAsync().AsTask(cancellationToken);
+                    var decoder = await Windows.Graphics.Imaging.BitmapDecoder.CreateAsync(stream);
+                    width = (int)decoder.PixelWidth;
+                    height = (int)decoder.PixelHeight;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[LoadImageInfo] BitmapDecoder 失败: 文件={file.Name}, 错误={ex.Message}");
+                }
+            }
+
             return new ImageFileInfo(
-                (int)properties.Width,
-                (int)properties.Height,
-                properties.Title,
-                (int)properties.Rating,
+                width,
+                height,
+                title,
+                rating,
                 file,
                 file.DisplayName,
                 file.DisplayType);
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[LoadImageInfo] 失败: 文件={file.Name}, 错误={ex.Message}");
-            return null;
+            System.Diagnostics.Debug.WriteLine($"[LoadImageInfo] 最终失败: 文件={file.Name}, 错误={ex.Message}");
+            return new ImageFileInfo(
+                200,
+                200,
+                string.Empty,
+                0,
+                file,
+                file.DisplayName,
+                file.DisplayType);
         }
     }
 
@@ -482,7 +539,7 @@ public partial class MainViewModel : ObservableRecipient
             var fileNameMap = new Dictionary<string, List<StorageFile>>(StringComparer.OrdinalIgnoreCase);
             var processedGroups = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             
-            const uint batchSize = 30;
+            var batchSize = (uint)_settingsService.BatchSize;
             uint index = 0;
             
             System.Diagnostics.Debug.WriteLine($"[LoadImagesWithoutHistoryAsync] 开始分批加载, 批次大小={batchSize}");
@@ -539,7 +596,7 @@ public partial class MainViewModel : ObservableRecipient
                     {
                         var tasks = newPrimaryFiles.Select(f => LoadImageInfoSafeAsync(f, cancellationToken));
                         var results = await Task.WhenAll(tasks);
-                        return results.Where(r => r != null).Cast<ImageFileInfo>().ToList();
+                        return results.ToList();
                     }, cancellationToken);
                     
                     var newFinalGroups = new List<ImageGroup>();

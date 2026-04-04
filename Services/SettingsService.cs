@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml.Controls;
 using PhotoView.Contracts.Services;
+using PhotoView.Models;
 
 namespace PhotoView.Services;
 
@@ -7,8 +8,12 @@ public class SettingsService : ISettingsService
 {
     private readonly ILocalSettingsService _localSettingsService;
     private NavigationViewPaneDisplayMode _navigationViewMode = NavigationViewPaneDisplayMode.Top;
+    private int _batchSize = 30;
+    private PerformanceMode _performanceMode = PerformanceMode.Smart;
 
     public event EventHandler<NavigationViewPaneDisplayMode>? NavigationViewModeChanged;
+    public event EventHandler<int>? BatchSizeChanged;
+    public event EventHandler<PerformanceMode>? PerformanceModeChanged;
 
     public NavigationViewPaneDisplayMode NavigationViewMode
     {
@@ -19,6 +24,32 @@ public class SettingsService : ISettingsService
             {
                 _navigationViewMode = value;
                 NavigationViewModeChanged?.Invoke(this, value);
+            }
+        }
+    }
+
+    public int BatchSize
+    {
+        get => _batchSize;
+        set
+        {
+            if (_batchSize != value)
+            {
+                _batchSize = value;
+                BatchSizeChanged?.Invoke(this, value);
+            }
+        }
+    }
+
+    public PerformanceMode PerformanceMode
+    {
+        get => _performanceMode;
+        set
+        {
+            if (_performanceMode != value)
+            {
+                _performanceMode = value;
+                PerformanceModeChanged?.Invoke(this, value);
             }
         }
     }
@@ -42,5 +73,37 @@ public class SettingsService : ISettingsService
             return result;
         }
         return NavigationViewPaneDisplayMode.Top;
+    }
+
+    public async Task SaveBatchSizeAsync(int batchSize)
+    {
+        await _localSettingsService.SaveSettingAsync("BatchSize", batchSize).ConfigureAwait(false);
+    }
+
+    public async Task<int> LoadBatchSizeAsync()
+    {
+        var batchSize = await _localSettingsService.ReadSettingAsync<int?>("BatchSize").ConfigureAwait(false);
+        if (batchSize.HasValue && batchSize.Value > 0)
+        {
+            _batchSize = batchSize.Value;
+            return batchSize.Value;
+        }
+        return 30;
+    }
+
+    public async Task SavePerformanceModeAsync(PerformanceMode mode)
+    {
+        await _localSettingsService.SaveSettingAsync("PerformanceMode", mode.ToString());
+    }
+
+    public async Task<PerformanceMode> LoadPerformanceModeAsync()
+    {
+        var mode = await _localSettingsService.ReadSettingAsync<string>("PerformanceMode");
+        if (mode != null && Enum.TryParse<PerformanceMode>(mode, out var result))
+        {
+            _performanceMode = result;
+            return result;
+        }
+        return PerformanceMode.Smart;
     }
 }

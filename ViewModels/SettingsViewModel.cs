@@ -9,6 +9,7 @@ using Microsoft.UI.Xaml.Controls;
 
 using PhotoView.Contracts.Services;
 using PhotoView.Helpers;
+using PhotoView.Models;
 
 using Windows.ApplicationModel;
 
@@ -46,12 +47,48 @@ public class SettingsViewModel : ObservableRecipient
         }
     }
 
+    public int BatchSize
+    {
+        get => _settingsService.BatchSize;
+        set
+        {
+            if (_settingsService.BatchSize != value)
+            {
+                _settingsService.BatchSize = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public PerformanceMode PerformanceMode
+    {
+        get => _settingsService.PerformanceMode;
+        set
+        {
+            if (_settingsService.PerformanceMode != value)
+            {
+                _settingsService.PerformanceMode = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public ICommand SwitchThemeCommand
     {
         get;
     }
 
     public ICommand SwitchNavigationModeCommand
+    {
+        get;
+    }
+
+    public ICommand SetBatchSizeCommand
+    {
+        get;
+    }
+
+    public ICommand SetPerformanceModeCommand
     {
         get;
     }
@@ -80,6 +117,26 @@ public class SettingsViewModel : ObservableRecipient
                 {
                     NavigationViewMode = param;
                     await _settingsService.SaveNavigationViewModeAsync(param);
+                }
+            });
+
+        SetBatchSizeCommand = new RelayCommand<int>(
+            async (param) =>
+            {
+                if (BatchSize != param)
+                {
+                    BatchSize = param;
+                    await _settingsService.SaveBatchSizeAsync(param);
+                }
+            });
+
+        SetPerformanceModeCommand = new RelayCommand<PerformanceMode>(
+            async (param) =>
+            {
+                if (PerformanceMode != param)
+                {
+                    PerformanceMode = param;
+                    await _settingsService.SavePerformanceModeAsync(param);
                 }
             });
     }

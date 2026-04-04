@@ -13,7 +13,28 @@ namespace PhotoView.Services;
 
 public class ThumbnailService : IThumbnailService
 {
-    private readonly SemaphoreSlim _decodeGate = new(4, 4);
+    private readonly ISettingsService _settingsService;
+    private SemaphoreSlim _decodeGate;
+
+    public ThumbnailService(ISettingsService settingsService)
+    {
+        _settingsService = settingsService;
+        _settingsService.PerformanceModeChanged += OnPerformanceModeChanged;
+        _decodeGate = new SemaphoreSlim(GetConcurrencyCount(), GetConcurrencyCount());
+    }
+
+    private int GetConcurrencyCount()
+    {
+        return _settingsService.PerformanceMode == PerformanceMode.Smart
+            ? Math.Max(4, Environment.ProcessorCount / 2)
+            : 4;
+    }
+
+    private void OnPerformanceModeChanged(object? sender, PerformanceMode mode)
+    {
+        var newCount = GetConcurrencyCount();
+        _decodeGate = new SemaphoreSlim(newCount, newCount);
+    }
 
     public async Task<ImageSource?> GetThumbnailAsync(StorageFile file, ThumbnailSize size, CancellationToken cancellationToken)
     {
