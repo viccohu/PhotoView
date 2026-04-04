@@ -515,6 +515,16 @@ public class ImageFileInfo : INotifyPropertyChanged
         OnPropertyChanged(nameof(AlternateFormatsText));
     }
 
+    public void RefreshGroupProperties()
+    {
+        OnPropertyChanged(nameof(Group));
+        OnPropertyChanged(nameof(IsPrimary));
+        OnPropertyChanged(nameof(AlternateFormats));
+        OnPropertyChanged(nameof(HasAlternateFormats));
+        OnPropertyChanged(nameof(AlternateFormatsText));
+        OnPropertyChanged(nameof(IsPendingDelete));
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)

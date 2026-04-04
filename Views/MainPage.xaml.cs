@@ -873,43 +873,37 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private async void DeleteMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not MenuFlyoutItem item || item.Tag is not string tag)
-            return;
-
-        var deleteType = tag switch
-        {
-            "Jpg" => DeleteType.Jpg,
-            "Raw" => DeleteType.Raw,
-            "All" => DeleteType.All,
-            _ => DeleteType.All
-        };
-
-        await ExecuteDeleteAsync(deleteType);
-    }
-
-    private async System.Threading.Tasks.Task ExecuteDeleteAsync(DeleteType deleteType)
+    private async void DeleteButton_Click(object sender, RoutedEventArgs e)
     {
         var pendingImages = ViewModel.GetPendingDeleteImages();
         if (pendingImages.Count == 0)
             return;
 
-        var filesToDelete = GetFilesToDelete(pendingImages, deleteType);
-        if (filesToDelete.Count == 0)
+        var allExtensions = new HashSet<string>();
+        foreach (var image in pendingImages)
         {
-            var emptyDialog = new ContentDialog
+            if (image.ImageFile != null)
             {
-                Title = "无可删除文件",
-                Content = "没有符合条件的文件需要删除。",
-                CloseButtonText = "确定",
-                XamlRoot = XamlRoot
-            };
-            await emptyDialog.ShowAsync();
-            return;
+                var ext = Path.GetExtension(image.ImageFile.Path).ToLowerInvariant();
+                allExtensions.Add(ext);
+            }
+            if (image.HasAlternateFormats && image.AlternateFormats != null)
+            {
+                foreach (var altImage in image.AlternateFormats)
+                {
+                    if (altImage.ImageFile != null)
+                    {
+                        var altExt = Path.GetExtension(altImage.ImageFile.Path).ToLowerInvariant();
+                        allExtensions.Add(altExt);
+                    }
+                }
+            }
         }
 
-        var dialog = new DeleteConfirmDialog(deleteType, filesToDelete.Count)
+        if (allExtensions.Count == 0)
+            return;
+
+        var dialog = new DeleteConfirmDialog(allExtensions.ToList(), pendingImages.Count)
         {
             XamlRoot = XamlRoot
         };
@@ -918,6 +912,20 @@ public sealed partial class MainPage : Page
 
         if (result == ContentDialogResult.Primary)
         {
+            var filesToDelete = GetFilesToDelete(pendingImages, dialog.SelectedExtensions);
+            if (filesToDelete.Count == 0)
+            {
+                var emptyDialog = new ContentDialog
+                {
+                    Title = "无可删除文件",
+                    Content = "没有符合条件的文件需要删除。",
+                    CloseButtonText = "确定",
+                    XamlRoot = XamlRoot
+                };
+                await emptyDialog.ShowAsync();
+                return;
+            }
+
             dialog.StartProgress();
             
             var deletedImages = new List<ImageFileInfo>();
@@ -930,7 +938,7 @@ public sealed partial class MainPage : Page
                 {
                     await DeleteFileToRecycleBinAsync(file);
                     
-                    var imageToDelete = pendingImages.FirstOrDefault(img => img.ImageFile.Path == file.Path);
+                    var imageToDelete = pendingImages.FirstOrDefault(img => img.ImageFile?.Path == file.Path);
                     if (imageToDelete != null && !deletedImages.Contains(imageToDelete))
                     {
                         deletedImages.Add(imageToDelete);
@@ -957,48 +965,32 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private List<StorageFile> GetFilesToDelete(List<ImageFileInfo> pendingImages, DeleteType deleteType)
+    private List<StorageFile> GetFilesToDelete(List<ImageFileInfo> pendingImages, List<string> selectedExtensions)
     {
         var files = new List<StorageFile>();
 
         foreach (var image in pendingImages)
         {
-            if (image.ImageFile == null)
-                continue;
-
-            var extension = Path.GetExtension(image.ImageFile.Path);
-            var shouldDelete = deleteType switch
+            if (image.ImageFile != null)
             {
-                DeleteType.Jpg => MainViewModel.IsJpgFile(extension),
-                DeleteType.Raw => MainViewModel.IsRawFile(extension),
-                DeleteType.All => true,
-                _ => false
-            };
-
-            if (shouldDelete)
-            {
-                files.Add(image.ImageFile);
+                var extension = Path.GetExtension(image.ImageFile.Path).ToLowerInvariant();
+                if (selectedExtensions.Contains(extension))
+                {
+                    files.Add(image.ImageFile);
+                }
             }
 
             if (image.HasAlternateFormats && image.AlternateFormats != null)
             {
                 foreach (var altImage in image.AlternateFormats)
                 {
-                    if (altImage.ImageFile == null)
-                        continue;
-
-                    var altExtension = Path.GetExtension(altImage.ImageFile.Path);
-                    var shouldDeleteAlt = deleteType switch
+                    if (altImage.ImageFile != null)
                     {
-                        DeleteType.Jpg => MainViewModel.IsJpgFile(altExtension),
-                        DeleteType.Raw => MainViewModel.IsRawFile(altExtension),
-                        DeleteType.All => true,
-                        _ => false
-                    };
-
-                    if (shouldDeleteAlt)
-                    {
-                        files.Add(altImage.ImageFile);
+                        var altExtension = Path.GetExtension(altImage.ImageFile.Path).ToLowerInvariant();
+                        if (selectedExtensions.Contains(altExtension))
+                        {
+                            files.Add(altImage.ImageFile);
+                        }
                     }
                 }
             }
@@ -1053,9 +1045,56 @@ public sealed partial class MainPage : Page
         var firstVisibleIndex = GetFirstVisibleItemIndex();
         var selectedItem = ImageGridView.SelectedItem as ImageFileInfo;
 
-        foreach (var image in deletedImages)
+        var groupsToProcess = new Dictionary<ImageGroup, List<ImageFileInfo>>();
+        var singleImagesToRemove = new List<ImageFileInfo>();
+
+        foreach (var deletedImage in deletedImages)
+        {
+            if (deletedImage.Group != null)
+            {
+                if (!groupsToProcess.ContainsKey(deletedImage.Group))
+                {
+                    groupsToProcess[deletedImage.Group] = new List<ImageFileInfo>();
+                }
+                groupsToProcess[deletedImage.Group].Add(deletedImage);
+            }
+            else
+            {
+                singleImagesToRemove.Add(deletedImage);
+            }
+        }
+
+        foreach (var image in singleImagesToRemove)
         {
             ViewModel.Images.Remove(image);
+        }
+
+        foreach (var group in groupsToProcess.Keys)
+        {
+            var deletedInGroup = groupsToProcess[group];
+            var oldPrimary = group.PrimaryImage;
+            var remainingImages = group.Images.Where(img => !deletedInGroup.Contains(img)).ToList();
+
+            if (remainingImages.Count > 0)
+            {
+                var newGroup = new ImageGroup(group.GroupName, remainingImages);
+                var newPrimary = newGroup.PrimaryImage;
+                var index = ViewModel.Images.IndexOf(oldPrimary);
+                if (index >= 0)
+                {
+                    newPrimary.Rating = oldPrimary.Rating;
+                    newPrimary.RatingSource = oldPrimary.RatingSource;
+                    newPrimary.IsRatingLoading = false;
+                    newPrimary.IsPendingDelete = false;
+                    
+                    ViewModel.Images[index] = newPrimary;
+                    newPrimary.RefreshGroupProperties();
+                }
+            }
+            else
+            {
+                ViewModel.Images.Remove(oldPrimary);
+            }
         }
 
         ViewModel.ClearAllPendingDelete();
@@ -1130,5 +1169,10 @@ public sealed partial class MainPage : Page
         }
 
         return null;
+    }
+
+    private void ClearAllPendingDelete_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.ClearAllPendingDelete();
     }
 }

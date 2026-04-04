@@ -1,42 +1,131 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace PhotoView.Dialogs;
 
-public enum DeleteType
-{
-    Jpg,
-    Raw,
-    All
-}
-
 public sealed partial class DeleteConfirmDialog : ContentDialog
 {
-    public DeleteType DeleteType { get; }
-    public int FileCount { get; }
+    private readonly Dictionary<string, ToggleButton> _extensionButtons = new();
+    private ToggleButton? _allButton;
+
+    public List<string> SelectedExtensions { get; private set; } = new();
     public bool IsDeleting { get; private set; }
 
-    public DeleteConfirmDialog(DeleteType deleteType, int fileCount)
+    public DeleteConfirmDialog(List<string> extensions, int totalFileCount)
     {
-        DeleteType = deleteType;
-        FileCount = fileCount;
         InitializeComponent();
-        
-        UpdateContent();
+        InitializeToggleButtons(extensions);
+        UpdateContent(totalFileCount);
     }
 
-    private void UpdateContent()
+    private void InitializeToggleButtons(List<string> extensions)
     {
-        var typeText = DeleteType switch
-        {
-            DeleteType.Jpg => "JPG 文件",
-            DeleteType.Raw => "RAW 文件",
-            DeleteType.All => "所有标记文件",
-            _ => "文件"
-        };
+        ToggleButtonsPanel.Children.Clear();
+        _extensionButtons.Clear();
 
-        Title = $"确认删除 {typeText}";
-        ContentText.Text = $"将删除 {FileCount} 个文件到回收站，此操作不可撤销。";
+        foreach (var ext in extensions.OrderBy(e => e))
+        {
+            var button = new ToggleButton
+            {
+                Content = ext.ToLowerInvariant(),
+                IsChecked = false,
+                Tag = ext
+            };
+            button.Click += ExtensionButton_Click;
+            ToggleButtonsPanel.Children.Add(button);
+            _extensionButtons[ext] = button;
+        }
+
+        if (extensions.Count > 0)
+        {
+            var separator = new Border
+            {
+                Width = 1,
+                Height = 32,
+                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Gray),
+                Opacity = 0.3,
+                Margin = new Thickness(8, 0, 8, 0)
+            };
+            ToggleButtonsPanel.Children.Add(separator);
+
+            _allButton = new ToggleButton
+            {
+                Content = "全部",
+                IsChecked = false
+            };
+            _allButton.Click += AllButton_Click;
+            ToggleButtonsPanel.Children.Add(_allButton);
+        }
+
+        UpdateSelectedExtensions();
+    }
+
+    private void ExtensionButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is ToggleButton button)
+        {
+            UpdateAllButtonState();
+            UpdateSelectedExtensions();
+            UpdateFileCount();
+        }
+    }
+
+    private void AllButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_allButton != null)
+        {
+            bool isChecked = _allButton.IsChecked == true;
+            foreach (var button in _extensionButtons.Values)
+            {
+                button.IsChecked = isChecked;
+            }
+            UpdateSelectedExtensions();
+            UpdateFileCount();
+        }
+    }
+
+    private void UpdateAllButtonState()
+    {
+        if (_allButton != null && _extensionButtons.Count > 0)
+        {
+            bool allChecked = _extensionButtons.Values.All(b => b.IsChecked == true);
+            bool noneChecked = _extensionButtons.Values.All(b => b.IsChecked == false);
+
+            if (allChecked)
+            {
+                _allButton.IsChecked = true;
+            }
+            else if (noneChecked)
+            {
+                _allButton.IsChecked = false;
+            }
+            else
+            {
+                _allButton.IsChecked = null;
+            }
+        }
+    }
+
+    private void UpdateSelectedExtensions()
+    {
+        SelectedExtensions = _extensionButtons
+            .Where(kvp => kvp.Value.IsChecked == true)
+            .Select(kvp => kvp.Key)
+            .ToList();
+        IsPrimaryButtonEnabled = SelectedExtensions.Count > 0;
+    }
+
+    private void UpdateContent(int totalFileCount)
+    {
+        Title = "确认删除";
+        ContentText.Text = $"共 {totalFileCount} 个文件标记为删除，请选择要删除的文件类型。";
+    }
+
+    private void UpdateFileCount()
+    {
     }
 
     public void StartProgress()
