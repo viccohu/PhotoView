@@ -56,6 +56,7 @@ public sealed partial class SettingsPage : Page
         UpdateBatchSizeSelection();
         UpdatePerformanceModeSelection();
         UpdateThumbnailSizeSelection();
+        UpdateRememberLastFolderSelection();
         
         _isInitialized = true;
     }
@@ -101,6 +102,11 @@ public sealed partial class SettingsPage : Page
                 break;
             }
         }
+    }
+
+    private void UpdateRememberLastFolderSelection()
+    {
+        RememberLastFolderToggleSwitch.IsOn = ViewModel.RememberLastFolder;
     }
 
     private void themeMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -171,5 +177,13 @@ public sealed partial class SettingsPage : Page
         {
             ViewModel.SetThumbnailSizeCommand.Execute(size);
         }
+    }
+
+    private void RememberLastFolderToggleSwitch_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (!_isInitialized)
+            return;
+
+        ViewModel.SetRememberLastFolderCommand.Execute(RememberLastFolderToggleSwitch.IsOn);
     }
 }

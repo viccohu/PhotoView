@@ -86,6 +86,19 @@ public class SettingsViewModel : ObservableRecipient
         }
     }
 
+    public bool RememberLastFolder
+    {
+        get => _settingsService.RememberLastFolder;
+        set
+        {
+            if (_settingsService.RememberLastFolder != value)
+            {
+                _settingsService.RememberLastFolder = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public ICommand SwitchThemeCommand
     {
         get;
@@ -107,6 +120,11 @@ public class SettingsViewModel : ObservableRecipient
     }
 
     public ICommand SetThumbnailSizeCommand
+    {
+        get;
+    }
+
+    public ICommand SetRememberLastFolderCommand
     {
         get;
     }
@@ -165,6 +183,16 @@ public class SettingsViewModel : ObservableRecipient
                 {
                     ThumbnailSize = param;
                     await _settingsService.SaveThumbnailSizeAsync(param);
+                }
+            });
+
+        SetRememberLastFolderCommand = new RelayCommand<bool>(
+            async (param) =>
+            {
+                if (RememberLastFolder != param)
+                {
+                    RememberLastFolder = param;
+                    await _settingsService.SaveRememberLastFolderAsync(param);
                 }
             });
     }

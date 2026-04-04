@@ -11,11 +11,14 @@ public class SettingsService : ISettingsService
     private int _batchSize = 30;
     private PerformanceMode _performanceMode = PerformanceMode.Smart;
     private ThumbnailSize _thumbnailSize = ThumbnailSize.Medium;
+    private bool _rememberLastFolder = false;
+    private string _lastFolderPath = string.Empty;
 
     public event EventHandler<NavigationViewPaneDisplayMode>? NavigationViewModeChanged;
     public event EventHandler<int>? BatchSizeChanged;
     public event EventHandler<PerformanceMode>? PerformanceModeChanged;
     public event EventHandler<ThumbnailSize>? ThumbnailSizeChanged;
+    public event EventHandler<bool>? RememberLastFolderChanged;
 
     public NavigationViewPaneDisplayMode NavigationViewMode
     {
@@ -65,6 +68,31 @@ public class SettingsService : ISettingsService
             {
                 _thumbnailSize = value;
                 ThumbnailSizeChanged?.Invoke(this, value);
+            }
+        }
+    }
+
+    public bool RememberLastFolder
+    {
+        get => _rememberLastFolder;
+        set
+        {
+            if (_rememberLastFolder != value)
+            {
+                _rememberLastFolder = value;
+                RememberLastFolderChanged?.Invoke(this, value);
+            }
+        }
+    }
+
+    public string LastFolderPath
+    {
+        get => _lastFolderPath;
+        set
+        {
+            if (_lastFolderPath != value)
+            {
+                _lastFolderPath = value;
             }
         }
     }
@@ -138,11 +166,45 @@ public class SettingsService : ISettingsService
         return ThumbnailSize.Medium;
     }
 
+    public async Task SaveRememberLastFolderAsync(bool remember)
+    {
+        await _localSettingsService.SaveSettingAsync("RememberLastFolder", remember);
+    }
+
+    public async Task<bool> LoadRememberLastFolderAsync()
+    {
+        var remember = await _localSettingsService.ReadSettingAsync<bool?>("RememberLastFolder");
+        if (remember.HasValue)
+        {
+            _rememberLastFolder = remember.Value;
+            return remember.Value;
+        }
+        return false;
+    }
+
+    public async Task SaveLastFolderPathAsync(string path)
+    {
+        await _localSettingsService.SaveSettingAsync("LastFolderPath", path);
+    }
+
+    public async Task<string> LoadLastFolderPathAsync()
+    {
+        var path = await _localSettingsService.ReadSettingAsync<string>("LastFolderPath");
+        if (path != null)
+        {
+            _lastFolderPath = path;
+            return path;
+        }
+        return string.Empty;
+    }
+
     public async Task InitializeAsync()
     {
         await LoadNavigationViewModeAsync();
         await LoadBatchSizeAsync();
         await LoadPerformanceModeAsync();
         await LoadThumbnailSizeAsync();
+        await LoadRememberLastFolderAsync();
+        await LoadLastFolderPathAsync();
     }
 }

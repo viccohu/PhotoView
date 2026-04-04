@@ -99,6 +99,13 @@
                     <!-- Display -->
                     <TextBlock Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" Text="Display" />
                     
+                    <toolkit:SettingsCard Description="Remember the last opened folder" Header="Remember last folder">
+                        <toolkit:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE838;" />
+                        </toolkit:SettingsCard.HeaderIcon>
+                        <ToggleSwitch x:Name="RememberLastFolderToggleSwitch" Toggled="RememberLastFolderToggleSwitch_Toggled" />
+                    </toolkit:SettingsCard>
+                    
                     <toolkit:SettingsCard Description="Set the default thumbnail display size" Header="Default thumbnail size">
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE7B8;" />

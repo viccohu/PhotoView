@@ -79,18 +79,24 @@
             ItemsSource="{x:Bind ViewModel.FolderTree}"
             Expanding="FolderTreeView_Expanding"
             ItemInvoked="FolderTreeView_ItemInvoked"
-            Margin="-20,20,4,4">
+            Margin="4,20,4,4">
 
             <TreeView.ItemTemplate>
                 <DataTemplate x:DataType="models:FolderNode">
                     <TreeViewItem
                         ItemsSource="{x:Bind Children}"
-                        HasUnrealizedChildren="{x:Bind HasExpandableChildren, Mode=OneWay}">
-                        <Grid>
+                        HasUnrealizedChildren="{x:Bind HasExpandableChildren, Mode=OneWay}"
+                        RightTapped="TreeViewItem_RightTapped">
+                        <Grid Tag="{x:Bind}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
+                            <FlyoutBase.AttachedFlyout>
+                                <MenuFlyout Placement="Bottom">
+                                    <MenuFlyoutItem Text="在资源管理器中打开" Icon="OpenFile" Click="OpenFolderInExplorer_Click"/>
+                                </MenuFlyout>
+                            </FlyoutBase.AttachedFlyout>
                             <FontIcon
                                 Grid.Column="0"
                                 Glyph="{Binding Converter={StaticResource NodeTypeToIconConverter}}"
@@ -142,7 +148,7 @@
                         <FontIcon Glyph="&#xeca5;" FontFamily="{StaticResource SymbolThemeFontFamily}"/>
                     </DropDownButton.Content>
                     <DropDownButton.Flyout>
-                        <MenuFlyout>
+                        <MenuFlyout Placement="Bottom">
                             <MenuFlyoutItem Text="Small" Tag="Small" Click="ThumbnailSize_Click"/>
                             <MenuFlyoutItem Text="Medium" Tag="Medium" Click="ThumbnailSize_Click"/>
                             <MenuFlyoutItem Text="Large" Tag="Large" Click="ThumbnailSize_Click"/>
@@ -151,7 +157,7 @@
                 </DropDownButton>
                 <Button x:Name="EditButton" Content="Edit">
                     <Button.Flyout>
-                        <MenuFlyout>
+                        <MenuFlyout Placement="Bottom">
                             <MenuFlyoutItem Text="Share" Icon="Share"/>
                             <MenuFlyoutItem Text="Copy" Icon="Copy"/>
                             <MenuFlyoutItem Text="Delete" Icon="Delete"/>
@@ -232,13 +238,8 @@
                         Tag="{x:Bind}"
                         RightTapped="ImageItem_RightTapped">
                         <FlyoutBase.AttachedFlyout>
-                            <MenuFlyout>
-                                <MenuFlyoutItem Text="Share" Icon="Share" Click="Share_Click"/>
-                                <MenuFlyoutItem Text="Save" Icon="Save" Click="Save_Click"/>
-                                <MenuFlyoutItem Text="Delete" Icon="Delete" Click="Delete_Click"/>
-                                <MenuFlyoutSeparator/>
-                                <MenuFlyoutItem Text="Resize"/>
-                                <MenuFlyoutItem Text="Move"/>
+                            <MenuFlyout Placement="Bottom">
+                                <MenuFlyoutItem Text="在资源管理器中打开" Icon="OpenFile" Click="OpenImageInExplorer_Click"/>
                             </MenuFlyout>
                         </FlyoutBase.AttachedFlyout>
                         <Border

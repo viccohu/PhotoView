@@ -25,10 +25,21 @@ public interface ISettingsService
         set;
     }
 
+    bool RememberLastFolder {
+        get;
+        set;
+    }
+
+    string LastFolderPath {
+        get;
+        set;
+    }
+
     event EventHandler<NavigationViewPaneDisplayMode> NavigationViewModeChanged;
     event EventHandler<int> BatchSizeChanged;
     event EventHandler<PerformanceMode>? PerformanceModeChanged;
     event EventHandler<ThumbnailSize>? ThumbnailSizeChanged;
+    event EventHandler<bool>? RememberLastFolderChanged;
 
     Task SaveNavigationViewModeAsync(NavigationViewPaneDisplayMode mode);
     Task<NavigationViewPaneDisplayMode> LoadNavigationViewModeAsync();
@@ -38,5 +49,10 @@ public interface ISettingsService
     Task<PerformanceMode> LoadPerformanceModeAsync();
     Task SaveThumbnailSizeAsync(ThumbnailSize size);
     Task<ThumbnailSize> LoadThumbnailSizeAsync();
+    Task SaveRememberLastFolderAsync(bool remember);
+    Task<bool> LoadRememberLastFolderAsync();
+    Task SaveLastFolderPathAsync(string path);
+    Task<string> LoadLastFolderPathAsync();
+
     Task InitializeAsync();
 }

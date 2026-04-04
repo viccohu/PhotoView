@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
+using PhotoView.Contracts.Services;
 using PhotoView.Helpers;
 using PhotoView.Models;
 using PhotoView.ViewModels;
@@ -42,9 +43,26 @@ public sealed partial class MainPage : Page
         Unloaded += MainPage_Unloaded;
     }
 
-    private void MainPage_Loaded(object sender, RoutedEventArgs e)
+    private async void MainPage_Loaded(object sender, RoutedEventArgs e)
     {
         _isUnloaded = false;
+
+        var settingsService = App.GetService<ISettingsService>();
+        if (settingsService.RememberLastFolder && !string.IsNullOrEmpty(settingsService.LastFolderPath))
+        {
+            await System.Threading.Tasks.Task.Delay(500);
+            if (_isUnloaded || AppLifetime.IsShuttingDown)
+                return;
+
+            var targetNode = ViewModel.FindNodeByPath(settingsService.LastFolderPath);
+            if (targetNode != null)
+            {
+                await ExpandTreeViewPathAsync(targetNode);
+                if (_isUnloaded || AppLifetime.IsShuttingDown)
+                    return;
+                ThrottleLoadImages(targetNode);
+            }
+        }
     }
 
     private void MainPage_Unloaded(object sender, RoutedEventArgs e)
@@ -361,25 +379,80 @@ public sealed partial class MainPage : Page
         if (sender is not FrameworkElement element)
             return;
 
-        if (element.Tag is ImageFileInfo imageInfo && !ImageGridView.SelectedItems.Contains(imageInfo))
+        if (element.Tag is ImageFileInfo imageInfo)
         {
-            ImageGridView.SelectedItem = imageInfo;
+            _rightClickedImageInfo = imageInfo;
+            if (!ImageGridView.SelectedItems.Contains(imageInfo))
+            {
+                ImageGridView.SelectedItem = imageInfo;
+            }
         }
 
         FlyoutBase.ShowAttachedFlyout(element);
         e.Handled = true;
     }
 
-    private void Share_Click(object sender, RoutedEventArgs e)
+    private void TreeViewItem_RightTapped(object sender, RightTappedRoutedEventArgs e)
     {
+        if (sender is not TreeViewItem treeViewItem)
+            return;
+
+        if (treeViewItem.Content is Grid grid && grid.Tag is FolderNode node)
+        {
+            _rightClickedFolderNode = node;
+            FlyoutBase.ShowAttachedFlyout(grid);
+        }
+        e.Handled = true;
     }
 
-    private void Save_Click(object sender, RoutedEventArgs e)
+    private FolderNode? _rightClickedFolderNode;
+
+    private void OpenFolderInExplorer_Click(object sender, RoutedEventArgs e)
     {
+        if (_rightClickedFolderNode == null || string.IsNullOrEmpty(_rightClickedFolderNode.FullPath))
+        {
+            return;
+        }
+
+        try
+        {
+            var processInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = _rightClickedFolderNode.FullPath,
+                UseShellExecute = true
+            };
+            System.Diagnostics.Process.Start(processInfo);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"OpenFolderInExplorer_Click error: {ex}");
+        }
     }
 
-    private void Delete_Click(object sender, RoutedEventArgs e)
+    private ImageFileInfo? _rightClickedImageInfo;
+
+    private void OpenImageInExplorer_Click(object sender, RoutedEventArgs e)
     {
+        if (_rightClickedImageInfo == null || _rightClickedImageInfo.ImageFile == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var processInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = $"/select,\"{_rightClickedImageInfo.ImageFile.Path}\"",
+                UseShellExecute = true
+            };
+            System.Diagnostics.Process.Start(processInfo);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"OpenImageInExplorer_Click error: {ex}");
+        }
     }
 
     private async void BackButton_Click(object sender, RoutedEventArgs e)

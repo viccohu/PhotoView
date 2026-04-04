@@ -351,6 +351,11 @@ public partial class MainViewModel : ObservableRecipient
             }
             
             System.Diagnostics.Debug.WriteLine($"[LoadImagesAsync] 全部加载完成, Images.Count={Images.Count}, 组数={processedGroups.Count}");
+
+            if (_settingsService.RememberLastFolder && !string.IsNullOrEmpty(folderNode.FullPath))
+            {
+                await _settingsService.SaveLastFolderPathAsync(folderNode.FullPath);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -359,6 +364,37 @@ public partial class MainViewModel : ObservableRecipient
         {
             System.Diagnostics.Debug.WriteLine($"LoadImagesAsync error: {ex}");
         }
+    }
+
+    public FolderNode? FindNodeByPath(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return null;
+
+        foreach (var rootNode in FolderTree)
+        {
+            var found = FindNodeByPathRecursive(rootNode, path);
+            if (found != null)
+                return found;
+        }
+        return null;
+    }
+
+    private FolderNode? FindNodeByPathRecursive(FolderNode node, string targetPath)
+    {
+        if (!string.IsNullOrEmpty(node.FullPath) && 
+            string.Equals(node.FullPath, targetPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return node;
+        }
+
+        foreach (var child in node.Children)
+        {
+            var found = FindNodeByPathRecursive(child, targetPath);
+            if (found != null)
+                return found;
+        }
+        return null;
     }
 
     private void UpdateBreadcrumbPath(FolderNode folderNode)
