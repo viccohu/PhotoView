@@ -112,6 +112,7 @@ public partial class MainViewModel : ObservableRecipient
     public MainViewModel(ISettingsService settingsService)
     {
         _settingsService = settingsService;
+        _thumbnailSize = _settingsService.ThumbnailSize;
         _folderTree = new ObservableCollection<FolderNode>();
         _breadcrumbPath = new ObservableCollection<FolderNode>();
         _images = new ObservableCollection<ImageFileInfo>();
@@ -226,6 +227,9 @@ public partial class MainViewModel : ObservableRecipient
         SelectedFolder = folderNode;
         UpdateBreadcrumbPath(folderNode);
         OnPropertyChanged(nameof(CanGoUp));
+
+        // 加载目录前确认当前设置的缩略图尺寸
+        ThumbnailSize = _settingsService.ThumbnailSize;
 
         Images.Clear();
         ImagesChanged?.Invoke(this, EventArgs.Empty);
@@ -518,6 +522,9 @@ public partial class MainViewModel : ObservableRecipient
         SelectedFolder = folderNode;
         UpdateBreadcrumbPath(folderNode);
         OnPropertyChanged(nameof(CanGoUp));
+
+        // 加载目录前确认当前设置的缩略图尺寸
+        ThumbnailSize = _settingsService.ThumbnailSize;
 
         Images.Clear();
         ImagesChanged?.Invoke(this, EventArgs.Empty);

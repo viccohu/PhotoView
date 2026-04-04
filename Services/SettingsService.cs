@@ -10,10 +10,12 @@ public class SettingsService : ISettingsService
     private NavigationViewPaneDisplayMode _navigationViewMode = NavigationViewPaneDisplayMode.Top;
     private int _batchSize = 30;
     private PerformanceMode _performanceMode = PerformanceMode.Smart;
+    private ThumbnailSize _thumbnailSize = ThumbnailSize.Medium;
 
     public event EventHandler<NavigationViewPaneDisplayMode>? NavigationViewModeChanged;
     public event EventHandler<int>? BatchSizeChanged;
     public event EventHandler<PerformanceMode>? PerformanceModeChanged;
+    public event EventHandler<ThumbnailSize>? ThumbnailSizeChanged;
 
     public NavigationViewPaneDisplayMode NavigationViewMode
     {
@@ -50,6 +52,19 @@ public class SettingsService : ISettingsService
             {
                 _performanceMode = value;
                 PerformanceModeChanged?.Invoke(this, value);
+            }
+        }
+    }
+
+    public ThumbnailSize ThumbnailSize
+    {
+        get => _thumbnailSize;
+        set
+        {
+            if (_thumbnailSize != value)
+            {
+                _thumbnailSize = value;
+                ThumbnailSizeChanged?.Invoke(this, value);
             }
         }
     }
@@ -105,5 +120,29 @@ public class SettingsService : ISettingsService
             return result;
         }
         return PerformanceMode.Smart;
+    }
+
+    public async Task SaveThumbnailSizeAsync(ThumbnailSize size)
+    {
+        await _localSettingsService.SaveSettingAsync("ThumbnailSize", size.ToString());
+    }
+
+    public async Task<ThumbnailSize> LoadThumbnailSizeAsync()
+    {
+        var size = await _localSettingsService.ReadSettingAsync<string>("ThumbnailSize");
+        if (size != null && Enum.TryParse<ThumbnailSize>(size, out var result))
+        {
+            _thumbnailSize = result;
+            return result;
+        }
+        return ThumbnailSize.Medium;
+    }
+
+    public async Task InitializeAsync()
+    {
+        await LoadNavigationViewModeAsync();
+        await LoadBatchSizeAsync();
+        await LoadPerformanceModeAsync();
+        await LoadThumbnailSizeAsync();
     }
 }

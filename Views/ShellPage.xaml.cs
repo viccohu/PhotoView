@@ -60,6 +60,7 @@ public sealed partial class ShellPage : Page
         var mode = await _settingsService.LoadNavigationViewModeAsync();
         _ = await _settingsService.LoadBatchSizeAsync();
         _ = await _settingsService.LoadPerformanceModeAsync();
+        _ = await _settingsService.LoadThumbnailSizeAsync();
         
         // 在 UI 线程上更新
         DispatcherQueue.TryEnqueue(() =>

@@ -73,6 +73,19 @@ public class SettingsViewModel : ObservableRecipient
         }
     }
 
+    public ThumbnailSize ThumbnailSize
+    {
+        get => _settingsService.ThumbnailSize;
+        set
+        {
+            if (_settingsService.ThumbnailSize != value)
+            {
+                _settingsService.ThumbnailSize = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public ICommand SwitchThemeCommand
     {
         get;
@@ -89,6 +102,11 @@ public class SettingsViewModel : ObservableRecipient
     }
 
     public ICommand SetPerformanceModeCommand
+    {
+        get;
+    }
+
+    public ICommand SetThumbnailSizeCommand
     {
         get;
     }
@@ -137,6 +155,16 @@ public class SettingsViewModel : ObservableRecipient
                 {
                     PerformanceMode = param;
                     await _settingsService.SavePerformanceModeAsync(param);
+                }
+            });
+
+        SetThumbnailSizeCommand = new RelayCommand<ThumbnailSize>(
+            async (param) =>
+            {
+                if (ThumbnailSize != param)
+                {
+                    ThumbnailSize = param;
+                    await _settingsService.SaveThumbnailSizeAsync(param);
                 }
             });
     }

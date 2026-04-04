@@ -103,10 +103,10 @@
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE7B8;" />
                         </toolkit:SettingsCard.HeaderIcon>
-                        <ComboBox x:Name="ThumbnailSizeComboBox">
-                            <ComboBoxItem Content="Small" />
-                            <ComboBoxItem Content="Medium" IsSelected="True" />
-                            <ComboBoxItem Content="Large" />
+                        <ComboBox x:Name="ThumbnailSizeComboBox" SelectionChanged="ThumbnailSizeComboBox_SelectionChanged">
+                            <ComboBoxItem Content="Small" Tag="Small" />
+                            <ComboBoxItem Content="Medium" Tag="Medium" />
+                            <ComboBoxItem Content="Large" Tag="Large" />
                         </ComboBox>
                     </toolkit:SettingsCard>
                     

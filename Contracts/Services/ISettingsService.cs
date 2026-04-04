@@ -20,9 +20,15 @@ public interface ISettingsService
         set;
     }
 
+    ThumbnailSize ThumbnailSize {
+        get;
+        set;
+    }
+
     event EventHandler<NavigationViewPaneDisplayMode> NavigationViewModeChanged;
     event EventHandler<int> BatchSizeChanged;
     event EventHandler<PerformanceMode>? PerformanceModeChanged;
+    event EventHandler<ThumbnailSize>? ThumbnailSizeChanged;
 
     Task SaveNavigationViewModeAsync(NavigationViewPaneDisplayMode mode);
     Task<NavigationViewPaneDisplayMode> LoadNavigationViewModeAsync();
@@ -30,4 +36,7 @@ public interface ISettingsService
     Task<int> LoadBatchSizeAsync();
     Task SavePerformanceModeAsync(PerformanceMode mode);
     Task<PerformanceMode> LoadPerformanceModeAsync();
+    Task SaveThumbnailSizeAsync(ThumbnailSize size);
+    Task<ThumbnailSize> LoadThumbnailSizeAsync();
+    Task InitializeAsync();
 }

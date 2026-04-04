@@ -10,6 +10,7 @@ namespace PhotoView.Views;
 public sealed partial class SettingsPage : Page
 {
     private int lastNavigationSelectionMode = 0;
+    private bool _isInitialized = false;
 
     public SettingsViewModel ViewModel
     {
@@ -25,6 +26,8 @@ public sealed partial class SettingsPage : Page
 
     private void OnSettingsPageLoaded(object sender, RoutedEventArgs e)
     {
+        _isInitialized = false;
+        
         var currentTheme = ViewModel.ElementTheme;
         switch (currentTheme)
         {
@@ -52,6 +55,9 @@ public sealed partial class SettingsPage : Page
 
         UpdateBatchSizeSelection();
         UpdatePerformanceModeSelection();
+        UpdateThumbnailSizeSelection();
+        
+        _isInitialized = true;
     }
 
     private void UpdateBatchSizeSelection()
@@ -83,8 +89,25 @@ public sealed partial class SettingsPage : Page
         }
     }
 
+    private void UpdateThumbnailSizeSelection()
+    {
+        var thumbnailSize = ViewModel.ThumbnailSize;
+        for (int i = 0; i < ThumbnailSizeComboBox.Items.Count; i++)
+        {
+            if (ThumbnailSizeComboBox.Items[i] is ComboBoxItem item &&
+                item.Tag?.ToString() == thumbnailSize.ToString())
+            {
+                ThumbnailSizeComboBox.SelectedIndex = i;
+                break;
+            }
+        }
+    }
+
     private void themeMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (!_isInitialized)
+            return;
+            
         if (sender is not UIElement senderUiElement ||
             (themeMode.SelectedItem as ComboBoxItem)?.Tag.ToString() is not string selectedTheme)
         {
@@ -99,6 +122,9 @@ public sealed partial class SettingsPage : Page
 
     private void navigationLocation_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (!_isInitialized)
+            return;
+            
         if (navigationLocation.SelectedIndex != lastNavigationSelectionMode)
         {
             var mode = navigationLocation.SelectedIndex == 0
@@ -111,6 +137,9 @@ public sealed partial class SettingsPage : Page
 
     private void BatchSizeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (!_isInitialized)
+            return;
+            
         if (BatchSizeComboBox.SelectedItem is ComboBoxItem item &&
             int.TryParse(item.Tag?.ToString(), out var batchSize))
         {
@@ -120,11 +149,27 @@ public sealed partial class SettingsPage : Page
 
     private void PerformanceModeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (!_isInitialized)
+            return;
+            
         if (PerformanceModeComboBox.SelectedItem is ComboBoxItem item &&
             item.Tag?.ToString() is string tag &&
             Enum.TryParse<PerformanceMode>(tag, out var mode))
         {
             ViewModel.SetPerformanceModeCommand.Execute(mode);
+        }
+    }
+
+    private void ThumbnailSizeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_isInitialized)
+            return;
+            
+        if (ThumbnailSizeComboBox.SelectedItem is ComboBoxItem item &&
+            item.Tag?.ToString() is string tag &&
+            Enum.TryParse<ThumbnailSize>(tag, out var size))
+        {
+            ViewModel.SetThumbnailSizeCommand.Execute(size);
         }
     }
 }

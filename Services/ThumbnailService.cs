@@ -20,7 +20,9 @@ public class ThumbnailService : IThumbnailService
     {
         _settingsService = settingsService;
         _settingsService.PerformanceModeChanged += OnPerformanceModeChanged;
-        _decodeGate = new SemaphoreSlim(GetConcurrencyCount(), GetConcurrencyCount());
+        var concurrencyCount = GetConcurrencyCount();
+        _decodeGate = new SemaphoreSlim(concurrencyCount, concurrencyCount);
+        System.Diagnostics.Debug.WriteLine($"[ThumbnailService] 初始化, 并发数={concurrencyCount}, PerformanceMode={_settingsService.PerformanceMode}");
     }
 
     private int GetConcurrencyCount()
@@ -34,6 +36,7 @@ public class ThumbnailService : IThumbnailService
     {
         var newCount = GetConcurrencyCount();
         _decodeGate = new SemaphoreSlim(newCount, newCount);
+        System.Diagnostics.Debug.WriteLine($"[ThumbnailService] PerformanceMode 变更, 新并发数={newCount}, mode={mode}");
     }
 
     public async Task<ImageSource?> GetThumbnailAsync(StorageFile file, ThumbnailSize size, CancellationToken cancellationToken)
