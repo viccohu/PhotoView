@@ -38,7 +38,6 @@ public class CollectViewModel : ObservableRecipient
             (int)properties.Width,
             (int)properties.Height,
             properties.Title,
-            (int)properties.Rating,
             file,
             file.DisplayName,
             file.DisplayType);

@@ -15,6 +15,7 @@
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <converters:IntToVisibilityConverter x:Key="IntToVisibilityConverter"/>
         <converters:IntToBoolConverter x:Key="IntToBoolConverter"/>
+        <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
         
         <Style x:Key="BreadcrumbButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
@@ -339,6 +340,34 @@
                                 FontSize="12"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center"/>
+                        </Border>
+                        
+                        <Border
+                            Width="180"
+                            Height="35"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Bottom"
+                            Margin="0,0,0,8"
+                            Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}"
+                            CornerRadius="4">
+                            <Grid>
+                                <ProgressRing
+                                    Width="24"
+                                    Height="24"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Visibility="{x:Bind IsRatingLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                    IsActive="{x:Bind IsRatingLoading, Mode=OneWay}"/>
+                                <RatingControl
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Visibility="{x:Bind IsRatingLoading, Mode=OneWay, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
+                                    Value="{x:Bind RatingValue, Mode=TwoWay}"
+                                    IsReadOnly="False"
+                                    IsClearEnabled="True"
+                                    MaxRating="5"
+                                    Loaded="RatingControl_Loaded"/>
+                            </Grid>
                         </Border>
                     </Grid>
                 </DataTemplate>

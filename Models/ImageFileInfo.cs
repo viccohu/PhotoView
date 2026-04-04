@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Media.Imaging;
 using PhotoView.Helpers;
+using PhotoView.Services;
 using Windows.Graphics.Display;
 using Windows.Storage.FileProperties;
 using Windows.Storage.Streams;
@@ -32,17 +33,18 @@ public class ImageFileInfo : INotifyPropertyChanged
     private ThumbnailSize? _requestedThumbnailSize;
     private ImageGroup? _group;
     private bool _isPrimary;
+    private uint _rating;
+    private bool _isRatingLoading = true;
+    private RatingSource _ratingSource = RatingSource.Unknown;
 
     private static readonly uint[] SystemThumbnailSizes = { 96, 160, 256, 512, 1024 };
 
     private static double DpiScale => DisplayInformation.GetForCurrentView().RawPixelsPerViewPixel;
-    private static readonly Random _random = new();
 
     public ImageFileInfo(
         int width,
         int height,
         string title,
-        int rating,
         StorageFile imageFile,
         string name,
         string type)
@@ -50,7 +52,6 @@ public class ImageFileInfo : INotifyPropertyChanged
         Width = width;
         Height = height;
         ImageTitle = title;
-        ImageRating = rating == 0 ? _random.Next(1, 5) : rating;
         ImageFile = imageFile ?? throw new ArgumentNullException(nameof(imageFile));
         ImageName = name;
         ImageFileType = type;
@@ -329,13 +330,15 @@ public class ImageFileInfo : INotifyPropertyChanged
         DisplayHeight = designHeight;
     }
 
-    private void SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
         if (!EqualityComparer<T>.Default.Equals(field, value))
         {
             field = value;
             OnPropertyChanged(propertyName);
+            return true;
         }
+        return false;
     }
 
     private static uint GetOptimalThumbnailSize(uint requestedSize)
@@ -360,7 +363,113 @@ public class ImageFileInfo : INotifyPropertyChanged
 
     public string ImageTitle { get; }
 
-    public int ImageRating { get; }
+    public uint Rating
+    {
+        get => _rating;
+        set
+        {
+            if (SetProperty(ref _rating, value))
+            {
+                OnPropertyChanged(nameof(RatingValue));
+            }
+        }
+    }
+
+    public RatingSource RatingSource
+    {
+        get => _ratingSource;
+        set => SetProperty(ref _ratingSource, value);
+    }
+
+    public double RatingValue
+    {
+        get
+        {
+            if (_rating == 0)
+                return -1;
+            return RatingToStars(_rating);
+        }
+        set
+        {
+            uint newRating;
+
+            if (value < 0 || value == 0)
+            {
+                newRating = 0;
+            }
+            else
+            {
+                int stars = (int)Math.Round(value, MidpointRounding.AwayFromZero);
+                stars = Math.Clamp(stars, 1, 5);
+                newRating = StarsToRating(stars);
+            }
+
+            if (newRating != _rating)
+            {
+                Rating = newRating;
+            }
+        }
+    }
+
+    public static int RatingToStars(uint rating)
+    {
+        if (rating == 0) return 0;
+        if (rating >= 1 && rating <= 12) return 1;
+        if (rating >= 13 && rating <= 37) return 2;
+        if (rating >= 38 && rating <= 62) return 3;
+        if (rating >= 63 && rating <= 87) return 4;
+        if (rating >= 88 && rating <= 99) return 5;
+        return 0;
+    }
+
+    public static uint StarsToRating(int stars)
+    {
+        return stars switch
+        {
+            0 => 0,
+            1 => 1,
+            2 => 25,
+            3 => 50,
+            4 => 75,
+            5 => 99,
+            _ => 0
+        };
+    }
+
+    public bool IsRatingLoading
+    {
+        get => _isRatingLoading;
+        set => SetProperty(ref _isRatingLoading, value);
+    }
+
+    public async Task LoadRatingAsync(RatingService ratingService)
+    {
+        IsRatingLoading = true;
+        try
+        {
+            var (rating, source) = await ratingService.GetRatingAsync(ImageFile);
+            Rating = rating;
+            RatingSource = source;
+        }
+        finally
+        {
+            IsRatingLoading = false;
+        }
+    }
+
+    public async Task SetRatingAsync(RatingService ratingService, uint newRating)
+    {
+        try
+        {
+            await ratingService.SetRatingAsync(ImageFile, newRating);
+            Rating = newRating;
+            RatingSource = ratingService.IsWinRTRatingSupported(ImageFile.FileType) ? RatingSource.WinRT : RatingSource.Cache;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SetRatingAsync] 错误: {ex.Message}");
+        }
+    }
 
     public int AutoWidth => Height == 0 ? 200 : (int)((Width * 200.0) / Height);
 

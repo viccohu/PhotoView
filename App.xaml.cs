@@ -57,6 +57,8 @@ public partial class App : Application
             services.AddSingleton<IThemeSelectorService, ThemeSelectorService>();
             services.AddSingleton<INavigationViewService, NavigationViewService>();
             services.AddSingleton<ISettingsService, SettingsService>();
+            services.AddSingleton<RatingCacheService>();
+            services.AddSingleton<RatingService>();
 
             services.AddSingleton<IActivationService, ActivationService>();
             services.AddSingleton<IPageService, PageService>();

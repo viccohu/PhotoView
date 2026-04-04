@@ -8,7 +8,9 @@ using PhotoView.Contracts.Services;
 using PhotoView.Dialogs;
 using PhotoView.Helpers;
 using PhotoView.Models;
+using PhotoView.Services;
 using PhotoView.ViewModels;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Windows.Storage;
@@ -21,12 +23,14 @@ public sealed partial class MainPage : Page
     public MainViewModel ViewModel { get; }
 
     private readonly DispatcherTimer _loadImagesThrottleTimer;
+    private readonly DispatcherTimer _ratingDebounceTimer;
     private FolderNode? _pendingLoadNode;
     private bool _isUnloaded;
     private bool _isUpdatingSelectionState;
     private DateTime _lastClickTime;
     private FolderNode? _lastClickedNode;
     private bool _hasAttemptedRestoreLastFolder;
+    private (ImageFileInfo Image, uint Rating)? _pendingRatingUpdate;
 
     public MainPage()
     {
@@ -44,6 +48,12 @@ public sealed partial class MainPage : Page
             Interval = TimeSpan.FromMilliseconds(300)
         };
         _loadImagesThrottleTimer.Tick += LoadImagesThrottleTimer_Tick;
+
+        _ratingDebounceTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(500)
+        };
+        _ratingDebounceTimer.Tick += RatingDebounceTimer_Tick;
 
         ViewModel.ImagesChanged += ViewModel_ImagesChanged;
         ViewModel.ThumbnailSizeChanged += ViewModel_ThumbnailSizeChanged;
@@ -219,6 +229,14 @@ public sealed partial class MainPage : Page
     {
         _isUnloaded = true;
         _loadImagesThrottleTimer.Stop();
+        _ratingDebounceTimer.Stop();
+        _pendingRatingUpdate = null;
+        
+        foreach (var ratingControl in _ratingControlEventMap.Keys)
+        {
+            ratingControl.ValueChanged -= RatingControl_ValueChanged;
+        }
+        _ratingControlEventMap.Clear();
     }
 
     private async void LoadImagesThrottleTimer_Tick(object? sender, object e)
@@ -500,7 +518,95 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private void ImageGridView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private readonly Dictionary<RatingControl, bool> _ratingControlEventMap = new();
+
+    private void RatingControl_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is RatingControl ratingControl && !_ratingControlEventMap.ContainsKey(ratingControl))
+        {
+            ratingControl.ValueChanged += RatingControl_ValueChanged;
+            _ratingControlEventMap[ratingControl] = true;
+        }
+    }
+
+    private void RatingControl_ValueChanged(RatingControl sender, object args)
+    {
+        try
+        {
+            if (_isUnloaded || AppLifetime.IsShuttingDown)
+                return;
+
+            var imageInfo = FindImageInfoFromRatingControl(sender);
+            if (imageInfo == null)
+                return;
+
+            double controlValue = sender.Value;
+            uint ratingValue = 0;
+
+            if (controlValue > 0)
+            {
+                int stars = (int)Math.Round(controlValue, MidpointRounding.AwayFromZero);
+                stars = Math.Clamp(stars, 1, 5);
+                ratingValue = ImageFileInfo.StarsToRating(stars);
+            }
+
+            _pendingRatingUpdate = (imageInfo, ratingValue);
+            _ratingDebounceTimer.Stop();
+            _ratingDebounceTimer.Start();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[RatingControl_ValueChanged] 错误: {ex.Message}");
+        }
+    }
+
+    private async void RatingDebounceTimer_Tick(object? sender, object e)
+    {
+        _ratingDebounceTimer.Stop();
+        
+        if (_pendingRatingUpdate.HasValue)
+        {
+            var (image, rating) = _pendingRatingUpdate.Value;
+            _pendingRatingUpdate = null;
+            await UpdateRatingAsync(image, rating);
+        }
+    }
+
+    private ImageFileInfo? FindImageInfoFromRatingControl(RatingControl ratingControl)
+    {
+        try
+        {
+            var parent = VisualTreeHelper.GetParent(ratingControl);
+            while (parent != null)
+            {
+                if (parent is FrameworkElement fe && fe.DataContext is ImageFileInfo imageInfo)
+                {
+                    return imageInfo;
+                }
+                parent = VisualTreeHelper.GetParent(parent);
+            }
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private async Task UpdateRatingAsync(ImageFileInfo imageInfo, uint rating)
+    {
+        try
+        {
+            var ratingService = App.GetService<RatingService>();
+            await imageInfo.SetRatingAsync(ratingService, rating);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[UpdateRatingAsync] 错误: {ex.Message}");
+        }
+    }
+
+    private void ImageGridView_SelectionChanged(object sender, Microsoft.UI.Xaml.Controls.SelectionChangedEventArgs e)
     {
         SyncSelectedStateFromGridView();
     }
@@ -523,6 +629,7 @@ public sealed partial class MainPage : Page
                 if (selectedItem is ImageFileInfo imageInfo)
                 {
                     imageInfo.IsSelected = true;
+                    System.Diagnostics.Debug.WriteLine($"[Selected] {imageInfo.ImageName}, Rating: {imageInfo.Rating}, Source: {imageInfo.RatingSource}");
                 }
             }
         }

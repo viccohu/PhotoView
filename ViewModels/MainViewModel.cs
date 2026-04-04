@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using PhotoView.Contracts.Services;
 using PhotoView.Models;
+using PhotoView.Services;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -13,6 +14,7 @@ namespace PhotoView.ViewModels;
 public partial class MainViewModel : ObservableRecipient
 {
     private readonly ISettingsService _settingsService;
+    private readonly RatingService _ratingService;
     private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         // 常见图片格式
@@ -123,13 +125,15 @@ public partial class MainViewModel : ObservableRecipient
         SelectedFolderChanged?.Invoke(this, value);
     }
 
-    public MainViewModel(ISettingsService settingsService)
+    public MainViewModel(ISettingsService settingsService, RatingService ratingService)
     {
         _settingsService = settingsService;
+        _ratingService = ratingService;
         _thumbnailSize = _settingsService.ThumbnailSize;
         _folderTree = new ObservableCollection<FolderNode>();
         _breadcrumbPath = new ObservableCollection<FolderNode>();
         _images = new ObservableCollection<ImageFileInfo>();
+        _ = _ratingService.InitializeAsync();
         _ = LoadDrivesAsync();
     }
 
@@ -345,7 +349,7 @@ public partial class MainViewModel : ObservableRecipient
                             
                             foreach (var file in allFilesInGroup.Where(f => f != primaryInfo.ImageFile))
                             {
-                                var dummyInfo = new ImageFileInfo(0, 0, string.Empty, 0, file, file.DisplayName, file.DisplayType);
+                                var dummyInfo = new ImageFileInfo(0, 0, string.Empty, file, file.DisplayName, file.DisplayType);
                                 imageInfos.Add(dummyInfo);
                             }
                             
@@ -448,13 +452,12 @@ public partial class MainViewModel : ObservableRecipient
             (int)properties.Width,
             (int)properties.Height,
             properties.Title,
-            (int)properties.Rating,
             file,
             file.DisplayName,
             file.DisplayType);
     }
 
-    private static async Task<ImageFileInfo?> LoadImageInfoSafeAsync(StorageFile file, CancellationToken cancellationToken)
+    private async Task<ImageFileInfo?> LoadImageInfoSafeAsync(StorageFile file, CancellationToken cancellationToken)
     {
         try
         {
@@ -472,7 +475,6 @@ public partial class MainViewModel : ObservableRecipient
             int width = 200;
             int height = 200;
             string title = string.Empty;
-            int rating = 0;
             var fileExtension = Path.GetExtension(file.Name);
             var isRaw = RawExtensions.Contains(fileExtension);
 
@@ -487,7 +489,6 @@ public partial class MainViewModel : ObservableRecipient
                         height = (int)properties.Height;
                     }
                     title = properties.Title;
-                    rating = (int)properties.Rating;
                 }
                 catch (Exception ex)
                 {
@@ -510,14 +511,17 @@ public partial class MainViewModel : ObservableRecipient
                 }
             }
 
-            return new ImageFileInfo(
+            var imageInfo = new ImageFileInfo(
                 width,
                 height,
                 title,
-                rating,
                 file,
                 file.DisplayName,
                 file.DisplayType);
+
+            _ = imageInfo.LoadRatingAsync(_ratingService);
+
+            return imageInfo;
         }
         catch (Exception ex)
         {
@@ -680,7 +684,7 @@ public partial class MainViewModel : ObservableRecipient
                             
                             foreach (var file in allFilesInGroup.Where(f => f != primaryInfo.ImageFile))
                             {
-                                var dummyInfo = new ImageFileInfo(0, 0, string.Empty, 0, file, file.DisplayName, file.DisplayType);
+                                var dummyInfo = new ImageFileInfo(0, 0, string.Empty, file, file.DisplayName, file.DisplayType);
                                 imageInfos.Add(dummyInfo);
                             }
                             
