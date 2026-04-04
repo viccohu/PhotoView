@@ -1,4 +1,4 @@
-﻿<Page
+﻿﻿<Page
     x:Class="PhotoView.Views.MainPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -221,7 +221,7 @@
             SelectionChanged="ImageGridView_SelectionChanged"
             ContainerContentChanging="ImageGridView_ContainerContentChanging"
             
-            Margin="12,4,12,0"
+            Margin="0,4,0,0"
             Padding="4">
             <GridView.ItemTemplate>
                 <DataTemplate x:DataType="models:ImageFileInfo">
@@ -249,7 +249,7 @@
                             <Grid Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
                                 <Image
                                     Source="{x:Bind Thumbnail, Mode=OneWay}"
-                                    Stretch="UniformToFill"
+                                    Stretch="Uniform"
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center"/>
                             </Grid>
@@ -274,6 +274,53 @@
                     <Setter Property="Padding" Value="0"/>
                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                     <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="GridViewItem">
+                                <Grid x:Name="ContentBorder"
+                                      Background="{TemplateBinding Background}"
+                                      BorderBrush="{TemplateBinding BorderBrush}"
+                                      BorderThickness="{TemplateBinding BorderThickness}"
+                                      CornerRadius="8">
+                                    <VisualStateManager.VisualStateGroups>
+                                        <VisualStateGroup x:Name="CommonStates">
+                                            <VisualState x:Name="Normal"/>
+                                            <VisualState x:Name="PointerOver">
+                                                <VisualState.Setters>
+                                                    <Setter Target="ContentBorder.Background" Value="{ThemeResource CardBackgroundFillColorSecondaryBrush}"/>
+                                                </VisualState.Setters>
+                                            </VisualState>
+                                            <VisualState x:Name="Selected">
+                                                <VisualState.Setters>
+                                                    <Setter Target="SelectionBorder.BorderBrush" Value="{ThemeResource AccentFillColorDefaultBrush}"/>
+                                                    <Setter Target="SelectionBorder.BorderThickness" Value="3"/>
+                                                </VisualState.Setters>
+                                            </VisualState>
+                                            <VisualState x:Name="PointerOverSelected">
+                                                <VisualState.Setters>
+                                                    <Setter Target="ContentBorder.Background" Value="{ThemeResource CardBackgroundFillColorSecondaryBrush}"/>
+                                                    <Setter Target="SelectionBorder.BorderBrush" Value="{ThemeResource AccentFillColorDefaultBrush}"/>
+                                                    <Setter Target="SelectionBorder.BorderThickness" Value="3"/>
+                                                </VisualState.Setters>
+                                            </VisualState>
+                                        </VisualStateGroup>
+                                    </VisualStateManager.VisualStateGroups>
+                                    
+                                    <ContentPresenter 
+                                        Content="{TemplateBinding Content}"
+                                        ContentTemplate="{TemplateBinding ContentTemplate}"
+                                        ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
+                                        HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                        VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                        Margin="{TemplateBinding Padding}"/>
+                                    
+                                    <Border x:Name="SelectionBorder"
+                                            CornerRadius="8"
+                                            BorderThickness="0"/>
+                                </Grid>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
                 </Style>
             </GridView.ItemContainerStyle>
             <GridView.ItemsPanel>

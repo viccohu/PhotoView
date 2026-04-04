@@ -27,6 +27,8 @@ public class ImageFileInfo : INotifyPropertyChanged
     private readonly object _thumbnailLoadLock = new();
     private ThumbnailSize? _loadedThumbnailSize;
     private ThumbnailSize? _requestedThumbnailSize;
+    private ImageGroup? _group;
+    private bool _isPrimary;
 
     private static readonly uint[] SystemThumbnailSizes = { 96, 160, 256, 512, 1024 };
 
@@ -306,10 +308,16 @@ public class ImageFileInfo : INotifyPropertyChanged
             aspectRatio = 1d;
         }
 
-        // 直接返回设计尺寸，不计算缩放
-        // XAML 中的值转换器会处理缩放
+        // Border Padding = 6 (左右各6，上下各6)
+        const double borderPadding = 12d;
+        
+        // 内容区域高度 = 外层高度 - Padding
+        var contentHeight = designHeight - borderPadding;
+        // 内容区域宽度 = 内容高度 * 宽高比
+        var contentWidth = contentHeight * aspectRatio;
+        // 外层宽度 = 内容宽度 + Padding
+        DisplayWidth = Math.Max(1d, contentWidth + borderPadding);
         DisplayHeight = designHeight;
-        DisplayWidth = Math.Max(1d, designHeight * aspectRatio);
     }
 
     private void SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
@@ -337,6 +345,8 @@ public class ImageFileInfo : INotifyPropertyChanged
 
     public string ImageFileType { get; }
 
+    public string FileType => ImageFileType;
+
     public string ImageDimensions => $"{Width} x {Height}";
 
     public string ImageTitle { get; }
@@ -346,6 +356,18 @@ public class ImageFileInfo : INotifyPropertyChanged
     public int AutoWidth => Height == 0 ? 200 : (int)((Width * 200.0) / Height);
 
     public double AspectRatio => Height == 0 ? 1.5 : (double)Width / Height;
+
+    public ImageGroup? Group => _group;
+
+    public bool IsPrimary => _isPrimary;
+
+    public void SetGroupInfo(ImageGroup group, bool isPrimary)
+    {
+        _group = group;
+        _isPrimary = isPrimary;
+        OnPropertyChanged(nameof(Group));
+        OnPropertyChanged(nameof(IsPrimary));
+    }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
