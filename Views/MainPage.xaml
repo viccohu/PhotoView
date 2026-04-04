@@ -85,6 +85,7 @@
                 <DataTemplate x:DataType="models:FolderNode">
                     <TreeViewItem
                         ItemsSource="{x:Bind Children}"
+                        IsExpanded="{x:Bind IsExpanded, Mode=TwoWay}"
                         HasUnrealizedChildren="{x:Bind HasExpandableChildren, Mode=OneWay}"
                         RightTapped="TreeViewItem_RightTapped">
                         <Grid Tag="{x:Bind}">

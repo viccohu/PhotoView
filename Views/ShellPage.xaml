@@ -68,7 +68,7 @@
                 </NavigationViewItem>-->
             </NavigationView.MenuItems>
 
-            <Grid Margin="28,0,28,0">
+            <Grid Margin="10,0,18,0">
                 <Frame x:Name="NavigationFrame" CacheSize="2" />
             </Grid>
         </NavigationView>

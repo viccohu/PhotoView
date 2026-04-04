@@ -7,6 +7,7 @@ using PhotoView.Contracts.Services;
 using PhotoView.Helpers;
 using PhotoView.Models;
 using PhotoView.ViewModels;
+using System.IO;
 using System.Linq;
 using Windows.System;
 
@@ -22,10 +23,15 @@ public sealed partial class MainPage : Page
     private bool _isUpdatingSelectionState;
     private DateTime _lastClickTime;
     private FolderNode? _lastClickedNode;
+    private bool _hasAttemptedRestoreLastFolder;
 
     public MainPage()
     {
+        System.Diagnostics.Debug.WriteLine($"[MainPage] 构造函数开始");
+        
         ViewModel = App.GetService<MainViewModel>();
+        System.Diagnostics.Debug.WriteLine($"[MainPage] ViewModel 已获取, FolderTree.Count={ViewModel.FolderTree.Count}");
+        
         NavigationCacheMode = NavigationCacheMode.Enabled;
         InitializeComponent();
         FolderTreeView.DataContext = ViewModel;
@@ -38,31 +44,162 @@ public sealed partial class MainPage : Page
 
         ViewModel.ImagesChanged += ViewModel_ImagesChanged;
         ViewModel.ThumbnailSizeChanged += ViewModel_ThumbnailSizeChanged;
+        ViewModel.FolderTreeLoaded += ViewModel_FolderTreeLoaded;
         Loaded += MainPage_Loaded;
         KeyDown += MainPage_KeyDown;
         Unloaded += MainPage_Unloaded;
+        
+        System.Diagnostics.Debug.WriteLine($"[MainPage] 事件已订阅, FolderTree.Count={ViewModel.FolderTree.Count}");
+        
+        // 如果 FolderTree 已经加载完成（事件在订阅前已触发），直接调用恢复逻辑
+        if (ViewModel.FolderTree.Count > 0)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainPage] 构造函数中检测到 FolderTree 已加载, Count={ViewModel.FolderTree.Count}");
+            _ = TryRestoreLastFolderAsync();
+        }
+        
+        System.Diagnostics.Debug.WriteLine($"[MainPage] 构造函数结束");
     }
 
-    private async void MainPage_Loaded(object sender, RoutedEventArgs e)
+    private void MainPage_Loaded(object sender, RoutedEventArgs e)
     {
         _isUnloaded = false;
+    }
+
+    private async void ViewModel_FolderTreeLoaded(object? sender, EventArgs e)
+    {
+        System.Diagnostics.Debug.WriteLine($"[MainPage] FolderTreeLoaded 事件触发");
+        await TryRestoreLastFolderAsync();
+    }
+
+    private async System.Threading.Tasks.Task TryRestoreLastFolderAsync()
+    {
+        if (_hasAttemptedRestoreLastFolder)
+            return;
+
+        _hasAttemptedRestoreLastFolder = true;
 
         var settingsService = App.GetService<ISettingsService>();
-        if (settingsService.RememberLastFolder && !string.IsNullOrEmpty(settingsService.LastFolderPath))
+        
+        // 等待设置加载完成（最多等待 2 秒）
+        int waitCount = 0;
+        while (waitCount < 20)
         {
-            await System.Threading.Tasks.Task.Delay(500);
+            // 如果 RememberLastFolder 为 true 且路径不为空，可以开始恢复
+            if (settingsService.RememberLastFolder && !string.IsNullOrEmpty(settingsService.LastFolderPath))
+                break;
+            
+            // 如果 RememberLastFolder 为 false 且已经等待过一轮，说明设置已加载且未启用
+            if (!settingsService.RememberLastFolder && waitCount > 0)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainPage] 未启用记住上次路径，跳过恢复");
+                return;
+            }
+            
+            await System.Threading.Tasks.Task.Delay(100);
+            waitCount++;
+        }
+        
+        System.Diagnostics.Debug.WriteLine($"[MainPage] FolderTreeLoaded 触发, RememberLastFolder={settingsService.RememberLastFolder}, LastFolderPath={settingsService.LastFolderPath}, 等待次数={waitCount}");
+        
+        if (!settingsService.RememberLastFolder || string.IsNullOrEmpty(settingsService.LastFolderPath))
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainPage] 路径为空或未启用，跳过恢复");
+            return;
+        }
+
+        await System.Threading.Tasks.Task.Delay(200);
+        if (_isUnloaded || AppLifetime.IsShuttingDown)
+            return;
+
+        System.Diagnostics.Debug.WriteLine($"[MainPage] 尝试恢复上次路径: {settingsService.LastFolderPath}");
+
+        var targetNode = await TryFindAndLoadNodeByPathAsync(settingsService.LastFolderPath);
+        if (targetNode != null)
+        {
+            await ExpandTreeViewPathAsync(targetNode);
             if (_isUnloaded || AppLifetime.IsShuttingDown)
                 return;
+            ThrottleLoadImages(targetNode);
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainPage] 未找到上次路径: {settingsService.LastFolderPath}");
+        }
+    }
 
-            var targetNode = ViewModel.FindNodeByPath(settingsService.LastFolderPath);
-            if (targetNode != null)
+    private async System.Threading.Tasks.Task<FolderNode?> TryFindAndLoadNodeByPathAsync(string targetPath)
+    {
+        targetPath = targetPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        System.Diagnostics.Debug.WriteLine($"[TryFindAndLoadNodeByPathAsync] 目标路径: {targetPath}");
+
+        var foundNode = ViewModel.FindNodeByPath(targetPath);
+        if (foundNode != null)
+            return foundNode;
+
+        var pathParts = targetPath.Split(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }, StringSplitOptions.RemoveEmptyEntries);
+        if (pathParts.Length == 0)
+            return null;
+
+        var currentPath = pathParts[0] + Path.DirectorySeparatorChar;
+        FolderNode? currentNode = null;
+
+        foreach (var rootNode in ViewModel.FolderTree)
+        {
+            if (rootNode.NodeType == NodeType.ThisPC || rootNode.NodeType == NodeType.ExternalDevice)
             {
-                await ExpandTreeViewPathAsync(targetNode);
-                if (_isUnloaded || AppLifetime.IsShuttingDown)
-                    return;
-                ThrottleLoadImages(targetNode);
+                if (!rootNode.IsLoaded)
+                {
+                    await ViewModel.LoadChildrenAsync(rootNode);
+                }
+
+                foreach (var child in rootNode.Children)
+                {
+                    if (child.FullPath != null && child.FullPath.StartsWith(currentPath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        currentNode = child;
+                        break;
+                    }
+                }
+
+                if (currentNode != null)
+                    break;
             }
         }
+
+        if (currentNode == null)
+            return null;
+
+        for (int i = 1; i < pathParts.Length; i++)
+        {
+            if (!currentNode.IsLoaded)
+            {
+                await ViewModel.LoadChildrenAsync(currentNode);
+            }
+
+            var nextPart = pathParts[i];
+            currentPath = Path.Combine(currentPath, nextPart);
+
+            FolderNode? nextNode = null;
+            foreach (var child in currentNode.Children)
+            {
+                if (child.FullPath != null && string.Equals(child.FullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                    currentPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    nextNode = child;
+                    break;
+                }
+            }
+
+            if (nextNode == null)
+                return null;
+
+            currentNode = nextNode;
+        }
+
+        System.Diagnostics.Debug.WriteLine($"[TryFindAndLoadNodeByPathAsync] 最终找到节点: {currentNode.Name}, 完整路径: {currentNode.FullPath}");
+        return currentNode;
     }
 
     private void MainPage_Unloaded(object sender, RoutedEventArgs e)
@@ -230,13 +367,18 @@ public sealed partial class MainPage : Page
                 return;
             }
 
+            System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] 开始展开, 目标节点: {targetNode.Name}, 路径: {targetNode.FullPath}");
+
             var path = new List<FolderNode>();
             var current = targetNode;
             while (current != null)
             {
                 path.Insert(0, current);
+                System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] 路径节点: {current.Name}, NodeType={current.NodeType}, Parent={current.Parent?.Name ?? "null"}");
                 current = current.Parent;
             }
+
+            System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] 路径长度: {path.Count}");
 
             if (path.Count == 0)
             {
@@ -248,24 +390,35 @@ public sealed partial class MainPage : Page
             {
                 var node = path[i];
                 lastNode = node;
+                System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] 处理节点 {i}: {node.Name}, IsLoaded={node.IsLoaded}, IsExpanded={node.IsExpanded}, Children.Count={node.Children.Count}");
 
-                if (i < path.Count - 1 && !node.IsExpanded && node.Children.Count > 0)
+                if (i < path.Count - 1)
                 {
-                    node.IsExpanded = true;
-                }
-
-                if (!node.IsLoaded && node.NodeType != NodeType.ThisPC && node.NodeType != NodeType.ExternalDevice)
-                {
-                    await ViewModel.LoadChildrenAsync(node);
-                    if (_isUnloaded || AppLifetime.IsShuttingDown)
+                    if (!node.IsLoaded)
                     {
-                        return;
+                        System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] 加载子节点: {node.Name}");
+                        await ViewModel.LoadChildrenAsync(node);
+                        if (_isUnloaded || AppLifetime.IsShuttingDown)
+                        {
+                            return;
+                        }
+                    }
+
+                    if (!node.IsExpanded)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] 展开节点: {node.Name}");
+                        node.IsExpanded = true;
+                        await System.Threading.Tasks.Task.Delay(50);
                     }
                 }
+
+                var treeViewItem = FolderTreeView.ContainerFromItem(node) as TreeViewItem;
+                System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] TreeViewItem for {node.Name}: {(treeViewItem != null ? "found" : "null")}");
             }
 
             if (lastNode != null)
             {
+                System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] 设置选中节点: {lastNode.Name}");
                 FolderTreeView.SelectedItem = lastNode;
                 await System.Threading.Tasks.Task.Delay(100);
                 if (_isUnloaded || AppLifetime.IsShuttingDown)

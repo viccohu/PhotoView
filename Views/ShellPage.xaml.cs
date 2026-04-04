@@ -61,6 +61,10 @@ public sealed partial class ShellPage : Page
         _ = await _settingsService.LoadBatchSizeAsync();
         _ = await _settingsService.LoadPerformanceModeAsync();
         _ = await _settingsService.LoadThumbnailSizeAsync();
+        _ = await _settingsService.LoadRememberLastFolderAsync();
+        _ = await _settingsService.LoadLastFolderPathAsync();
+        
+        System.Diagnostics.Debug.WriteLine($"[ShellPage] 设置加载完成, RememberLastFolder={_settingsService.RememberLastFolder}, LastFolderPath={_settingsService.LastFolderPath}");
         
         // 在 UI 线程上更新
         DispatcherQueue.TryEnqueue(() =>

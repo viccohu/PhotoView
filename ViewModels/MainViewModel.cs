@@ -70,6 +70,7 @@ public partial class MainViewModel : ObservableRecipient
 
     public event EventHandler? ImagesChanged;
     public event EventHandler? ThumbnailSizeChanged;
+    public event EventHandler? FolderTreeLoaded;
 
     [ObservableProperty]
     private ObservableCollection<FolderNode> _folderTree;
@@ -123,6 +124,8 @@ public partial class MainViewModel : ObservableRecipient
     {
         try
         {
+            System.Diagnostics.Debug.WriteLine($"[MainViewModel] LoadDrivesAsync 开始");
+            
             var thisPCNode = new FolderNode(null, NodeType.ThisPC)
             {
                 Name = "这台电脑",
@@ -137,6 +140,10 @@ public partial class MainViewModel : ObservableRecipient
 
             FolderTree.Add(thisPCNode);
             FolderTree.Add(externalDeviceNode);
+
+            System.Diagnostics.Debug.WriteLine($"[MainViewModel] FolderTree 已添加节点, Count={FolderTree.Count}, 准备触发 FolderTreeLoaded 事件");
+            FolderTreeLoaded?.Invoke(this, EventArgs.Empty);
+            System.Diagnostics.Debug.WriteLine($"[MainViewModel] FolderTreeLoaded 事件已触发");
         }
         catch (Exception ex)
         {
