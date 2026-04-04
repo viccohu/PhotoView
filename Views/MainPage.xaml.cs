@@ -3,12 +3,15 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using PhotoView.Contracts.Services;
+using PhotoView.Dialogs;
 using PhotoView.Helpers;
 using PhotoView.Models;
 using PhotoView.ViewModels;
 using System.IO;
 using System.Linq;
+using Windows.Storage;
 using Windows.System;
 
 namespace PhotoView.Views;
@@ -640,5 +643,251 @@ public sealed partial class MainPage : Page
             ClearGridViewSelection();
             e.Handled = true;
         }
+        else if (e.Key == VirtualKey.Delete)
+        {
+            TogglePendingDeleteForSelectedItems();
+            e.Handled = true;
+        }
+    }
+
+    private void TogglePendingDeleteForSelectedItems()
+    {
+        if (ImageGridView.SelectedItems.Count == 0)
+            return;
+
+        var selectedImages = ImageGridView.SelectedItems
+            .OfType<ImageFileInfo>()
+            .ToList();
+
+        if (selectedImages.Count > 0)
+        {
+            ViewModel.TogglePendingDeleteForSelected(selectedImages);
+        }
+    }
+
+    private async void DeleteMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuFlyoutItem item || item.Tag is not string tag)
+            return;
+
+        var deleteType = tag switch
+        {
+            "Jpg" => DeleteType.Jpg,
+            "Raw" => DeleteType.Raw,
+            "All" => DeleteType.All,
+            _ => DeleteType.All
+        };
+
+        await ExecuteDeleteAsync(deleteType);
+    }
+
+    private async System.Threading.Tasks.Task ExecuteDeleteAsync(DeleteType deleteType)
+    {
+        var pendingImages = ViewModel.GetPendingDeleteImages();
+        if (pendingImages.Count == 0)
+            return;
+
+        var filesToDelete = GetFilesToDelete(pendingImages, deleteType);
+        if (filesToDelete.Count == 0)
+        {
+            var emptyDialog = new ContentDialog
+            {
+                Title = "无可删除文件",
+                Content = "没有符合条件的文件需要删除。",
+                CloseButtonText = "确定",
+                XamlRoot = XamlRoot
+            };
+            await emptyDialog.ShowAsync();
+            return;
+        }
+
+        var dialog = new DeleteConfirmDialog(deleteType, filesToDelete.Count)
+        {
+            XamlRoot = XamlRoot
+        };
+
+        var result = await dialog.ShowAsync();
+
+        if (result == ContentDialogResult.Primary)
+        {
+            dialog.StartProgress();
+            
+            var deletedImages = new List<ImageFileInfo>();
+            var failedCount = 0;
+
+            for (int i = 0; i < filesToDelete.Count; i++)
+            {
+                var file = filesToDelete[i];
+                try
+                {
+                    await DeleteFileToRecycleBinAsync(file);
+                    
+                    var imageToDelete = pendingImages.FirstOrDefault(img => img.ImageFile.Path == file.Path);
+                    if (imageToDelete != null && !deletedImages.Contains(imageToDelete))
+                    {
+                        deletedImages.Add(imageToDelete);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"删除文件失败: {file.Path}, 错误: {ex.Message}");
+                    failedCount++;
+                }
+
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    dialog.SetProgress(i + 1, filesToDelete.Count);
+                });
+
+                await System.Threading.Tasks.Task.Delay(10);
+            }
+
+            dialog.SetComplete();
+            await System.Threading.Tasks.Task.Delay(500);
+
+            RemoveDeletedImagesFromList(deletedImages);
+        }
+    }
+
+    private List<StorageFile> GetFilesToDelete(List<ImageFileInfo> pendingImages, DeleteType deleteType)
+    {
+        var files = new List<StorageFile>();
+
+        foreach (var image in pendingImages)
+        {
+            if (image.ImageFile == null)
+                continue;
+
+            var extension = Path.GetExtension(image.ImageFile.Path);
+            var shouldDelete = deleteType switch
+            {
+                DeleteType.Jpg => MainViewModel.IsJpgFile(extension),
+                DeleteType.Raw => MainViewModel.IsRawFile(extension),
+                DeleteType.All => true,
+                _ => false
+            };
+
+            if (shouldDelete)
+            {
+                files.Add(image.ImageFile);
+            }
+
+            if (image.HasAlternateFormats && image.AlternateFormats != null)
+            {
+                foreach (var altImage in image.AlternateFormats)
+                {
+                    if (altImage.ImageFile == null)
+                        continue;
+
+                    var altExtension = Path.GetExtension(altImage.ImageFile.Path);
+                    var shouldDeleteAlt = deleteType switch
+                    {
+                        DeleteType.Jpg => MainViewModel.IsJpgFile(altExtension),
+                        DeleteType.Raw => MainViewModel.IsRawFile(altExtension),
+                        DeleteType.All => true,
+                        _ => false
+                    };
+
+                    if (shouldDeleteAlt)
+                    {
+                        files.Add(altImage.ImageFile);
+                    }
+                }
+            }
+        }
+
+        return files.DistinctBy(f => f.Path).ToList();
+    }
+
+    private async System.Threading.Tasks.Task DeleteFileToRecycleBinAsync(StorageFile file)
+    {
+        await file.DeleteAsync(StorageDeleteOption.Default);
+    }
+
+    private void RemoveDeletedImagesFromList(List<ImageFileInfo> deletedImages)
+    {
+        if (deletedImages.Count == 0)
+            return;
+
+        var firstVisibleIndex = GetFirstVisibleItemIndex();
+        var selectedItem = ImageGridView.SelectedItem as ImageFileInfo;
+
+        foreach (var image in deletedImages)
+        {
+            ViewModel.Images.Remove(image);
+        }
+
+        ViewModel.ClearAllPendingDelete();
+
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (ViewModel.Images.Count > 0)
+            {
+                var indexToScroll = Math.Min(firstVisibleIndex, ViewModel.Images.Count - 1);
+                if (indexToScroll >= 0)
+                {
+                    ImageGridView.ScrollIntoView(ViewModel.Images[indexToScroll]);
+                }
+
+                if (deletedImages.Contains(selectedItem))
+                {
+                    var newSelectedIndex = Math.Min(firstVisibleIndex, ViewModel.Images.Count - 1);
+                    if (newSelectedIndex >= 0)
+                    {
+                        ImageGridView.SelectedItem = ViewModel.Images[newSelectedIndex];
+                    }
+                }
+            }
+        });
+    }
+
+    private int GetFirstVisibleItemIndex()
+    {
+        try
+        {
+            var scrollViewer = FindScrollViewer(ImageGridView);
+            if (scrollViewer == null)
+                return 0;
+
+            var horizontalOffset = scrollViewer.HorizontalOffset;
+            var verticalOffset = scrollViewer.VerticalOffset;
+
+            for (int i = 0; i < ImageGridView.Items.Count; i++)
+            {
+                var container = ImageGridView.ContainerFromIndex(i) as GridViewItem;
+                if (container != null)
+                {
+                    var transform = container.TransformToVisual(ImageGridView);
+                    var point = transform.TransformPoint(new Windows.Foundation.Point(0, 0));
+                    
+                    if (point.Y >= 0 && point.Y < ImageGridView.ActualHeight)
+                    {
+                        return i;
+                    }
+                }
+            }
+
+            return 0;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    private static ScrollViewer? FindScrollViewer(DependencyObject parent)
+    {
+        if (parent is ScrollViewer scrollViewer)
+            return scrollViewer;
+
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            var result = FindScrollViewer(child);
+            if (result != null)
+                return result;
+        }
+
+        return null;
     }
 }

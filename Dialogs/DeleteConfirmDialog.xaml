@@ -1,0 +1,32 @@
+<ContentDialog
+    x:Class="PhotoView.Dialogs.DeleteConfirmDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    PrimaryButtonText="确认删除"
+    SecondaryButtonText="取消"
+    DefaultButton="Secondary">
+
+    <StackPanel Spacing="16">
+        <TextBlock
+            x:Name="ContentText"
+            TextWrapping="Wrap"
+            FontSize="14"/>
+        
+        <StackPanel x:Name="ProgressPanel" Spacing="8" Visibility="Collapsed">
+            <ProgressBar
+                x:Name="DeleteProgressBar"
+                Height="4"
+                Minimum="0"
+                Maximum="100"
+                Value="0"/>
+            
+            <TextBlock
+                x:Name="ProgressText"
+                FontSize="12"
+                Opacity="0.7"/>
+        </StackPanel>
+    </StackPanel>
+</ContentDialog>

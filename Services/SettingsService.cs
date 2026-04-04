@@ -11,7 +11,7 @@ public class SettingsService : ISettingsService
     private int _batchSize = 30;
     private PerformanceMode _performanceMode = PerformanceMode.Smart;
     private ThumbnailSize _thumbnailSize = ThumbnailSize.Medium;
-    private bool _rememberLastFolder = false;
+    private bool _rememberLastFolder = true;
     private string _lastFolderPath = string.Empty;
 
     public event EventHandler<NavigationViewPaneDisplayMode>? NavigationViewModeChanged;
@@ -179,7 +179,7 @@ public class SettingsService : ISettingsService
             _rememberLastFolder = remember.Value;
             return remember.Value;
         }
-        return false;
+        return _rememberLastFolder;
     }
 
     public async Task SaveLastFolderPathAsync(string path)

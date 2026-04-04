@@ -67,6 +67,7 @@ public partial class MainViewModel : ObservableRecipient
     private const uint PageSize = 100;
     private CancellationTokenSource? _loadImagesCts;
     private readonly Stack<FolderNode> _navigationHistory = new();
+    private int _pendingDeleteCount;
 
     public event EventHandler? ImagesChanged;
     public event EventHandler? ThumbnailSizeChanged;
@@ -90,6 +91,12 @@ public partial class MainViewModel : ObservableRecipient
     public bool CanGoBack => _navigationHistory.Count > 1;
     
     public bool CanGoUp => SelectedFolder?.Parent != null;
+
+    public int PendingDeleteCount
+    {
+        get => _pendingDeleteCount;
+        private set => SetProperty(ref _pendingDeleteCount, value);
+    }
 
     public double ThumbnailHeight => ThumbnailSize switch
     {
@@ -249,7 +256,7 @@ public partial class MainViewModel : ObservableRecipient
             var fileTypeFilter = ImageExtensions.ToList();
             var queryOptions = new QueryOptions(CommonFileQuery.OrderByName, fileTypeFilter)
             {
-                IndexerOption = IndexerOption.UseIndexerWhenAvailable,
+                IndexerOption = IndexerOption.DoNotUseIndexer,
                 FolderDepth = FolderDepth.Shallow
             };
 
@@ -315,7 +322,7 @@ public partial class MainViewModel : ObservableRecipient
                     {
                         var tasks = newPrimaryFiles.Select(f => LoadImageInfoSafeAsync(f, cancellationToken));
                         var results = await Task.WhenAll(tasks);
-                        return results.ToList();
+                        return results.Where(r => r != null).ToList();
                     }, cancellationToken);
                     
                     var newFinalGroups = new List<ImageGroup>();
@@ -441,8 +448,19 @@ public partial class MainViewModel : ObservableRecipient
             file.DisplayType);
     }
 
-    private static async Task<ImageFileInfo> LoadImageInfoSafeAsync(StorageFile file, CancellationToken cancellationToken)
+    private static async Task<ImageFileInfo?> LoadImageInfoSafeAsync(StorageFile file, CancellationToken cancellationToken)
     {
+        try
+        {
+            using var testStream = await file.OpenReadAsync().AsTask(cancellationToken);
+            testStream.Dispose();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[LoadImageInfo] 文件无法访问，跳过: 文件={file.Path}, 错误={ex.Message}");
+            return null;
+        }
+
         try
         {
             int width = 200;
@@ -498,14 +516,7 @@ public partial class MainViewModel : ObservableRecipient
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[LoadImageInfo] 最终失败: 文件={file.Name}, 错误={ex.Message}");
-            return new ImageFileInfo(
-                200,
-                200,
-                string.Empty,
-                0,
-                file,
-                file.DisplayName,
-                file.DisplayType);
+            return null;
         }
     }
 
@@ -580,7 +591,7 @@ public partial class MainViewModel : ObservableRecipient
             var fileTypeFilter = ImageExtensions.ToList();
             var queryOptions = new QueryOptions(CommonFileQuery.OrderByName, fileTypeFilter)
             {
-                IndexerOption = IndexerOption.UseIndexerWhenAvailable,
+                IndexerOption = IndexerOption.DoNotUseIndexer,
                 FolderDepth = FolderDepth.Shallow
             };
 
@@ -646,7 +657,7 @@ public partial class MainViewModel : ObservableRecipient
                     {
                         var tasks = newPrimaryFiles.Select(f => LoadImageInfoSafeAsync(f, cancellationToken));
                         var results = await Task.WhenAll(tasks);
-                        return results.ToList();
+                        return results.Where(r => r != null).ToList();
                     }, cancellationToken);
                     
                     var newFinalGroups = new List<ImageGroup>();
@@ -697,6 +708,63 @@ public partial class MainViewModel : ObservableRecipient
         {
             System.Diagnostics.Debug.WriteLine($"LoadImagesWithoutHistoryAsync error: {ex}");
         }
+    }
+
+    public void TogglePendingDelete(ImageFileInfo image)
+    {
+        if (image == null)
+            return;
+
+        image.IsPendingDelete = !image.IsPendingDelete;
+        UpdatePendingDeleteCount();
+    }
+
+    public void TogglePendingDeleteForSelected(IEnumerable<ImageFileInfo> selectedImages)
+    {
+        if (selectedImages == null)
+            return;
+
+        var images = selectedImages.ToList();
+        if (images.Count == 0)
+            return;
+
+        var hasAnyUnmarked = images.Any(img => !img.IsPendingDelete);
+
+        foreach (var image in images)
+        {
+            image.IsPendingDelete = hasAnyUnmarked;
+        }
+        UpdatePendingDeleteCount();
+    }
+
+    public void ClearAllPendingDelete()
+    {
+        foreach (var image in Images)
+        {
+            image.IsPendingDelete = false;
+        }
+        PendingDeleteCount = 0;
+    }
+
+    public List<ImageFileInfo> GetPendingDeleteImages()
+    {
+        return Images.Where(i => i.IsPendingDelete).ToList();
+    }
+
+    private void UpdatePendingDeleteCount()
+    {
+        PendingDeleteCount = Images.Count(i => i.IsPendingDelete);
+    }
+
+    public static bool IsRawFile(string extension)
+    {
+        return RawExtensions.Contains(extension);
+    }
+
+    public static bool IsJpgFile(string extension)
+    {
+        var ext = extension.ToLowerInvariant();
+        return ext == ".jpg" || ext == ".jpeg";
     }
 }
 

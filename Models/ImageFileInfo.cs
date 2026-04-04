@@ -24,6 +24,7 @@ public class ImageFileInfo : INotifyPropertyChanged
     private int _loadVersion;
     private CancellationTokenSource? _thumbnailLoadCts;
     private bool _isSelected;
+    private bool _isPendingDelete;
     private double _displayWidth;
     private double _displayHeight;
     private readonly object _thumbnailLoadLock = new();
@@ -168,6 +169,12 @@ public class ImageFileInfo : INotifyPropertyChanged
     {
         get => _isSelected;
         set => SetProperty(ref _isSelected, value);
+    }
+
+    public bool IsPendingDelete
+    {
+        get => _isPendingDelete;
+        set => SetProperty(ref _isPendingDelete, value);
     }
 
     public double DisplayWidth
