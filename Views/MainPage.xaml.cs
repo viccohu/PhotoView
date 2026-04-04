@@ -568,7 +568,28 @@ public sealed partial class MainPage : Page
         {
             var (image, rating) = _pendingRatingUpdate.Value;
             _pendingRatingUpdate = null;
-            await UpdateRatingAsync(image, rating);
+            
+            var allImagesToProcess = new List<ImageFileInfo>();
+            
+            if (image.Group != null)
+            {
+                foreach (var groupImage in image.Group.Images)
+                {
+                    if (!allImagesToProcess.Contains(groupImage))
+                    {
+                        allImagesToProcess.Add(groupImage);
+                    }
+                }
+            }
+            else
+            {
+                allImagesToProcess.Add(image);
+            }
+            
+            foreach (var imageInfo in allImagesToProcess)
+            {
+                await UpdateRatingAsync(imageInfo, rating);
+            }
         }
     }
 
@@ -764,6 +785,76 @@ public sealed partial class MainPage : Page
         {
             TogglePendingDeleteForSelectedItems();
             e.Handled = true;
+        }
+        else if (e.Key >= VirtualKey.Number0 && e.Key <= VirtualKey.Number5)
+        {
+            HandleRatingShortcut(e.Key);
+            e.Handled = true;
+        }
+        else if (e.Key >= VirtualKey.NumberPad0 && e.Key <= VirtualKey.NumberPad5)
+        {
+            HandleRatingShortcut(e.Key - (VirtualKey.NumberPad0 - VirtualKey.Number0));
+            e.Handled = true;
+        }
+    }
+
+    private void HandleRatingShortcut(VirtualKey key)
+    {
+        var selectedImages = ImageGridView.SelectedItems
+            .OfType<ImageFileInfo>()
+            .ToList();
+        
+        if (selectedImages.Count == 0)
+            return;
+
+        int stars = key - VirtualKey.Number0;
+        
+        var allImagesToProcess = new List<ImageFileInfo>();
+        
+        foreach (var imageInfo in selectedImages)
+        {
+            if (imageInfo.Group != null)
+            {
+                foreach (var groupImage in imageInfo.Group.Images)
+                {
+                    if (!allImagesToProcess.Contains(groupImage))
+                    {
+                        allImagesToProcess.Add(groupImage);
+                    }
+                }
+            }
+            else
+            {
+                if (!allImagesToProcess.Contains(imageInfo))
+                {
+                    allImagesToProcess.Add(imageInfo);
+                }
+            }
+        }
+        
+        foreach (var imageInfo in allImagesToProcess)
+        {
+            uint newRating;
+            
+            if (stars == 0)
+            {
+                newRating = 0;
+            }
+            else
+            {
+                int currentStars = ImageFileInfo.RatingToStars(imageInfo.Rating);
+                
+                if (currentStars == stars)
+                {
+                    newRating = 0;
+                }
+                else
+                {
+                    newRating = ImageFileInfo.StarsToRating(stars);
+                }
+            }
+
+            _ = UpdateRatingAsync(imageInfo, newRating);
         }
     }
 
