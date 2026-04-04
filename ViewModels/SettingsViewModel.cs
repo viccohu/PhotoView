@@ -99,6 +99,19 @@ public class SettingsViewModel : ObservableRecipient
         }
     }
 
+    public bool DeleteToRecycleBin
+    {
+        get => _settingsService.DeleteToRecycleBin;
+        set
+        {
+            if (_settingsService.DeleteToRecycleBin != value)
+            {
+                _settingsService.DeleteToRecycleBin = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public ICommand SwitchThemeCommand
     {
         get;
@@ -125,6 +138,11 @@ public class SettingsViewModel : ObservableRecipient
     }
 
     public ICommand SetRememberLastFolderCommand
+    {
+        get;
+    }
+
+    public ICommand SetDeleteToRecycleBinCommand
     {
         get;
     }
@@ -193,6 +211,16 @@ public class SettingsViewModel : ObservableRecipient
                 {
                     RememberLastFolder = param;
                     await _settingsService.SaveRememberLastFolderAsync(param);
+                }
+            });
+
+        SetDeleteToRecycleBinCommand = new RelayCommand<bool>(
+            async (param) =>
+            {
+                if (DeleteToRecycleBin != param)
+                {
+                    DeleteToRecycleBin = param;
+                    await _settingsService.SaveDeleteToRecycleBinAsync(param);
                 }
             });
     }

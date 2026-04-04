@@ -57,6 +57,7 @@ public sealed partial class SettingsPage : Page
         UpdatePerformanceModeSelection();
         UpdateThumbnailSizeSelection();
         UpdateRememberLastFolderSelection();
+        UpdateDeleteToRecycleBinSelection();
         
         _isInitialized = true;
     }
@@ -107,6 +108,11 @@ public sealed partial class SettingsPage : Page
     private void UpdateRememberLastFolderSelection()
     {
         RememberLastFolderToggleSwitch.IsOn = ViewModel.RememberLastFolder;
+    }
+
+    private void UpdateDeleteToRecycleBinSelection()
+    {
+        DeleteToRecycleBinToggleSwitch.IsOn = ViewModel.DeleteToRecycleBin;
     }
 
     private void themeMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -185,5 +191,13 @@ public sealed partial class SettingsPage : Page
             return;
 
         ViewModel.SetRememberLastFolderCommand.Execute(RememberLastFolderToggleSwitch.IsOn);
+    }
+
+    private void DeleteToRecycleBinToggleSwitch_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (!_isInitialized)
+            return;
+
+        ViewModel.SetDeleteToRecycleBinCommand.Execute(DeleteToRecycleBinToggleSwitch.IsOn);
     }
 }

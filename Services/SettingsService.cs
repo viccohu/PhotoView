@@ -12,6 +12,7 @@ public class SettingsService : ISettingsService
     private PerformanceMode _performanceMode = PerformanceMode.Smart;
     private ThumbnailSize _thumbnailSize = ThumbnailSize.Medium;
     private bool _rememberLastFolder = true;
+    private bool _deleteToRecycleBin = true;
     private string _lastFolderPath = string.Empty;
 
     public event EventHandler<NavigationViewPaneDisplayMode>? NavigationViewModeChanged;
@@ -19,6 +20,7 @@ public class SettingsService : ISettingsService
     public event EventHandler<PerformanceMode>? PerformanceModeChanged;
     public event EventHandler<ThumbnailSize>? ThumbnailSizeChanged;
     public event EventHandler<bool>? RememberLastFolderChanged;
+    public event EventHandler<bool>? DeleteToRecycleBinChanged;
 
     public NavigationViewPaneDisplayMode NavigationViewMode
     {
@@ -81,6 +83,19 @@ public class SettingsService : ISettingsService
             {
                 _rememberLastFolder = value;
                 RememberLastFolderChanged?.Invoke(this, value);
+            }
+        }
+    }
+
+    public bool DeleteToRecycleBin
+    {
+        get => _deleteToRecycleBin;
+        set
+        {
+            if (_deleteToRecycleBin != value)
+            {
+                _deleteToRecycleBin = value;
+                DeleteToRecycleBinChanged?.Invoke(this, value);
             }
         }
     }
@@ -182,6 +197,22 @@ public class SettingsService : ISettingsService
         return _rememberLastFolder;
     }
 
+    public async Task SaveDeleteToRecycleBinAsync(bool deleteToRecycleBin)
+    {
+        await _localSettingsService.SaveSettingAsync("DeleteToRecycleBin", deleteToRecycleBin);
+    }
+
+    public async Task<bool> LoadDeleteToRecycleBinAsync()
+    {
+        var deleteToRecycleBin = await _localSettingsService.ReadSettingAsync<bool?>("DeleteToRecycleBin");
+        if (deleteToRecycleBin.HasValue)
+        {
+            _deleteToRecycleBin = deleteToRecycleBin.Value;
+            return deleteToRecycleBin.Value;
+        }
+        return _deleteToRecycleBin;
+    }
+
     public async Task SaveLastFolderPathAsync(string path)
     {
         await _localSettingsService.SaveSettingAsync("LastFolderPath", path);
@@ -205,6 +236,7 @@ public class SettingsService : ISettingsService
         await LoadPerformanceModeAsync();
         await LoadThumbnailSizeAsync();
         await LoadRememberLastFolderAsync();
+        await LoadDeleteToRecycleBinAsync();
         await LoadLastFolderPathAsync();
     }
 }

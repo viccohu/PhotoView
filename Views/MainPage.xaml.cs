@@ -48,6 +48,7 @@ public sealed partial class MainPage : Page
         ViewModel.ImagesChanged += ViewModel_ImagesChanged;
         ViewModel.ThumbnailSizeChanged += ViewModel_ThumbnailSizeChanged;
         ViewModel.FolderTreeLoaded += ViewModel_FolderTreeLoaded;
+        ViewModel.SelectedFolderChanged += ViewModel_SelectedFolderChanged;
         Loaded += MainPage_Loaded;
         KeyDown += MainPage_KeyDown;
         Unloaded += MainPage_Unloaded;
@@ -73,6 +74,15 @@ public sealed partial class MainPage : Page
     {
         System.Diagnostics.Debug.WriteLine($"[MainPage] FolderTreeLoaded 事件触发");
         await TryRestoreLastFolderAsync();
+    }
+
+    private async void ViewModel_SelectedFolderChanged(object? sender, FolderNode? node)
+    {
+        if (_isUnloaded || AppLifetime.IsShuttingDown || node == null)
+            return;
+
+        System.Diagnostics.Debug.WriteLine($"[MainPage] SelectedFolderChanged 事件触发, 节点: {node.Name}");
+        await ExpandTreeViewPathAsync(node);
     }
 
     private async System.Threading.Tasks.Task TryRestoreLastFolderAsync()
@@ -801,7 +811,40 @@ public sealed partial class MainPage : Page
 
     private async System.Threading.Tasks.Task DeleteFileToRecycleBinAsync(StorageFile file)
     {
-        await file.DeleteAsync(StorageDeleteOption.Default);
+        var settingsService = App.GetService<ISettingsService>();
+        var useRecycleBin = settingsService.DeleteToRecycleBin;
+        
+        var isRemovableDrive = IsRemovableDrive(file.Path);
+        
+        if (isRemovableDrive)
+        {
+            await file.DeleteAsync(StorageDeleteOption.PermanentDelete);
+        }
+        else if (useRecycleBin)
+        {
+            await file.DeleteAsync(StorageDeleteOption.Default);
+        }
+        else
+        {
+            await file.DeleteAsync(StorageDeleteOption.PermanentDelete);
+        }
+    }
+
+    private static bool IsRemovableDrive(string filePath)
+    {
+        try
+        {
+            var driveLetter = Path.GetPathRoot(filePath);
+            if (string.IsNullOrEmpty(driveLetter))
+                return false;
+            
+            var driveInfo = new DriveInfo(driveLetter);
+            return driveInfo.DriveType == DriveType.Removable;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private void RemoveDeletedImagesFromList(List<ImageFileInfo> deletedImages)

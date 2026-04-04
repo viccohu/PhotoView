@@ -117,6 +117,16 @@
                         </ComboBox>
                     </toolkit:SettingsCard>
                     
+                    <!-- File Operations -->
+                    <TextBlock Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" Text="File Operations" />
+                    
+                    <toolkit:SettingsCard Description="Move deleted files to recycle bin (not available for removable drives)" Header="Delete to recycle bin">
+                        <toolkit:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE74D;" />
+                        </toolkit:SettingsCard.HeaderIcon>
+                        <ToggleSwitch x:Name="DeleteToRecycleBinToggleSwitch" Toggled="DeleteToRecycleBinToggleSwitch_Toggled" />
+                    </toolkit:SettingsCard>
+                    
                     <!-- About -->
                     <TextBlock Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" Text="About" />
                     

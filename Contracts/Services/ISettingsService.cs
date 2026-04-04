@@ -30,6 +30,11 @@ public interface ISettingsService
         set;
     }
 
+    bool DeleteToRecycleBin {
+        get;
+        set;
+    }
+
     string LastFolderPath {
         get;
         set;
@@ -40,6 +45,7 @@ public interface ISettingsService
     event EventHandler<PerformanceMode>? PerformanceModeChanged;
     event EventHandler<ThumbnailSize>? ThumbnailSizeChanged;
     event EventHandler<bool>? RememberLastFolderChanged;
+    event EventHandler<bool>? DeleteToRecycleBinChanged;
 
     Task SaveNavigationViewModeAsync(NavigationViewPaneDisplayMode mode);
     Task<NavigationViewPaneDisplayMode> LoadNavigationViewModeAsync();
@@ -51,6 +57,8 @@ public interface ISettingsService
     Task<ThumbnailSize> LoadThumbnailSizeAsync();
     Task SaveRememberLastFolderAsync(bool remember);
     Task<bool> LoadRememberLastFolderAsync();
+    Task SaveDeleteToRecycleBinAsync(bool deleteToRecycleBin);
+    Task<bool> LoadDeleteToRecycleBinAsync();
     Task SaveLastFolderPathAsync(string path);
     Task<string> LoadLastFolderPathAsync();
 

@@ -72,6 +72,7 @@ public partial class MainViewModel : ObservableRecipient
     public event EventHandler? ImagesChanged;
     public event EventHandler? ThumbnailSizeChanged;
     public event EventHandler? FolderTreeLoaded;
+    public event EventHandler<FolderNode?>? SelectedFolderChanged;
 
     [ObservableProperty]
     private ObservableCollection<FolderNode> _folderTree;
@@ -115,6 +116,11 @@ public partial class MainViewModel : ObservableRecipient
             image.ClearThumbnail();
         }
         ThumbnailSizeChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    partial void OnSelectedFolderChanged(FolderNode? value)
+    {
+        SelectedFolderChanged?.Invoke(this, value);
     }
 
     public MainViewModel(ISettingsService settingsService)
