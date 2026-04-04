@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using PhotoView.Models;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using Windows.Storage;
 using Windows.Storage.Search;
@@ -12,7 +13,46 @@ public partial class MainViewModel : ObservableRecipient
 {
     private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp"
+        // 常见图片格式
+        ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp",
+        
+        // RAW 格式 - Canon
+        ".cr2", ".cr3", ".crw",
+        
+        // RAW 格式 - Nikon
+        ".nef", ".nrw",
+        
+        // RAW 格式 - Sony
+        ".arw", ".sr2",
+        
+        // RAW 格式 - Fujifilm
+        ".raf",
+        
+        // RAW 格式 - Olympus
+        ".orf",
+        
+        // RAW 格式 - Panasonic/Leica
+        ".rw2",
+        
+        // RAW 格式 - Pentax
+        ".pef",
+        
+        // RAW 格式 - Adobe (通用)
+        ".dng",
+        
+        // RAW 格式 - Samsung
+        ".srw",
+        
+        // RAW 格式 - 其他品牌
+        ".raw",      // 通用 RAW
+        ".iiq",      // Phase One
+        ".3fr",      // Hasselblad
+        ".mef",      // Mamiya
+        ".mos",      // Leaf
+        ".x3f",      // Sigma
+        ".erf",      // Epson
+        ".dcr",      // Kodak
+        ".kdc"       // Kodak
     };
 
     private const uint PageSize = 100;
@@ -185,47 +225,50 @@ public partial class MainViewModel : ObservableRecipient
 
         try
         {
-            var result = folderNode.Folder.CreateFileQueryWithOptions(new QueryOptions());
+            var fileTypeFilter = ImageExtensions.ToList();
+            var queryOptions = new QueryOptions(CommonFileQuery.OrderByName, fileTypeFilter)
+            {
+                IndexerOption = IndexerOption.UseIndexerWhenAvailable,
+                FolderDepth = FolderDepth.Shallow
+            };
+
+            var result = folderNode.Folder.CreateFileQueryWithOptions(queryOptions);
+            
+            var allFiles = new List<StorageFile>();
             uint index = 0;
+            const uint batchSize = 500;
 
             while (!cancellationToken.IsCancellationRequested)
             {
-                var batch = await result.GetFilesAsync(index, PageSize);
+                var batch = await result.GetFilesAsync(index, batchSize);
                 if (batch.Count == 0)
                     break;
-
-                var imageInfos = await System.Threading.Tasks.Task.Run(async () =>
-                {
-                    var tasks = new List<Task<ImageFileInfo?>>();
-
-                    foreach (var file in batch)
-                    {
-                        if (cancellationToken.IsCancellationRequested)
-                            break;
-
-                        if (IsImageFile(file))
-                        {
-                            tasks.Add(LoadImageInfoSafeAsync(file, cancellationToken));
-                        }
-                    }
-
-                    var results = await Task.WhenAll(tasks);
-                    return results.Where(r => r != null).Cast<ImageFileInfo>().ToList();
-                }, cancellationToken);
-
-                if (!cancellationToken.IsCancellationRequested)
-                {
-                    foreach (var info in imageInfos)
-                    {
-                        info.UpdateDisplaySize(ThumbnailSize);
-                        Images.Add(info);
-                    }
-                }
-
-                index += PageSize;
+                allFiles.AddRange(batch);
+                index += (uint)batch.Count;
             }
 
-            System.Diagnostics.Debug.WriteLine($"[LoadImagesAsync] 加载完成, Images.Count={Images.Count}");
+            var imageInfos = await System.Threading.Tasks.Task.Run(async () =>
+            {
+                var tasks = allFiles.Select(f => LoadImageInfoSafeAsync(f, cancellationToken));
+                var results = await Task.WhenAll(tasks);
+                return results.Where(r => r != null).Cast<ImageFileInfo>().ToList();
+            }, cancellationToken);
+
+            var groups = imageInfos
+                .GroupBy(img => ImageGroup.GetGroupName(img.ImageFile.Name))
+                .Select(g => new ImageGroup(g.Key, g))
+                .ToList();
+
+            foreach (var group in groups)
+            {
+                if (!cancellationToken.IsCancellationRequested)
+                {
+                    group.PrimaryImage.UpdateDisplaySize(ThumbnailSize);
+                    Images.Add(group.PrimaryImage);
+                }
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[LoadImagesAsync] 加载完成, Images.Count={Images.Count}, Groups={groups.Count}");
             ImagesChanged?.Invoke(this, EventArgs.Empty);
         }
         catch (OperationCanceledException)
@@ -360,47 +403,50 @@ public partial class MainViewModel : ObservableRecipient
 
         try
         {
-            var result = folderNode.Folder.CreateFileQueryWithOptions(new QueryOptions());
+            var fileTypeFilter = ImageExtensions.ToList();
+            var queryOptions = new QueryOptions(CommonFileQuery.OrderByName, fileTypeFilter)
+            {
+                IndexerOption = IndexerOption.UseIndexerWhenAvailable,
+                FolderDepth = FolderDepth.Shallow
+            };
+
+            var result = folderNode.Folder.CreateFileQueryWithOptions(queryOptions);
+            
+            var allFiles = new List<StorageFile>();
             uint index = 0;
+            const uint batchSize = 500;
 
             while (!cancellationToken.IsCancellationRequested)
             {
-                var batch = await result.GetFilesAsync(index, PageSize);
+                var batch = await result.GetFilesAsync(index, batchSize);
                 if (batch.Count == 0)
                     break;
-
-                var imageInfos = await System.Threading.Tasks.Task.Run(async () =>
-                {
-                    var tasks = new List<Task<ImageFileInfo?>>();
-
-                    foreach (var file in batch)
-                    {
-                        if (cancellationToken.IsCancellationRequested)
-                            break;
-
-                        if (IsImageFile(file))
-                        {
-                            tasks.Add(LoadImageInfoSafeAsync(file, cancellationToken));
-                        }
-                    }
-
-                    var results = await Task.WhenAll(tasks);
-                    return results.Where(r => r != null).Cast<ImageFileInfo>().ToList();
-                }, cancellationToken);
-
-                if (!cancellationToken.IsCancellationRequested)
-                {
-                    foreach (var info in imageInfos)
-                    {
-                        info.UpdateDisplaySize(ThumbnailSize);
-                        Images.Add(info);
-                    }
-                }
-
-                index += PageSize;
+                allFiles.AddRange(batch);
+                index += (uint)batch.Count;
             }
 
-            System.Diagnostics.Debug.WriteLine($"[LoadImagesWithoutHistoryAsync] 加载完成, Images.Count={Images.Count}");
+            var imageInfos = await System.Threading.Tasks.Task.Run(async () =>
+            {
+                var tasks = allFiles.Select(f => LoadImageInfoSafeAsync(f, cancellationToken));
+                var results = await Task.WhenAll(tasks);
+                return results.Where(r => r != null).Cast<ImageFileInfo>().ToList();
+            }, cancellationToken);
+
+            var groups = imageInfos
+                .GroupBy(img => ImageGroup.GetGroupName(img.ImageFile.Name))
+                .Select(g => new ImageGroup(g.Key, g))
+                .ToList();
+
+            foreach (var group in groups)
+            {
+                if (!cancellationToken.IsCancellationRequested)
+                {
+                    group.PrimaryImage.UpdateDisplaySize(ThumbnailSize);
+                    Images.Add(group.PrimaryImage);
+                }
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[LoadImagesWithoutHistoryAsync] 加载完成, Images.Count={Images.Count}, Groups={groups.Count}");
             ImagesChanged?.Invoke(this, EventArgs.Empty);
         }
         catch (OperationCanceledException)

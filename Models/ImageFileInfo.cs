@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Dispatching;
@@ -361,12 +363,40 @@ public class ImageFileInfo : INotifyPropertyChanged
 
     public bool IsPrimary => _isPrimary;
 
+    public List<ImageFileInfo>? AlternateFormats =>
+        _group?.Images.Where(i => i != this).ToList();
+
+    public bool HasAlternateFormats =>
+        AlternateFormats != null && AlternateFormats.Count > 0;
+
+    public string AlternateFormatsText
+    {
+        get
+        {
+            if (!HasAlternateFormats || AlternateFormats == null)
+                return string.Empty;
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"Current: {FileType.ToUpperInvariant()}");
+            sb.AppendLine();
+            sb.AppendLine("Other formats:");
+            foreach (var format in AlternateFormats)
+            {
+                sb.AppendLine($"• {format.FileType.ToUpperInvariant()}");
+            }
+            return sb.ToString().TrimEnd();
+        }
+    }
+
     public void SetGroupInfo(ImageGroup group, bool isPrimary)
     {
         _group = group;
         _isPrimary = isPrimary;
         OnPropertyChanged(nameof(Group));
         OnPropertyChanged(nameof(IsPrimary));
+        OnPropertyChanged(nameof(AlternateFormats));
+        OnPropertyChanged(nameof(HasAlternateFormats));
+        OnPropertyChanged(nameof(AlternateFormatsText));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
