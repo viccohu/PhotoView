@@ -6,6 +6,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:PhotoView.Models"
     xmlns:converters="using:PhotoView.Converters"
+    xmlns:controls="using:PhotoView.Controls"
     xmlns:local="using:PhotoView.Views"
     mc:Ignorable="d">
     <Page.Resources>
@@ -319,6 +320,7 @@
                             Padding="6">
                             <Grid Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
                                 <Image
+                                    x:Name="thumbnailImage"
                                     Source="{x:Bind Thumbnail, Mode=OneWay}"
                                     Stretch="Uniform"
                                     HorizontalAlignment="Center"
@@ -460,5 +462,13 @@
                 </ItemsPanelTemplate>
             </GridView.ItemsPanel>
         </GridView>
+
+        <controls:ImageViewerControl
+            x:Name="ImageViewer"
+            Visibility="Collapsed"
+            Grid.Column="0"
+            Grid.ColumnSpan="2"
+            Grid.Row="0"
+            Grid.RowSpan="3"/>
     </Grid>
 </Page>

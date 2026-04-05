@@ -1,0 +1,94 @@
+<UserControl
+    x:Class="PhotoView.Controls.ImageViewerControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    d:DesignHeight="300"
+    d:DesignWidth="400">
+
+    <Grid
+        x:Name="BackgroundOverlay"
+        Background="#80000000"
+        Opacity="0"
+        Tapped="BackgroundOverlay_Tapped">
+        
+        <Grid
+            x:Name="AnimationContainer"
+            Opacity="0">
+            
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="7*"/>
+                <ColumnDefinition Width="3*"/>
+            </Grid.ColumnDefinitions>
+
+            <ScrollViewer
+                x:Name="ImageScrollViewer"
+                Grid.Column="0"
+                Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                HorizontalScrollBarVisibility="Auto"
+                VerticalScrollBarVisibility="Auto"
+                ZoomMode="Enabled"
+                Tapped="ImageScrollViewer_Tapped">
+                <Grid
+                    x:Name="ImageContainer"
+                    Width="500"
+                    Height="500"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                    <Image
+                        x:Name="mainImage"
+                        Stretch="Uniform"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        DoubleTapped="mainImage_DoubleTapped"/>
+                </Grid>
+            </ScrollViewer>
+
+            <Border
+                x:Name="InfoPanel"
+                Grid.Column="1"
+                Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}"
+                Padding="24"
+                Tapped="InfoPanel_Tapped">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="20">
+                        <StackPanel>
+                            <TextBlock Text="信息" Style="{ThemeResource TitleTextBlockStyle}"/>
+                            <Button
+                                x:Name="CloseButton"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Top"
+                                Background="Transparent"
+                                BorderBrush="Transparent"
+                                BorderThickness="0"
+                                Click="CloseButton_Click">
+                                <FontIcon Glyph="&#xE711;" FontFamily="{StaticResource SymbolThemeFontFamily}"/>
+                            </Button>
+                        </StackPanel>
+
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="文件名" Style="{ThemeResource SubtitleTextBlockStyle}"/>
+                            <TextBlock x:Name="ImageNameTextBox" TextWrapping="Wrap"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="大小信息" Style="{ThemeResource SubtitleTextBlockStyle}"/>
+                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                <TextBlock x:Name="ResolutionTextBlock"/>
+                                <TextBlock x:Name="FileSizeTextBlock"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="文件路径" Style="{ThemeResource SubtitleTextBlockStyle}"/>
+                            <StackPanel x:Name="FilePathPanel" Spacing="8">
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

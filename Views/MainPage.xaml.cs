@@ -4,7 +4,9 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
 using PhotoView.Contracts.Services;
+using PhotoView.Controls;
 using PhotoView.Dialogs;
 using PhotoView.Helpers;
 using PhotoView.Models;
@@ -32,6 +34,7 @@ public sealed partial class MainPage : Page
     private FolderNode? _lastClickedNode;
     private bool _hasAttemptedRestoreLastFolder;
     private (ImageFileInfo Image, uint Rating)? _pendingRatingUpdate;
+    private ImageFileInfo? _storedImageFileInfo;
 
     public MainPage()
     {
@@ -82,7 +85,51 @@ public sealed partial class MainPage : Page
         _isUnloaded = false;
         FilterFlyoutControl.FilterViewModel = ViewModel.Filter;
         ViewModel.Filter.FilterChanged += Filter_FilterChanged;
+        ImageViewer.Closed += ImageViewer_Closed;
+        ImageGridView.DoubleTapped += ImageGridView_DoubleTapped;
         UpdateFilterButtonState();
+    }
+
+    private async void ImageViewer_Closed(object? sender, EventArgs e)
+    {
+        if (_storedImageFileInfo != null)
+        {
+            ImageGridView.ScrollIntoView(_storedImageFileInfo, ScrollIntoViewAlignment.Default);
+            ImageGridView.UpdateLayout();
+
+            var animation = ConnectedAnimationService.GetForCurrentView().GetAnimation("BackConnectedAnimation");
+            if (animation != null)
+            {
+                await ImageGridView.TryStartConnectedAnimationAsync(animation, _storedImageFileInfo, "thumbnailImage");
+            }
+
+            await ImageViewer.CompleteCloseAsync();
+        }
+    }
+
+    private async void ImageGridView_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        if (e.OriginalSource is FrameworkElement element && element.DataContext is ImageFileInfo imageFileInfo)
+        {
+            _storedImageFileInfo = imageFileInfo;
+
+            ImageViewer.PrepareContent(imageFileInfo);
+
+            if (ImageGridView.ContainerFromItem(imageFileInfo) is GridViewItem container)
+            {
+                ImageGridView.PrepareConnectedAnimation("ForwardConnectedAnimation", imageFileInfo, "thumbnailImage");
+            }
+
+            var imageAnimation = ConnectedAnimationService.GetForCurrentView().GetAnimation("ForwardConnectedAnimation");
+            if (imageAnimation != null)
+            {
+                imageAnimation.TryStart(ImageViewer.GetMainImage(), ImageViewer.GetCoordinatedElements());
+            }
+
+            await ImageViewer.ShowAfterAnimationAsync();
+
+            e.Handled = true;
+        }
     }
 
     private void Filter_FilterChanged(object? sender, EventArgs e)
