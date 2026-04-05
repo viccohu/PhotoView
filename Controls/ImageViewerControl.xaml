@@ -19,8 +19,8 @@
             Opacity="0">
             
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="7*"/>
-                <ColumnDefinition Width="3*"/>
+                <ColumnDefinition Width="8*"/>
+                <ColumnDefinition Width="2*"/>
             </Grid.ColumnDefinitions>
 
             <ScrollViewer
@@ -53,9 +53,9 @@
                 Padding="24"
                 Tapped="InfoPanel_Tapped">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Spacing="20">
-                        <StackPanel>
-                            <TextBlock Text="信息" Style="{ThemeResource TitleTextBlockStyle}"/>
+                    <StackPanel Spacing="16">
+                        <Grid>
+                            <TextBlock Text="信息" Style="{ThemeResource TitleTextBlockStyle}" Margin="0,0,48,0"/>
                             <Button
                                 x:Name="CloseButton"
                                 HorizontalAlignment="Right"
@@ -66,24 +66,53 @@
                                 Click="CloseButton_Click">
                                 <FontIcon Glyph="&#xE711;" FontFamily="{StaticResource SymbolThemeFontFamily}"/>
                             </Button>
-                        </StackPanel>
+                        </Grid>
 
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="文件名" Style="{ThemeResource SubtitleTextBlockStyle}"/>
-                            <TextBlock x:Name="ImageNameTextBox" TextWrapping="Wrap"/>
-                        </StackPanel>
-
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="大小信息" Style="{ThemeResource SubtitleTextBlockStyle}"/>
-                            <StackPanel Orientation="Horizontal" Spacing="16">
-                                <TextBlock x:Name="ResolutionTextBlock"/>
-                                <TextBlock x:Name="FileSizeTextBlock"/>
+                        <StackPanel Spacing="4">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE8B9;" FontFamily="{StaticResource SymbolThemeFontFamily}"/>
+                                <TextBlock x:Name="ImageNameTextBox" TextWrapping="Wrap" Style="{ThemeResource BodyTextBlockStyle}"/>
                             </StackPanel>
                         </StackPanel>
 
                         <StackPanel Spacing="8">
-                            <TextBlock Text="文件路径" Style="{ThemeResource SubtitleTextBlockStyle}"/>
-                            <StackPanel x:Name="FilePathPanel" Spacing="8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE787;" FontFamily="{StaticResource SymbolThemeFontFamily}"/>
+                                <DatePicker x:Name="CaptureDatePicker" Header="拍摄日期" IsEnabled="False"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE8C5;" FontFamily="{StaticResource SymbolThemeFontFamily}"/>
+                                <TimePicker x:Name="CaptureTimePicker" Header="拍摄时间" IsEnabled="False"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Spacing="8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE8A9;" FontFamily="{StaticResource SymbolThemeFontFamily}"/>
+                                <TextBlock Text="大小信息" Style="{ThemeResource SubtitleTextBlockStyle}"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="16" Margin="24,0,0,0">
+                                <TextBlock x:Name="ResolutionTextBlock" Style="{ThemeResource BodyTextBlockStyle}"/>
+                                <TextBlock x:Name="FileSizeTextBlock" Style="{ThemeResource BodyTextBlockStyle}"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Spacing="8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE722;" FontFamily="{StaticResource SymbolThemeFontFamily}"/>
+                                <TextBlock Text="设备信息" Style="{ThemeResource SubtitleTextBlockStyle}"/>
+                            </StackPanel>
+                            <StackPanel x:Name="DeviceInfoPanel" Orientation="Horizontal" Spacing="8" Margin="24,0,0,0"
+                                          Visibility="Collapsed">
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Spacing="8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE8B7;" FontFamily="{StaticResource SymbolThemeFontFamily}"/>
+                                <TextBlock Text="文件路径" Style="{ThemeResource SubtitleTextBlockStyle}"/>
+                            </StackPanel>
+                            <StackPanel x:Name="FilePathPanel" Spacing="8" Margin="24,0,0,0">
                             </StackPanel>
                         </StackPanel>
                     </StackPanel>
