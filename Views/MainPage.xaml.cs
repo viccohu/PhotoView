@@ -849,6 +849,16 @@ public sealed partial class MainPage : Page
 
     private void MainPage_KeyDown(object sender, KeyRoutedEventArgs e)
     {
+        if (ImageViewer.Visibility == Visibility.Visible)
+        {
+            if (e.Key == VirtualKey.Escape)
+            {
+                ImageViewer.PrepareCloseAnimation();
+                e.Handled = true;
+            }
+            return;
+        }
+
         if (e.Key == VirtualKey.A)
         {
             var isCtrlPressed = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
