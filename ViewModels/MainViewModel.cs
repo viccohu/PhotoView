@@ -455,9 +455,21 @@ public partial class MainViewModel : ObservableRecipient
     public static async System.Threading.Tasks.Task<ImageFileInfo> LoadImageInfo(StorageFile file)
     {
         var properties = await file.Properties.GetImagePropertiesAsync();
+        int width = (int)properties.Width;
+        int height = (int)properties.Height;
+        
+        var orientation = properties.Orientation;
+        if (orientation == Windows.Storage.FileProperties.PhotoOrientation.Rotate90 || 
+            orientation == Windows.Storage.FileProperties.PhotoOrientation.Rotate270 ||
+            orientation == Windows.Storage.FileProperties.PhotoOrientation.Transpose ||
+            orientation == Windows.Storage.FileProperties.PhotoOrientation.Transverse)
+        {
+            (width, height) = (height, width);
+        }
+        
         return new ImageFileInfo(
-            (int)properties.Width,
-            (int)properties.Height,
+            width,
+            height,
             properties.Title,
             file,
             file.DisplayName,
@@ -494,6 +506,15 @@ public partial class MainViewModel : ObservableRecipient
                     {
                         width = (int)properties.Width;
                         height = (int)properties.Height;
+                        
+                        var orientation = properties.Orientation;
+                        if (orientation == Windows.Storage.FileProperties.PhotoOrientation.Rotate90 || 
+                            orientation == Windows.Storage.FileProperties.PhotoOrientation.Rotate270 ||
+                            orientation == Windows.Storage.FileProperties.PhotoOrientation.Transpose ||
+                            orientation == Windows.Storage.FileProperties.PhotoOrientation.Transverse)
+                        {
+                            (width, height) = (height, width);
+                        }
                     }
                     title = properties.Title;
                 }
@@ -511,6 +532,22 @@ public partial class MainViewModel : ObservableRecipient
                     var decoder = await Windows.Graphics.Imaging.BitmapDecoder.CreateAsync(stream);
                     width = (int)decoder.PixelWidth;
                     height = (int)decoder.PixelHeight;
+                    
+                    try
+                    {
+                        var properties = await decoder.BitmapProperties.GetPropertiesAsync(new[] { "System.Photo.Orientation" });
+                        if (properties.TryGetValue("System.Photo.Orientation", out var orientationValue))
+                        {
+                            var exifOrientation = Convert.ToUInt16(orientationValue.Value);
+                            if (exifOrientation == 6 || exifOrientation == 8 || exifOrientation == 5 || exifOrientation == 7)
+                            {
+                                (width, height) = (height, width);
+                            }
+                        }
+                    }
+                    catch
+                    {
+                    }
                 }
                 catch (Exception ex)
                 {

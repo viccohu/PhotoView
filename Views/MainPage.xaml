@@ -118,7 +118,7 @@
             </TreeView.ItemTemplate>
         </TreeView>
 
-        <Grid Grid.Column="1" Grid.Row="0" Margin="12,8,12,8">
+        <Grid Grid.Column="1" Grid.Row="0" Margin="12,8,50,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>

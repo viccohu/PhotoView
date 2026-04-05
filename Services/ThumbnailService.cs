@@ -44,7 +44,20 @@ public class ThumbnailService : IThumbnailService
         await _decodeGate.WaitAsync(cancellationToken);
         try
         {
-            return await DecodeThumbnailAsync(file, size, cancellationToken);
+            return await DecodeThumbnailAsync(file, (uint)size, cancellationToken);
+        }
+        finally
+        {
+            _decodeGate.Release();
+        }
+    }
+
+    public async Task<ImageSource?> GetThumbnailByLongSideAsync(StorageFile file, uint longSidePixels, CancellationToken cancellationToken)
+    {
+        await _decodeGate.WaitAsync(cancellationToken);
+        try
+        {
+            return await DecodeThumbnailAsync(file, longSidePixels, cancellationToken);
         }
         finally
         {
@@ -60,15 +73,28 @@ public class ThumbnailService : IThumbnailService
     {
     }
 
-    private static async Task<ImageSource?> DecodeThumbnailAsync(StorageFile file, ThumbnailSize size, CancellationToken cancellationToken)
+    private static async Task<ImageSource?> DecodeThumbnailAsync(StorageFile file, uint longSidePixels, CancellationToken cancellationToken)
     {
         using var stream = await file.OpenReadAsync().AsTask(cancellationToken);
         var decoder = await BitmapDecoder.CreateAsync(stream).AsTask(cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var scaledHeight = Math.Max(1u, (uint)size);
-        var aspectRatio = decoder.PixelHeight == 0 ? 1d : (double)decoder.PixelWidth / decoder.PixelHeight;
-        var scaledWidth = Math.Max(1u, (uint)Math.Round(scaledHeight * aspectRatio));
+        uint scaledWidth, scaledHeight;
+        if (decoder.PixelWidth >= decoder.PixelHeight)
+        {
+            // 横向图片，宽度设为最长边
+            scaledWidth = Math.Max(1u, longSidePixels);
+            var aspectRatio = decoder.PixelWidth == 0 ? 1d : (double)decoder.PixelHeight / decoder.PixelWidth;
+            scaledHeight = Math.Max(1u, (uint)Math.Round(scaledWidth * aspectRatio));
+        }
+        else
+        {
+            // 纵向图片，高度设为最长边
+            scaledHeight = Math.Max(1u, longSidePixels);
+            var aspectRatio = decoder.PixelHeight == 0 ? 1d : (double)decoder.PixelWidth / decoder.PixelHeight;
+            scaledWidth = Math.Max(1u, (uint)Math.Round(scaledHeight * aspectRatio));
+        }
+
         var transform = new BitmapTransform
         {
             ScaledWidth = scaledWidth,
