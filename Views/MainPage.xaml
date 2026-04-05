@@ -139,7 +139,7 @@
                 <StackPanel 
                     Orientation="Horizontal" 
                     VerticalAlignment="Center"
-                    Margin="0,4,0,12"
+                    Margin="0,8,0,12"
                     
                     Visibility="{x:Bind ViewModel.SelectedFolder, Mode=OneWay, Converter={StaticResource NullToVisibilityConverter}}">
                     <Border
@@ -158,6 +158,7 @@
                         Background="Transparent"
                         BorderBrush="{ThemeResource SystemFillColorCriticalBrush}"
                         BorderThickness="1.5"
+                        Margin="10,0,0,0"
                         CornerRadius="4"
                         Visibility="{x:Bind ViewModel.PendingDeleteCount, Mode=OneWay, Converter={StaticResource IntToVisibilityConverter}}">
                         <Grid>
