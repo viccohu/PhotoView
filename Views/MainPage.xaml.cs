@@ -733,7 +733,7 @@ public sealed partial class MainPage : Page
                 if (selectedItem is ImageFileInfo imageInfo)
                 {
                     imageInfo.IsSelected = true;
-                    System.Diagnostics.Debug.WriteLine($"[Selected] {imageInfo.ImageName}, Rating: {imageInfo.Rating}, Source: {imageInfo.RatingSource}");
+                    System.Diagnostics.Debug.WriteLine($"[Selected] {imageInfo.ImageName}, Rating: {imageInfo.Rating}, Source: {imageInfo.RatingSource}, Dimensions: {imageInfo.Width}x{imageInfo.Height}, DisplaySize: {imageInfo.DisplayWidth:F0}x{imageInfo.DisplayHeight:F0}");
                 }
             }
         }
