@@ -88,6 +88,8 @@ public sealed partial class ShellPage : Page
 
     private void OnLoaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
+        // 加载完成后更新标题栏颜色
+        UpdateTitleBarColor();
     }
 
     private void MainWindow_Activated(object sender, WindowActivatedEventArgs args)
@@ -97,7 +99,12 @@ public sealed partial class ShellPage : Page
 
     private void OnThemeChanged(object? sender, EventArgs e)
     {
-        UpdateTitleBarColor();
+        // 延迟一下，确保主题完全应用后再设置颜色
+        DispatcherQueue.TryEnqueue(async () =>
+        {
+            await Task.Delay(50);
+            UpdateTitleBarColor();
+        });
     }
 
     private void OnNavigationServiceNavigated(object sender, NavigationEventArgs e)
@@ -124,37 +131,46 @@ public sealed partial class ShellPage : Page
         if (appWindow?.TitleBar != null)
         {
             var titleBar = appWindow.TitleBar;
+            
+            // 使用主题服务获取当前主题，最可靠
+            var isDarkTheme = _themeSelectorService.Theme == ElementTheme.Dark || 
+                              (_themeSelectorService.Theme == ElementTheme.Default && 
+                               Application.Current.RequestedTheme == ApplicationTheme.Dark);
 
             titleBar.ButtonBackgroundColor = Colors.Transparent;
             titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
 
-            if (isDeactivated)
+            if (isDarkTheme)
             {
-                titleBar.ButtonForegroundColor = GetThemeColor("WindowCaptionForegroundDisabled");
-                titleBar.ButtonHoverForegroundColor = GetThemeColor("WindowCaptionForegroundDisabled");
-                titleBar.ButtonPressedForegroundColor = GetThemeColor("WindowCaptionForegroundDisabled");
+                // 深色主题：白色按钮
+                titleBar.ButtonForegroundColor = Colors.White;
+                titleBar.ButtonHoverForegroundColor = Colors.White;
+                titleBar.ButtonPressedForegroundColor = Colors.White;
                 titleBar.ButtonHoverBackgroundColor = Color.FromArgb(0x20, 0xFF, 0xFF, 0xFF);
                 titleBar.ButtonPressedBackgroundColor = Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF);
+                if (isDeactivated)
+                {
+                    titleBar.ButtonForegroundColor = Color.FromArgb(0x66, 0xFF, 0xFF, 0xFF);
+                    titleBar.ButtonHoverForegroundColor = Color.FromArgb(0x66, 0xFF, 0xFF, 0xFF);
+                    titleBar.ButtonPressedForegroundColor = Color.FromArgb(0x66, 0xFF, 0xFF, 0xFF);
+                }
             }
             else
             {
-                titleBar.ButtonForegroundColor = GetThemeColor("WindowCaptionForeground");
-                titleBar.ButtonHoverForegroundColor = GetThemeColor("WindowCaptionForeground");
-                titleBar.ButtonPressedForegroundColor = GetThemeColor("WindowCaptionForeground");
-                titleBar.ButtonHoverBackgroundColor = Color.FromArgb(0x20, 0xFF, 0xFF, 0xFF);
-                titleBar.ButtonPressedBackgroundColor = Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF);
+                // 浅色主题：黑色按钮 - 直接硬编码为黑色！
+                titleBar.ButtonForegroundColor = Colors.Black;
+                titleBar.ButtonHoverForegroundColor = Colors.Black;
+                titleBar.ButtonPressedForegroundColor = Colors.Black;
+                titleBar.ButtonHoverBackgroundColor = Color.FromArgb(0x20, 0x00, 0x00, 0x00);
+                titleBar.ButtonPressedBackgroundColor = Color.FromArgb(0x40, 0x00, 0x00, 0x00);
+                if (isDeactivated)
+                {
+                    titleBar.ButtonForegroundColor = Color.FromArgb(0x66, 0x00, 0x00, 0x00);
+                    titleBar.ButtonHoverForegroundColor = Color.FromArgb(0x66, 0x00, 0x00, 0x00);
+                    titleBar.ButtonPressedForegroundColor = Color.FromArgb(0x66, 0x00, 0x00, 0x00);
+                }
             }
         }
-    }
-
-    private Color GetThemeColor(string resourceKey)
-    {
-        if (Application.Current.Resources.TryGetValue(resourceKey, out var resource) &&
-            resource is SolidColorBrush brush)
-        {
-            return brush.Color;
-        }
-        return Colors.White;
     }
 
     private void TitleBar_BackRequested(TitleBar sender, object args)

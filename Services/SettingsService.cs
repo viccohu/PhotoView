@@ -14,6 +14,13 @@ public class SettingsService : ISettingsService
     private bool _rememberLastFolder = true;
     private bool _deleteToRecycleBin = true;
     private string _lastFolderPath = string.Empty;
+    private string _exportLastFolderPath = string.Empty;
+    private bool _exportImageEnabled = false;
+    private int _exportImageMinRating = 1;
+    private string _exportImageFolderName = string.Empty;
+    private bool _exportRawEnabled = false;
+    private int _exportRawMinRating = 1;
+    private string _exportRawFolderName = "RAW";
 
     public event EventHandler<NavigationViewPaneDisplayMode>? NavigationViewModeChanged;
     public event EventHandler<int>? BatchSizeChanged;
@@ -108,6 +115,90 @@ public class SettingsService : ISettingsService
             if (_lastFolderPath != value)
             {
                 _lastFolderPath = value;
+            }
+        }
+    }
+
+    public string ExportLastFolderPath
+    {
+        get => _exportLastFolderPath;
+        set
+        {
+            if (_exportLastFolderPath != value)
+            {
+                _exportLastFolderPath = value;
+            }
+        }
+    }
+
+    public bool ExportImageEnabled
+    {
+        get => _exportImageEnabled;
+        set
+        {
+            if (_exportImageEnabled != value)
+            {
+                _exportImageEnabled = value;
+            }
+        }
+    }
+
+    public int ExportImageMinRating
+    {
+        get => _exportImageMinRating;
+        set
+        {
+            if (_exportImageMinRating != value)
+            {
+                _exportImageMinRating = value;
+            }
+        }
+    }
+
+    public string ExportImageFolderName
+    {
+        get => _exportImageFolderName;
+        set
+        {
+            if (_exportImageFolderName != value)
+            {
+                _exportImageFolderName = value;
+            }
+        }
+    }
+
+    public bool ExportRawEnabled
+    {
+        get => _exportRawEnabled;
+        set
+        {
+            if (_exportRawEnabled != value)
+            {
+                _exportRawEnabled = value;
+            }
+        }
+    }
+
+    public int ExportRawMinRating
+    {
+        get => _exportRawMinRating;
+        set
+        {
+            if (_exportRawMinRating != value)
+            {
+                _exportRawMinRating = value;
+            }
+        }
+    }
+
+    public string ExportRawFolderName
+    {
+        get => _exportRawFolderName;
+        set
+        {
+            if (_exportRawFolderName != value)
+            {
+                _exportRawFolderName = value;
             }
         }
     }
@@ -229,6 +320,118 @@ public class SettingsService : ISettingsService
         return string.Empty;
     }
 
+    public async Task SaveExportLastFolderPathAsync(string path)
+    {
+        await _localSettingsService.SaveSettingAsync("ExportLastFolderPath", path);
+    }
+
+    public async Task<string> LoadExportLastFolderPathAsync()
+    {
+        var path = await _localSettingsService.ReadSettingAsync<string>("ExportLastFolderPath");
+        if (path != null)
+        {
+            _exportLastFolderPath = path;
+            return path;
+        }
+        return string.Empty;
+    }
+
+    public async Task SaveExportImageEnabledAsync(bool enabled)
+    {
+        await _localSettingsService.SaveSettingAsync("ExportImageEnabled", enabled);
+    }
+
+    public async Task<bool> LoadExportImageEnabledAsync()
+    {
+        var enabled = await _localSettingsService.ReadSettingAsync<bool?>("ExportImageEnabled");
+        if (enabled.HasValue)
+        {
+            _exportImageEnabled = enabled.Value;
+            return enabled.Value;
+        }
+        return _exportImageEnabled;
+    }
+
+    public async Task SaveExportImageMinRatingAsync(int rating)
+    {
+        await _localSettingsService.SaveSettingAsync("ExportImageMinRating", rating);
+    }
+
+    public async Task<int> LoadExportImageMinRatingAsync()
+    {
+        var rating = await _localSettingsService.ReadSettingAsync<int?>("ExportImageMinRating");
+        if (rating.HasValue)
+        {
+            _exportImageMinRating = rating.Value;
+            return rating.Value;
+        }
+        return _exportImageMinRating;
+    }
+
+    public async Task SaveExportImageFolderNameAsync(string name)
+    {
+        await _localSettingsService.SaveSettingAsync("ExportImageFolderName", name);
+    }
+
+    public async Task<string> LoadExportImageFolderNameAsync()
+    {
+        var name = await _localSettingsService.ReadSettingAsync<string>("ExportImageFolderName");
+        if (name != null)
+        {
+            _exportImageFolderName = name;
+            return name;
+        }
+        return _exportImageFolderName;
+    }
+
+    public async Task SaveExportRawEnabledAsync(bool enabled)
+    {
+        await _localSettingsService.SaveSettingAsync("ExportRawEnabled", enabled);
+    }
+
+    public async Task<bool> LoadExportRawEnabledAsync()
+    {
+        var enabled = await _localSettingsService.ReadSettingAsync<bool?>("ExportRawEnabled");
+        if (enabled.HasValue)
+        {
+            _exportRawEnabled = enabled.Value;
+            return enabled.Value;
+        }
+        return _exportRawEnabled;
+    }
+
+    public async Task SaveExportRawMinRatingAsync(int rating)
+    {
+        await _localSettingsService.SaveSettingAsync("ExportRawMinRating", rating);
+    }
+
+    public async Task<int> LoadExportRawMinRatingAsync()
+    {
+        var rating = await _localSettingsService.ReadSettingAsync<int?>("ExportRawMinRating");
+        if (rating.HasValue)
+        {
+            _exportRawMinRating = rating.Value;
+            return rating.Value;
+        }
+        return _exportRawMinRating;
+    }
+
+    public async Task SaveExportRawFolderNameAsync(string name)
+    {
+        await _localSettingsService.SaveSettingAsync("ExportRawFolderName", name);
+    }
+
+    public async Task<string> LoadExportRawFolderNameAsync()
+    {
+        var name = await _localSettingsService.ReadSettingAsync<string>("ExportRawFolderName");
+        if (name != null)
+        {
+            _exportRawFolderName = name;
+            return name;
+        }
+        return _exportRawFolderName;
+    }
+
     public async Task InitializeAsync()
     {
         await LoadNavigationViewModeAsync();
@@ -238,5 +441,12 @@ public class SettingsService : ISettingsService
         await LoadRememberLastFolderAsync();
         await LoadDeleteToRecycleBinAsync();
         await LoadLastFolderPathAsync();
+        await LoadExportLastFolderPathAsync();
+        await LoadExportImageEnabledAsync();
+        await LoadExportImageMinRatingAsync();
+        await LoadExportImageFolderNameAsync();
+        await LoadExportRawEnabledAsync();
+        await LoadExportRawMinRatingAsync();
+        await LoadExportRawFolderNameAsync();
     }
 }

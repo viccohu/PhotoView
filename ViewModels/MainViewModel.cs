@@ -70,6 +70,8 @@ public partial class MainViewModel : ObservableRecipient
     private CancellationTokenSource? _loadImagesCts;
     private readonly Stack<FolderNode> _navigationHistory = new();
     private int _pendingDeleteCount;
+    private readonly List<ImageFileInfo> _allImages = new();
+    public FilterViewModel Filter { get; }
 
     public event EventHandler? ImagesChanged;
     public event EventHandler? ThumbnailSizeChanged;
@@ -133,6 +135,8 @@ public partial class MainViewModel : ObservableRecipient
         _folderTree = new ObservableCollection<FolderNode>();
         _breadcrumbPath = new ObservableCollection<FolderNode>();
         _images = new ObservableCollection<ImageFileInfo>();
+        Filter = new FilterViewModel();
+        Filter.FilterChanged += OnFilterChanged;
         _ = _ratingService.InitializeAsync();
         _ = LoadDrivesAsync();
     }
@@ -375,6 +379,9 @@ public partial class MainViewModel : ObservableRecipient
             }
             
             System.Diagnostics.Debug.WriteLine($"[LoadImagesAsync] 全部加载完成, Images.Count={Images.Count}, 组数={processedGroups.Count}");
+
+            _allImages.Clear();
+            _allImages.AddRange(Images);
 
             if (_settingsService.RememberLastFolder && !string.IsNullOrEmpty(folderNode.FullPath))
             {
@@ -710,6 +717,9 @@ public partial class MainViewModel : ObservableRecipient
             }
             
             System.Diagnostics.Debug.WriteLine($"[LoadImagesWithoutHistoryAsync] 全部加载完成, Images.Count={Images.Count}, 组数={processedGroups.Count}");
+
+            _allImages.Clear();
+            _allImages.AddRange(Images);
         }
         catch (OperationCanceledException)
         {
@@ -775,6 +785,79 @@ public partial class MainViewModel : ObservableRecipient
     {
         var ext = extension.ToLowerInvariant();
         return ext == ".jpg" || ext == ".jpeg";
+    }
+
+    private void OnFilterChanged(object? sender, EventArgs e)
+    {
+        ApplyFilter();
+    }
+
+    public void ApplyFilter()
+    {
+        Images.Clear();
+        foreach (var image in _allImages.Where(img => MatchFilter(img)))
+        {
+            Images.Add(image);
+        }
+        ImagesChanged?.Invoke(this, EventArgs.Empty);
+        UpdatePendingDeleteCount();
+    }
+
+    private bool MatchFilter(ImageFileInfo image)
+    {
+        return MatchFileType(image) && MatchRating(image) && MatchPendingDelete(image);
+    }
+
+    private bool MatchPendingDelete(ImageFileInfo image)
+    {
+        if (!Filter.IsPendingDeleteFilter)
+            return true;
+        return image.IsPendingDelete;
+    }
+
+    private bool MatchFileType(ImageFileInfo image)
+    {
+        if (!Filter.IsImageFilter && !Filter.IsRawFilter)
+            return true;
+        
+        if (image.ImageFile == null)
+            return false;
+        
+        var ext = Path.GetExtension(image.ImageFile.Path);
+        bool isRaw = FilterViewModel.IsRawExtension(ext);
+        
+        if (Filter.IsImageFilter && Filter.IsRawFilter)
+            return true;
+        if (Filter.IsImageFilter)
+            return !isRaw;
+        if (Filter.IsRawFilter)
+            return isRaw;
+        
+        return true;
+    }
+
+    private bool MatchRating(ImageFileInfo image)
+    {
+        switch (Filter.RatingMode)
+        {
+            case RatingFilterMode.All:
+                return true;
+            case RatingFilterMode.NoRating:
+                return image.Rating == 0;
+            case RatingFilterMode.HasRating:
+                var stars = ImageFileInfo.RatingToStars(image.Rating);
+                switch (Filter.RatingCondition)
+                {
+                    case RatingCondition.Equals:
+                        return stars == Filter.RatingStars;
+                    case RatingCondition.GreaterOrEqual:
+                        return stars >= Filter.RatingStars;
+                    case RatingCondition.LessOrEqual:
+                        return stars <= Filter.RatingStars;
+                }
+                return false;
+        }
+        return true;
     }
 }
 

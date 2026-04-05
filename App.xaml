@@ -12,20 +12,25 @@
             </ResourceDictionary.MergedDictionaries>
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Default">
-                    <SolidColorBrush x:Key="WindowCaptionForeground" Color="#FFFFFF"/>
-                    <SolidColorBrush x:Key="WindowCaptionForegroundDisabled" Color="#66FFFFFF"/>
+                    <SolidColorBrush x:Key="WindowCaptionForeground" Color="#000000"/>
+                    <SolidColorBrush x:Key="WindowCaptionForegroundDisabled" Color="#66000000"/>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
                     <SolidColorBrush x:Key="WindowCaptionForeground" Color="#000000"/>
                     <SolidColorBrush x:Key="WindowCaptionForegroundDisabled" Color="#66000000"/>
                 </ResourceDictionary>
-                <ResourceDictionary x:Key="HighContrast">
-                    <SolidColorBrush x:Key="WindowCaptionForeground" Color="{ThemeResource SystemColorWindowTextColor}"/>
-                    <SolidColorBrush x:Key="WindowCaptionForegroundDisabled" Color="{ThemeResource SystemColorGrayTextColor}"/>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="WindowCaptionForeground" Color="#FFFFFF"/>
+                    <SolidColorBrush x:Key="WindowCaptionForegroundDisabled" Color="#66FFFFFF"/>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
             <SolidColorBrush x:Key="WindowCaptionBackground">Transparent</SolidColorBrush>
             <SolidColorBrush x:Key="WindowCaptionBackgroundDisabled">Transparent</SolidColorBrush>
+            <!-- 全局按钮圆角统一 -->
+            <CornerRadius x:Key="ControlCornerRadius">4</CornerRadius>
+            <Style TargetType="Button">
+                <Setter Property="CornerRadius" Value="4"/>
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

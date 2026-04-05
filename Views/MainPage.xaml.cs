@@ -24,6 +24,7 @@ public sealed partial class MainPage : Page
 
     private readonly DispatcherTimer _loadImagesThrottleTimer;
     private readonly DispatcherTimer _ratingDebounceTimer;
+    private readonly ISettingsService _settingsService;
     private FolderNode? _pendingLoadNode;
     private bool _isUnloaded;
     private bool _isUpdatingSelectionState;
@@ -37,6 +38,7 @@ public sealed partial class MainPage : Page
         System.Diagnostics.Debug.WriteLine($"[MainPage] 构造函数开始");
         
         ViewModel = App.GetService<MainViewModel>();
+        _settingsService = App.GetService<ISettingsService>();
         System.Diagnostics.Debug.WriteLine($"[MainPage] ViewModel 已获取, FolderTree.Count={ViewModel.FolderTree.Count}");
         
         NavigationCacheMode = NavigationCacheMode.Enabled;
@@ -78,6 +80,40 @@ public sealed partial class MainPage : Page
     private void MainPage_Loaded(object sender, RoutedEventArgs e)
     {
         _isUnloaded = false;
+        FilterFlyoutControl.FilterViewModel = ViewModel.Filter;
+        ViewModel.Filter.FilterChanged += Filter_FilterChanged;
+        UpdateFilterButtonState();
+    }
+
+    private void Filter_FilterChanged(object? sender, EventArgs e)
+    {
+        UpdateFilterButtonState();
+    }
+
+    private void UpdateFilterButtonState()
+    {
+        var isActive = ViewModel.Filter.IsFilterActive;
+        
+        if (isActive)
+        {
+            FilterSplitButton.Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(0xFF, 0x00, 0x78, 0xD4));
+        }
+        else
+        {
+            FilterSplitButton.ClearValue(Control.BackgroundProperty);
+        }
+    }
+
+    private void FilterSplitButton_Click(SplitButton sender, SplitButtonClickEventArgs args)
+    {
+        if (ViewModel.Filter.IsFilterActive)
+        {
+            ViewModel.Filter.Reset();
+        }
+        else
+        {
+            sender.Flyout?.ShowAt(sender);
+        }
     }
 
     private async void ViewModel_FolderTreeLoaded(object? sender, EventArgs e)
@@ -871,6 +907,13 @@ public sealed partial class MainPage : Page
         {
             ViewModel.TogglePendingDeleteForSelected(selectedImages);
         }
+    }
+
+    private async void ExportButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new ExportDialog(_settingsService, ViewModel.Images.ToList());
+        dialog.XamlRoot = XamlRoot;
+        await dialog.ShowAsync();
     }
 
     private async void DeleteButton_Click(object sender, RoutedEventArgs e)
