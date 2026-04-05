@@ -37,6 +37,56 @@ public sealed partial class ImageViewerControl : UserControl
         ResolutionTextBlock.Text = $"{imageFileInfo.Width} x {imageFileInfo.Height}";
         _ = LoadFileSizeAsync();
         _ = LoadFilePathsAsync();
+        _ = LoadImagePropertiesAsync();
+    }
+
+    private async Task LoadImagePropertiesAsync()
+    {
+        try
+        {
+            if (_imageFileInfo?.ImageFile != null)
+            {
+                var props = await _imageFileInfo.ImageFile.Properties.GetImagePropertiesAsync();
+                try
+                {
+                    var dateTaken = props.DateTaken;
+                    CaptureDatePicker.Date = dateTaken.Date;
+                    CaptureTimePicker.Time = dateTaken.TimeOfDay;
+                }
+                catch
+                {
+                }
+
+                var deviceInfo = new List<string>();
+                if (!string.IsNullOrEmpty(props.CameraManufacturer))
+                {
+                    deviceInfo.Add(props.CameraManufacturer);
+                }
+                if (!string.IsNullOrEmpty(props.CameraModel))
+                {
+                    deviceInfo.Add(props.CameraModel);
+                }
+
+                if (deviceInfo.Count > 0)
+                {
+                    DeviceInfoPanel.Children.Clear();
+                    foreach (var info in deviceInfo)
+                    {
+                        var textBlock = new TextBlock
+                        {
+                            Text = info,
+                            Style = (Style)Application.Current.Resources["BodyTextBlockStyle"]
+                        };
+                        DeviceInfoPanel.Children.Add(textBlock);
+                    }
+                    DeviceInfoPanel.Visibility = Visibility.Visible;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"LoadImagePropertiesAsync error: {ex}");
+        }
     }
 
     public async Task ShowAfterAnimationAsync()
@@ -68,7 +118,7 @@ public sealed partial class ImageViewerControl : UserControl
         storyboard.Begin();
         await tcs.Task;
         
-        // _ = LoadHighResolutionImageAfterAnimationAsync(); // 暂时禁用，仅测试动画效果
+        _ = LoadHighResolutionImageAfterAnimationAsync();
     }
 
     private async Task LoadFileSizeAsync()
