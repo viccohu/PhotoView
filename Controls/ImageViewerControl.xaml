@@ -19,8 +19,8 @@
             Opacity="0">
             
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="8*"/>
-                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="300"/>
             </Grid.ColumnDefinitions>
 
             <ScrollViewer
