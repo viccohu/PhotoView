@@ -372,14 +372,24 @@ public sealed partial class ImageViewerControl : UserControl
                 {
                     DispatcherQueue.TryEnqueue(() =>
                     {
+                        // 1. 保存当前缩放和滚动位置
+                        var currentZoom = ImageScrollViewer.ZoomFactor;
+                        var currentHorizontalOffset = ImageScrollViewer.HorizontalOffset;
+                        var currentVerticalOffset = ImageScrollViewer.VerticalOffset;
+
+                        System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 保存状态, zoom={currentZoom}, offset=({currentHorizontalOffset},{currentVerticalOffset})");
+
+                        // 2. 替换图片
                         mainImage.Source = imageSource;
 
-                        // 强制重新测量
-                        mainImage.UpdateLayout();
-                        ImageScrollViewer.InvalidateScrollInfo();
+                        // 3. 立即恢复缩放和滚动位置（无动画）
+                        ImageScrollViewer.ChangeView(
+                            horizontalOffset: currentHorizontalOffset,
+                            verticalOffset: currentVerticalOffset,
+                            zoomFactor: (float?)currentZoom,
+                            disableAnimation: true);
 
-                        // 再重新应用一次正确缩放
-                        ApplyInitialZoomToFit();
+                        System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 已恢复状态");
                     });
                 }
                 else

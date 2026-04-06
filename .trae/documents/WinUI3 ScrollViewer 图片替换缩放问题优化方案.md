@@ -1,0 +1,108 @@
+# 信息面板优化实现计划
+
+## \[ ] Task 1: 恢复高清图加载
+
+* **Priority**: P0
+
+* **Depends On**: None
+
+* **Description**: 取消注释 \`LoadHighResolutionImageAfterAnimationAsync() 的调用
+
+* **Success Criteria**: 动画结束后高清图正常加载
+
+* **Test Requirements**:
+
+  * `programmatic` TR-1.1: 取消注释后编译通过
+
+  * `human-judgment` TR-1.2: 动画后看到高清图
+
+* **Notes**: 在 ImageViewerControl.xaml.cs:71
+
+***
+
+## \[ ] Task 2: 调整布局比例为8:2
+
+* **Priority**: P0
+
+* **Depends On**: Task 1
+
+* **Description**: 将ColumnDefinitions从7:3改为8:2
+
+* **Success Criteria**: 图片占80%，信息面板占20%
+
+* **Test Requirements**:
+
+  * `programmatic` TR-2.1: 编译通过
+
+  * `human-judgment` TR-2.2: 视觉上符合8:2比例
+
+* **Notes**: ImageViewerControl.xaml:21-24
+
+***
+
+## \[ ] Task 3: 按方案文档要求重新设计信息面板UI
+
+* **Priority**: P0
+
+* **Depends On**: Task 2
+
+* **Description**: 按照以下布局：
+
+  * 图片名称（带图标）
+
+  * 拍摄日期（只读DatePicker）
+
+  * 拍摄时间（只读TimePicker）
+
+  * 文件信息（文件尺寸、文件大小、分辨率、色彩深度）
+
+  * 设备信息（相机、镜头、快门速度、ISO、光圈、闪光灯，用AppBarButton横向布局）
+
+  * 文件路径（可点击跳转，复制按钮）
+
+* **Success Criteria**: UI完全符合方案文档和样图
+
+* **Test Requirements**:
+
+  * `programmatic` TR-3.1: 所有控件正确显示
+
+  * `human-judgment` TR-3.2: 布局美观，符合要求
+
+* **Notes**: 参考样图和文档第22-27行
+
+***
+
+## \[ ] Task 4: 添加EXIF元数据读取
+
+* **Priority**: P1
+
+* **Depends On**: Task 3
+
+* **Description**: 扩展ImageFileInfo或创建EXIF读取服务
+
+* **Success Criteria**: 能读取拍摄日期、设备信息等EXIF数据
+
+* **Test Requirements**:
+
+  * `programmatic` TR-4.1: 能正确读取EXIF数据
+
+* **Notes**: 需要检查ImageFileInfo是否已有EXIF读取功能
+
+***
+
+## \[ ] Task 5: 绑定数据到UI并测试
+
+* **Priority**: P1
+
+* **Depends On**: Task 4
+
+* **Description**: 将读取到的EXIF数据绑定到UI控件上
+
+* **Success Criteria**: 所有数据正确显示在UI上
+
+* **Test Requirements**:
+
+  * `programmatic` TR-5.1: 编译通过
+
+  * `human-judgment` TR-5.2: 数据显示正确
+
