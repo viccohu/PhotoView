@@ -126,7 +126,9 @@ public sealed partial class ImageViewerControl : UserControl
         storyboard.Begin();
         await tcs.Task;
 
-        ApplyInitialZoomToFit();
+        // 只设置标志位，让 ConnectedAnimation 保持原样，不调用 ApplyInitialZoomToFit()
+        _hasAppliedInitialZoom = true;
+        // ApplyInitialZoomToFit();
     }
 
     private void ApplyInitialZoomToFit()
