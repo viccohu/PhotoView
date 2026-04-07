@@ -13,6 +13,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Windows.Graphics.Display;
 using Windows.Graphics.Imaging;
 using Windows.Storage;
 using Windows.Storage.Streams;
@@ -105,6 +106,40 @@ public sealed partial class ImageViewerControl : UserControl
         _hasCalculatedFitScale = true;
 
         System.Diagnostics.Debug.WriteLine($"[ImageViewer] CalculateFitScale: scaleX={scaleX:F3}, scaleY={scaleY:F3}, fitScale={_fitScale:F3}, 已应用缩放");
+    }
+
+    private uint GetMonitorLongSide()
+    {
+        try
+        {
+            var displayInfo = DisplayInformation.GetForCurrentView();
+            var screenWidth = displayInfo.ScreenWidthInRawPixels;
+            var screenHeight = displayInfo.ScreenHeightInRawPixels;
+            var monitorLongSide = (uint)Math.Max(screenWidth, screenHeight);
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] GetMonitorLongSide: 显示器分辨率={screenWidth}x{screenHeight}, 最长边={monitorLongSide}");
+            return monitorLongSide;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] GetMonitorLongSide error: {ex}");
+            return 1920;
+        }
+    }
+
+    private uint GetTargetDecodeLongSide()
+    {
+        var monitorLongSide = GetMonitorLongSide();
+
+        uint targetLongSide = monitorLongSide switch
+        {
+            <= 1920 => 1920,
+            <= 2560 => 2560,
+            <= 3840 => 3840,
+            _ => monitorLongSide
+        };
+
+        System.Diagnostics.Debug.WriteLine($"[ImageViewer] GetTargetDecodeLongSide: 显示器最长边={monitorLongSide}, 解码最长边={targetLongSide}");
+        return targetLongSide;
     }
 
     private async Task LoadFileInfoAsync()
@@ -399,35 +434,8 @@ public sealed partial class ImageViewerControl : UserControl
 
             System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 开始加载高清图, 文件名={_imageFileInfo.ImageName}");
 
-            double viewerWidth = 800;
-            double viewerHeight = 600;
-
-            var tcs = new TaskCompletionSource<bool>();
-            DispatcherQueue.TryEnqueue(() =>
-            {
-                try
-                {
-                    var vw = ImageScrollView.ViewportWidth;
-                    var vh = ImageScrollView.ViewportHeight;
-                    if (vw > 0 && vh > 0)
-                    {
-                        viewerWidth = vw;
-                        viewerHeight = vh;
-                    }
-                    tcs.SetResult(true);
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 获取尺寸时出错，使用默认值: {ex}");
-                    tcs.SetResult(true);
-                }
-            });
-            await tcs.Task;
-
-            System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: viewerWidth={viewerWidth}, viewerHeight={viewerHeight}");
-
-            var targetLongSide = (uint)Math.Max(viewerWidth, viewerHeight);
-            System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 查看器最长边={targetLongSide}, 开始用 WIC 解码");
+            var targetLongSide = GetTargetDecodeLongSide();
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 解码最长边={targetLongSide}, 开始用 WIC 解码");
 
             var thumbnailService = App.GetService<IThumbnailService>();
             var imageSource = await thumbnailService.GetThumbnailByLongSideAsync(_imageFileInfo.ImageFile, targetLongSide, CancellationToken.None);
