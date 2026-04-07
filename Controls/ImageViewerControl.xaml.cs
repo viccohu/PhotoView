@@ -13,6 +13,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Windows.Graphics.Imaging;
 using Windows.Storage;
 using Windows.Storage.Streams;
 
@@ -21,6 +22,13 @@ namespace PhotoView.Controls;
 public sealed partial class ImageViewerControl : UserControl
 {
     public event EventHandler? Closed;
+
+    private static readonly HashSet<string> RawFileExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".nef", ".cr2", ".cr3", ".arw", ".dng", ".orf", ".rw2",
+        ".pef", ".raf", ".srw", ".x3f", ".mrw", ".erf", ".3fr",
+        ".kdc", ".dcr", ".raw", ".rwz"
+    };
 
     private ImageFileInfo? _imageFileInfo;
     private bool _is1To1Scale = false;
@@ -59,59 +67,246 @@ public sealed partial class ImageViewerControl : UserControl
         ImageNameTextBox.Text = imageFileInfo.ImageName;
         ResolutionTextBlock.Text = $"{imageFileInfo.Width} x {imageFileInfo.Height}";
         System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareContent: 已设置缩略图, 文件名={imageFileInfo.ImageName}, 尺寸={imageFileInfo.Width}x{imageFileInfo.Height}");
-        _ = LoadFileSizeAsync();
-        _ = LoadFilePathsAsync();
-        _ = LoadImagePropertiesAsync();
+        _ = LoadFileInfoAsync();
         
         _ = LoadHighResolutionImageAsync();
     }
 
-    private async Task LoadImagePropertiesAsync()
+    private async Task LoadFileInfoAsync()
     {
         try
         {
-            if (_imageFileInfo?.ImageFile != null)
+            if (_imageFileInfo?.ImageFile == null)
+                return;
+
+            var file = _imageFileInfo.ImageFile;
+            var fileExtension = Path.GetExtension(file.Name);
+            var isRawFile = RawFileExtensions.Contains(fileExtension);
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadFileInfoAsync: 文件名={file.Name}, 扩展名={fileExtension}, 是否RAW={isRawFile}");
+
+            try
             {
-                var props = await _imageFileInfo.ImageFile.Properties.GetImagePropertiesAsync();
-                try
-                {
-                    var dateTaken = props.DateTaken;
-                    CaptureDatePicker.Date = dateTaken.Date;
-                    CaptureTimePicker.Time = dateTaken.TimeOfDay;
-                }
-                catch
-                {
-                }
+                var basicProps = await file.GetBasicPropertiesAsync();
+                FileSizeTextBlock.Text = FormatFileSize(basicProps.Size);
+                System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadFileInfoAsync: 文件大小读取完成");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"LoadFileInfoAsync - 文件大小读取错误: {ex}");
+            }
 
-                var deviceInfo = new List<string>();
-                if (!string.IsNullOrEmpty(props.CameraManufacturer))
-                {
-                    deviceInfo.Add(props.CameraManufacturer);
-                }
-                if (!string.IsNullOrEmpty(props.CameraModel))
-                {
-                    deviceInfo.Add(props.CameraModel);
-                }
+            LoadFilePaths();
 
-                if (deviceInfo.Count > 0)
+            try
+            {
+                if (isRawFile)
                 {
-                    DeviceInfoPanel.Children.Clear();
-                    foreach (var info in deviceInfo)
-                    {
-                        var textBlock = new TextBlock
-                        {
-                            Text = info,
-                            Style = (Style)Application.Current.Resources["BodyTextBlockStyle"]
-                        };
-                        DeviceInfoPanel.Children.Add(textBlock);
-                    }
-                    DeviceInfoPanel.Visibility = Visibility.Visible;
+                    await LoadImagePropertiesFromWicAsync(file);
                 }
+                else
+                {
+                    await LoadImagePropertiesFromWinRTAsync(file);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"LoadFileInfoAsync - EXIF读取错误: {ex}");
             }
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"LoadImagePropertiesAsync error: {ex}");
+            Debug.WriteLine($"LoadFileInfoAsync error: {ex}");
+        }
+    }
+
+    private void LoadFilePaths()
+    {
+        FilePathPanel.Children.Clear();
+
+        if (_imageFileInfo == null)
+            return;
+
+        var allFiles = new List<ImageFileInfo>();
+
+        if (_imageFileInfo.Group != null)
+        {
+            allFiles.AddRange(_imageFileInfo.Group.Images);
+        }
+        else
+        {
+            allFiles.Add(_imageFileInfo);
+        }
+
+        foreach (var file in allFiles)
+        {
+            if (file.ImageFile == null)
+                continue;
+
+            var grid = new Grid { ColumnSpacing = 8 };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var pathTextBlock = new TextBlock
+            {
+                Text = file.ImageFile.Path,
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(0xFF, 0x00, 0x78, 0xD4)),
+                IsTextSelectionEnabled = true
+            };
+
+            pathTextBlock.Tapped += (s, e) =>
+            {
+                try
+                {
+                    var folderPath = Path.GetDirectoryName(file.ImageFile.Path);
+                    if (!string.IsNullOrEmpty(folderPath))
+                    {
+                        var psi = new ProcessStartInfo
+                        {
+                            FileName = "explorer.exe",
+                            Arguments = $"/select,\"{file.ImageFile.Path}\"",
+                            UseShellExecute = true
+                        };
+                        Process.Start(psi);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Open folder error: {ex}");
+                }
+                e.Handled = true;
+            };
+
+            var copyButton = new Button
+            {
+                Content = new FontIcon { Glyph = "\uE8C8" },
+                Padding = new Thickness(8)
+            };
+
+            copyButton.Click += (s, e) =>
+            {
+                try
+                {
+                    var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
+                    dataPackage.SetText(file.ImageFile.Path);
+                    Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Copy path error: {ex}");
+                }
+            };
+
+            Grid.SetColumn(pathTextBlock, 0);
+            Grid.SetColumn(copyButton, 1);
+
+            grid.Children.Add(pathTextBlock);
+            grid.Children.Add(copyButton);
+
+            FilePathPanel.Children.Add(grid);
+        }
+    }
+
+    private async Task LoadImagePropertiesFromWinRTAsync(StorageFile file)
+    {
+        var props = await file.Properties.GetImagePropertiesAsync();
+        try
+        {
+            var dateTaken = props.DateTaken;
+            CaptureDatePicker.Date = dateTaken.Date;
+            CaptureTimePicker.Time = dateTaken.TimeOfDay;
+        }
+        catch
+        {
+        }
+
+        var deviceInfo = new List<string>();
+        if (!string.IsNullOrEmpty(props.CameraManufacturer))
+        {
+            deviceInfo.Add(props.CameraManufacturer);
+        }
+        if (!string.IsNullOrEmpty(props.CameraModel))
+        {
+            deviceInfo.Add(props.CameraModel);
+        }
+
+        if (deviceInfo.Count > 0)
+        {
+            DeviceInfoPanel.Children.Clear();
+            foreach (var info in deviceInfo)
+            {
+                var textBlock = new TextBlock
+                {
+                    Text = info,
+                    Style = (Style)Application.Current.Resources["BodyTextBlockStyle"]
+                };
+                DeviceInfoPanel.Children.Add(textBlock);
+            }
+            DeviceInfoPanel.Visibility = Visibility.Visible;
+        }
+    }
+
+    private async Task LoadImagePropertiesFromWicAsync(StorageFile file)
+    {
+        using var stream = await file.OpenReadAsync();
+        var decoder = await BitmapDecoder.CreateAsync(stream);
+
+        try
+        {
+            var properties = await decoder.BitmapProperties.GetPropertiesAsync(
+                new[] { "System.Photo.DateTaken" });
+
+            if (properties.TryGetValue("System.Photo.DateTaken", out var dateProp))
+            {
+                if (dateProp.Value is DateTime dateTaken)
+                {
+                    CaptureDatePicker.Date = dateTaken.Date;
+                    CaptureTimePicker.Time = dateTaken.TimeOfDay;
+                }
+            }
+        }
+        catch
+        {
+        }
+
+        try
+        {
+            var properties = await decoder.BitmapProperties.GetPropertiesAsync(
+                new[] { "System.Photo.CameraManufacturer", "System.Photo.CameraModel" });
+
+            var deviceInfo = new List<string>();
+            if (properties.TryGetValue("System.Photo.CameraManufacturer", out var manuProp))
+            {
+                if (manuProp.Value is string manufacturer && !string.IsNullOrEmpty(manufacturer))
+                {
+                    deviceInfo.Add(manufacturer);
+                }
+            }
+            if (properties.TryGetValue("System.Photo.CameraModel", out var modelProp))
+            {
+                if (modelProp.Value is string model && !string.IsNullOrEmpty(model))
+                {
+                    deviceInfo.Add(model);
+                }
+            }
+
+            if (deviceInfo.Count > 0)
+            {
+                DeviceInfoPanel.Children.Clear();
+                foreach (var info in deviceInfo)
+                {
+                    var textBlock = new TextBlock
+                    {
+                        Text = info,
+                        Style = (Style)Application.Current.Resources["BodyTextBlockStyle"]
+                    };
+                    DeviceInfoPanel.Children.Add(textBlock);
+                }
+                DeviceInfoPanel.Visibility = Visibility.Visible;
+            }
+        }
+        catch
+        {
         }
     }
 
@@ -199,22 +394,6 @@ public sealed partial class ImageViewerControl : UserControl
         }
     }
 
-    private async Task LoadFileSizeAsync()
-    {
-        try
-        {
-            if (_imageFileInfo?.ImageFile != null)
-            {
-                var props = await _imageFileInfo.ImageFile.GetBasicPropertiesAsync();
-                FileSizeTextBlock.Text = FormatFileSize(props.Size);
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"LoadFileSizeAsync error: {ex}");
-        }
-    }
-
     private static string FormatFileSize(ulong size)
     {
         string[] sizes = { "B", "KB", "MB", "GB" };
@@ -226,94 +405,6 @@ public sealed partial class ImageViewerControl : UserControl
             len = len / 1024;
         }
         return $"{len:0.0} {sizes[order]}";
-    }
-
-    private async Task LoadFilePathsAsync()
-    {
-        FilePathPanel.Children.Clear();
-        
-        if (_imageFileInfo == null)
-            return;
-        
-        var allFiles = new List<ImageFileInfo>();
-        
-        if (_imageFileInfo.Group != null)
-        {
-            allFiles.AddRange(_imageFileInfo.Group.Images);
-        }
-        else
-        {
-            allFiles.Add(_imageFileInfo);
-        }
-        
-        foreach (var file in allFiles)
-        {
-            if (file.ImageFile == null)
-                continue;
-                
-            var grid = new Grid { ColumnSpacing = 8 };
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            
-            var pathTextBlock = new TextBlock
-            {
-                Text = file.ImageFile.Path,
-                TextWrapping = TextWrapping.Wrap,
-                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(0xFF, 0x00, 0x78, 0xD4)),
-                IsTextSelectionEnabled = true
-            };
-            
-            pathTextBlock.Tapped += (s, e) =>
-            {
-                try
-                {
-                    var folderPath = Path.GetDirectoryName(file.ImageFile.Path);
-                    if (!string.IsNullOrEmpty(folderPath))
-                    {
-                        var psi = new ProcessStartInfo
-                        {
-                            FileName = "explorer.exe",
-                            Arguments = $"/select,\"{file.ImageFile.Path}\"",
-                            UseShellExecute = true
-                        };
-                        Process.Start(psi);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Open folder error: {ex}");
-                }
-                e.Handled = true;
-            };
-            
-            var copyButton = new Button
-            {
-                Content = new FontIcon { Glyph = "\uE8C8" },
-                Padding = new Thickness(8)
-            };
-            
-            copyButton.Click += (s, e) =>
-            {
-                try
-                {
-                    var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
-                    dataPackage.SetText(file.ImageFile.Path);
-                    Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Copy path error: {ex}");
-                }
-            };
-            
-            Grid.SetColumn(pathTextBlock, 0);
-            Grid.SetColumn(copyButton, 1);
-            
-            grid.Children.Add(pathTextBlock);
-            grid.Children.Add(copyButton);
-            
-            FilePathPanel.Children.Add(grid);
-        }
     }
 
     private async Task LoadHighResolutionImageAsync()
