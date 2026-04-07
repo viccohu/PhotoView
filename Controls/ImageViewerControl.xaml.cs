@@ -488,7 +488,7 @@ public sealed partial class ImageViewerControl : UserControl
         e.Handled = true;
     }
 
-    private void ImageContainer_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
+    private void ImageScrollViewer_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
     {
         var pointerPoint = e.GetCurrentPoint(ImageScrollViewer);
         var delta = pointerPoint.Properties.MouseWheelDelta;
@@ -525,7 +525,7 @@ public sealed partial class ImageViewerControl : UserControl
         e.Handled = true;
     }
 
-    private void ImageContainer_PointerPressed(object sender, PointerRoutedEventArgs e)
+    private void ImageScrollViewer_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
         var pointerPoint = e.GetCurrentPoint(ImageScrollViewer);
         if (!pointerPoint.Properties.IsLeftButtonPressed)
@@ -533,11 +533,11 @@ public sealed partial class ImageViewerControl : UserControl
 
         _isDragging = true;
         _lastPointerPosition = pointerPoint.Position;
-        ImageContainer.CapturePointer(e.Pointer);
+        ImageScrollViewer.CapturePointer(e.Pointer);
         e.Handled = true;
     }
 
-    private void ImageContainer_PointerMoved(object sender, PointerRoutedEventArgs e)
+    private void ImageScrollViewer_PointerMoved(object sender, PointerRoutedEventArgs e)
     {
         if (!_isDragging)
             return;
@@ -558,13 +558,13 @@ public sealed partial class ImageViewerControl : UserControl
         e.Handled = true;
     }
 
-    private void ImageContainer_PointerReleased(object sender, PointerRoutedEventArgs e)
+    private void ImageScrollViewer_PointerReleased(object sender, PointerRoutedEventArgs e)
     {
         EndDrag();
         e.Handled = true;
     }
 
-    private void ImageContainer_PointerCanceled(object sender, PointerRoutedEventArgs e)
+    private void ImageScrollViewer_PointerCanceled(object sender, PointerRoutedEventArgs e)
     {
         EndDrag();
         e.Handled = true;
@@ -576,7 +576,7 @@ public sealed partial class ImageViewerControl : UserControl
             return;
 
         _isDragging = false;
-        ImageContainer.ReleasePointerCaptures();
+        ImageScrollViewer.ReleasePointerCaptures();
     }
 
     protected override void OnKeyDown(KeyRoutedEventArgs e)

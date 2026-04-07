@@ -1,4 +1,4 @@
-﻿<Page
+<Page
     x:Class="PhotoView.Views.MainPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -129,13 +129,12 @@
                     <FontIcon
                         FontFamily="{StaticResource SymbolThemeFontFamily}"
                         Glyph="{x:Bind ViewModel.SelectedFolder, Mode=OneWay, Converter={StaticResource NodeTypeToIconConverter}}"
-                        FontSize="28"
+                        FontSize="20"
                         VerticalAlignment="Center"/>
                     <TextBlock
                         Text="{x:Bind ViewModel.SelectedFolder.Name, Mode=OneWay}"
-                        Style="{ThemeResource TitleTextBlockStyle}"
+                        Style="{ThemeResource BodyLargeTextBlockStyle}"
                         FontSize="28"
-
                         VerticalAlignment="Center"/>
                 </StackPanel>
                 <StackPanel 
@@ -148,7 +147,7 @@
                         Padding="8,2"
                         Background="Transparent"
                         BorderBrush="{ThemeResource TextFillColorSecondaryBrush}"
-                        BorderThickness="1.5"
+                        BorderThickness="1"
                         CornerRadius="4">
                         <TextBlock Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7">
                             <Run Text="{x:Bind ViewModel.Images.Count, Mode=OneWay}"/>
@@ -159,7 +158,7 @@
                         Padding="8,2"
                         Background="Transparent"
                         BorderBrush="{ThemeResource SystemFillColorCriticalBrush}"
-                        BorderThickness="1.5"
+                        BorderThickness="1"
                         Margin="10,0,0,0"
                         CornerRadius="4"
                         Visibility="{x:Bind ViewModel.PendingDeleteCount, Mode=OneWay, Converter={StaticResource IntToVisibilityConverter}}">
@@ -201,18 +200,20 @@
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                 <Button 
                     x:Name="ExportButton" 
+                    Padding="8"
                     Click="ExportButton_Click">
-                    <FontIcon Glyph="&#xE72D;" FontWeight="Normal"/>
+                    <FontIcon Glyph="&#xE72D;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontWeight="Light" FontSize="16"/>
                 </Button>
                 <Button 
                     x:Name="DeleteButton" 
+                    Padding="8"
                     Click="DeleteButton_Click"
                     IsEnabled="{x:Bind ViewModel.PendingDeleteCount, Mode=OneWay, Converter={StaticResource IntToBoolConverter}}">
-                    <FontIcon Glyph="&#xE74D;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontWeight="Normal"/>
+                    <FontIcon Glyph="&#xE74D;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontWeight="Normal" FontSize="16"/>
                 </Button>
-                <SplitButton x:Name="FilterSplitButton" Click="FilterSplitButton_Click">
+                <SplitButton x:Name="FilterSplitButton" Padding="8" Click="FilterSplitButton_Click">
                     <SplitButton.Content>
-                        <FontIcon Glyph="&#xE71C;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontWeight="Normal"/>
+                        <FontIcon Glyph="&#xE71C;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontWeight="Normal" FontSize="16"/>
                     </SplitButton.Content>
                     <SplitButton.Flyout>
                         <Flyout Placement="Bottom">
@@ -225,9 +226,9 @@
                         </Flyout>
                     </SplitButton.Flyout>
                 </SplitButton>
-                <DropDownButton>
+                <DropDownButton Padding="8">
                     <DropDownButton.Content>
-                        <FontIcon Glyph="&#xeca5;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontWeight="Normal"/>
+                        <FontIcon Glyph="&#xeca5;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontWeight="Normal" FontSize="16"/>
                     </DropDownButton.Content>
                     <DropDownButton.Flyout>
                         <MenuFlyout Placement="Bottom">
@@ -313,11 +314,11 @@
                             </MenuFlyout>
                         </FlyoutBase.AttachedFlyout>
                         <Border
-                            CornerRadius="8"
+                            CornerRadius="12"
                             Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                             BorderThickness="1"
-                            Padding="6">
+                            Padding="0">
                             <Grid Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
                                 <Image
                                     x:Name="thumbnailImage"
@@ -463,9 +464,8 @@
             </GridView.ItemsPanel>
         </GridView>
 
-        <controls:ImageViewerControl
-            x:Name="ImageViewer"
-            Visibility="Collapsed"
+        <ContentPresenter
+            x:Name="ViewerContainer"
             Grid.Column="0"
             Grid.ColumnSpan="2"
             Grid.Row="0"

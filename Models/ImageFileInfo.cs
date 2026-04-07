@@ -319,7 +319,8 @@ public class ImageFileInfo : INotifyPropertyChanged
         }
 
         // Border Padding = 6 (左右各6，上下各6)
-        const double borderPadding = 12d;
+        // 缩略图准确计算宽高
+        const double borderPadding = 0d;
         
         // 内容区域高度 = 外层高度 - Padding
         var contentHeight = designHeight - borderPadding;

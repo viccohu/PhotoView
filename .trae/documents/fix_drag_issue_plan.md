@@ -1,40 +1,32 @@
-# 修复图片拖动完全不动问题
+# 修复拖动无法成功的问题
 
-## 问题分析
-经过排查，发现以下问题：
-1. ScrollViewer 的 HorizontalScrollMode 和 VerticalScrollMode 设置为 Disabled，导致 ChangeView 无法正常工作
-2. Tapped 事件标记了 e.Handled=true，可能影响 Pointer 事件传递
-3. 需要使用 AddHandler 并设置 handledEventsToo=true 确保事件能被正确捕获
+## 问题原因
+1. Image.Stretch 被改回 "Uniform"（应该是 "None"）
+2. ScrollViewer 的滚动模式与自定义拖动可能冲突
+3. 事件路由问题
 
----
+## 修复任务
 
-## [ ] 任务 1: 启用 ScrollViewer 的滚动模式
+## [ ] 任务 1: 修正 Image.Stretch 为 "None"
 - **Priority**: P0
 - **Depends On**: None
-- **Description**: 
-  - 将 HorizontalScrollMode 和 VerticalScrollMode 从 Disabled 改为 Enabled
-  - 保持滚动条可见性为 Disabled（不显示滚动条）
-- **Success Criteria**:
-  - ScrollViewer 可以通过 ChangeView 进行滚动
-- **Test Requirements**:
-  - `programmatic` TR-1.1: 验证 ScrollMode 已设置为 Enabled
+- **Description**: 将 Image 的 Stretch 属性从 "Uniform" 改回 "None"
+- **Success Criteria**: Image.Stretch="None"
 
-## [ ] 任务 2: 使用代码注册事件并设置 handledEventsToo
+## [ ] 任务 2: 将事件绑定到 ScrollViewer
 - **Priority**: P0
 - **Depends On**: 任务 1
-- **Description**: 
-  - 在构造函数中使用 AddHandler 注册 Pointer 事件
-  - 设置 handledEventsToo 参数为 true
-  - 从 XAML 中移除事件绑定
-- **Success Criteria**:
-  - 即使其他控件标记事件为 Handled，Pointer 事件也能被捕获
-- **Test Requirements**:
-  - `human-judgement` TR-2.1: 验证拖动现在可以正常工作
+- **Description**: 将 Pointer 事件从 ImageContainer 移到 ScrollViewer 上，确保事件能够正确捕获
+- **Success Criteria**: 事件绑定在 ScrollViewer 上
 
-## [ ] 任务 3: 增强调试输出（可选）
-- **Priority**: P2
-- **Depends On**: None
-- **Description**: 
-  - 添加调试输出，方便排查 ExtentWidth/ExtentHeight/ViewportWidth/ViewportHeight 的值
-- **Success Criteria**:
-  - 可以在输出窗口看到拖动相关的调试信息
+## [ ] 任务 3: 禁用 ScrollViewer 的内置滚动模式
+- **Priority**: P0
+- **Depends On**: 任务 2
+- **Description**: 将 HorizontalScrollMode 和 VerticalScrollMode 改为 "Disabled"，避免与自定义拖动冲突
+- **Success Criteria**: ScrollViewer 的滚动模式为 Disabled
+
+## [ ] 任务 4: 测试拖动功能
+- **Priority**: P1
+- **Depends On**: 任务 3
+- **Description**: 验证拖动功能是否正常工作
+- **Success Criteria**: 鼠标左键可以拖动图片

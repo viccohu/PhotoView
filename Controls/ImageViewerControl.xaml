@@ -29,20 +29,20 @@
                 Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
                 HorizontalScrollBarVisibility="Disabled"
                 VerticalScrollBarVisibility="Disabled"
-                HorizontalScrollMode="Enabled"
-                VerticalScrollMode="Enabled"
+                HorizontalScrollMode="Disabled"
+                VerticalScrollMode="Disabled"
                 ZoomMode="Enabled"
-                Tapped="ImageScrollViewer_Tapped">
+                Tapped="ImageScrollViewer_Tapped"
+                PointerWheelChanged="ImageScrollViewer_PointerWheelChanged"
+                PointerPressed="ImageScrollViewer_PointerPressed"
+                PointerMoved="ImageScrollViewer_PointerMoved"
+                PointerReleased="ImageScrollViewer_PointerReleased"
+                PointerCanceled="ImageScrollViewer_PointerCanceled">
                 <Grid
                     x:Name="ImageContainer"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
-                    Background="Transparent"
-                    PointerWheelChanged="ImageContainer_PointerWheelChanged"
-                    PointerPressed="ImageContainer_PointerPressed"
-                    PointerMoved="ImageContainer_PointerMoved"
-                    PointerReleased="ImageContainer_PointerReleased"
-                    PointerCanceled="ImageContainer_PointerCanceled">
+                    Background="Transparent">
                     <Image
                         x:Name="mainImage"
                         Stretch="Uniform"

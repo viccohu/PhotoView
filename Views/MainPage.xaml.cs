@@ -35,6 +35,7 @@ public sealed partial class MainPage : Page
     private bool _hasAttemptedRestoreLastFolder;
     private (ImageFileInfo Image, uint Rating)? _pendingRatingUpdate;
     private ImageFileInfo? _storedImageFileInfo;
+    private Controls.ImageViewerControl? _currentViewer;
 
     public MainPage()
     {
@@ -85,14 +86,13 @@ public sealed partial class MainPage : Page
         _isUnloaded = false;
         FilterFlyoutControl.FilterViewModel = ViewModel.Filter;
         ViewModel.Filter.FilterChanged += Filter_FilterChanged;
-        ImageViewer.Closed += ImageViewer_Closed;
         ImageGridView.DoubleTapped += ImageGridView_DoubleTapped;
         UpdateFilterButtonState();
     }
 
     private async void ImageViewer_Closed(object? sender, EventArgs e)
     {
-        if (_storedImageFileInfo != null)
+        if (_currentViewer != null && _storedImageFileInfo != null)
         {
             ImageGridView.ScrollIntoView(_storedImageFileInfo, ScrollIntoViewAlignment.Default);
             ImageGridView.UpdateLayout();
@@ -103,7 +103,12 @@ public sealed partial class MainPage : Page
                 await ImageGridView.TryStartConnectedAnimationAsync(animation, _storedImageFileInfo, "thumbnailImage");
             }
 
-            await ImageViewer.CompleteCloseAsync();
+            await _currentViewer.CompleteCloseAsync();
+
+            // 清理资源
+            _currentViewer.Closed -= ImageViewer_Closed;
+            ViewerContainer.Content = null;
+            _currentViewer = null;
         }
     }
 
@@ -113,7 +118,15 @@ public sealed partial class MainPage : Page
         {
             _storedImageFileInfo = imageFileInfo;
 
-            ImageViewer.PrepareContent(imageFileInfo);
+            // 每次打开图片，都 new 一个新的实例
+            var newViewer = new Controls.ImageViewerControl();
+            ViewerContainer.Content = newViewer;
+            _currentViewer = newViewer;
+
+            // 订阅关闭事件
+            newViewer.Closed += ImageViewer_Closed;
+
+            newViewer.PrepareContent(imageFileInfo);
 
             if (ImageGridView.ContainerFromItem(imageFileInfo) is GridViewItem container)
             {
@@ -123,10 +136,10 @@ public sealed partial class MainPage : Page
             var imageAnimation = ConnectedAnimationService.GetForCurrentView().GetAnimation("ForwardConnectedAnimation");
             if (imageAnimation != null)
             {
-                imageAnimation.TryStart(ImageViewer.GetMainImage(), ImageViewer.GetCoordinatedElements());
+                imageAnimation.TryStart(newViewer.GetMainImage(), newViewer.GetCoordinatedElements());
             }
 
-            await ImageViewer.ShowAfterAnimationAsync();
+            await newViewer.ShowAfterAnimationAsync();
 
             e.Handled = true;
         }
@@ -849,11 +862,11 @@ public sealed partial class MainPage : Page
 
     private void MainPage_KeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (ImageViewer.Visibility == Visibility.Visible)
+        if (_currentViewer != null)
         {
             if (e.Key == VirtualKey.Escape)
             {
-                ImageViewer.PrepareCloseAnimation();
+                _currentViewer.PrepareCloseAnimation();
                 e.Handled = true;
             }
             return;
