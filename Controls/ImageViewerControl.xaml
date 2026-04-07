@@ -20,37 +20,28 @@
             
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="400"/>
+                <ColumnDefinition Width="380"/>
             </Grid.ColumnDefinitions>
 
-            <ScrollViewer
-                x:Name="ImageScrollViewer"
+            <ScrollView
+                x:Name="ImageScrollView"
                 Grid.Column="0"
                 Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
-                HorizontalScrollBarVisibility="Disabled"
-                VerticalScrollBarVisibility="Disabled"
-                HorizontalScrollMode="Disabled"
-                VerticalScrollMode="Disabled"
                 ZoomMode="Enabled"
-                Tapped="ImageScrollViewer_Tapped"
-                PointerWheelChanged="ImageScrollViewer_PointerWheelChanged"
-                PointerPressed="ImageScrollViewer_PointerPressed"
-                PointerMoved="ImageScrollViewer_PointerMoved"
-                PointerReleased="ImageScrollViewer_PointerReleased"
-                PointerCanceled="ImageScrollViewer_PointerCanceled">
-                <Grid
-                    x:Name="ImageContainer"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Background="Transparent">
+                MinZoomFactor="0.1"
+                MaxZoomFactor="10.0"
+                HorizontalScrollBarVisibility="Auto"
+                VerticalScrollBarVisibility="Auto"
+                Tapped="ImageScrollViewer_Tapped">
+                <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                     <Image
                         x:Name="mainImage"
-                        Stretch="Uniform"
+                        Stretch="None"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         DoubleTapped="mainImage_DoubleTapped"/>
                 </Grid>
-            </ScrollViewer>
+            </ScrollView>
 
             <Border
                 x:Name="InfoPanel"
@@ -76,49 +67,49 @@
 
                         <StackPanel Spacing="4">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon Glyph="&#xE8B9;" FontFamily="{StaticResource SymbolThemeFontFamily}"/>
+                                <FontIcon Glyph="&#xE8B9;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="14"/>
                                 <TextBlock x:Name="ImageNameTextBox" TextWrapping="Wrap" Style="{ThemeResource CaptionTextBlockStyle}"/>
                             </StackPanel>
                         </StackPanel>
 
                         <StackPanel Spacing="8">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon Glyph="&#xE787;" FontFamily="{StaticResource SymbolThemeFontFamily}"/>
-                                <DatePicker x:Name="CaptureDatePicker"  IsEnabled="False"/>
+                                <FontIcon Glyph="&#xE787;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="14"/>
+                                <DatePicker x:Name="CaptureDatePicker"  IsEnabled="False" HorizontalAlignment="Center" Width="300"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon Glyph="&#xEC92;" FontFamily="{StaticResource SymbolThemeFontFamily}"/>
-                                <TimePicker x:Name="CaptureTimePicker" IsEnabled="False"/>
+                                <FontIcon Glyph="&#xEC92;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="14"/>
+                                <TimePicker x:Name="CaptureTimePicker" IsEnabled="False" HorizontalAlignment="Center" Width="300"/>
                             </StackPanel>
                         </StackPanel>
 
                         <StackPanel Spacing="8">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon Glyph="&#xF4A5;" FontFamily="{StaticResource SymbolThemeFontFamily}"/>
+                                <FontIcon Glyph="&#xF4A5;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="14"/>
                                 <TextBlock Text="大小信息" Style="{ThemeResource BodyTextBlockStyle}"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="16" Margin="24,0,0,0">
-                                <TextBlock x:Name="ResolutionTextBlock" Style="{ThemeResource BodyTextBlockStyle}"/>
-                                <TextBlock x:Name="FileSizeTextBlock" Style="{ThemeResource BodyTextBlockStyle}"/>
+                                <TextBlock x:Name="ResolutionTextBlock" Style="{ThemeResource CaptionTextBlockStyle}"/>
+                                <TextBlock x:Name="FileSizeTextBlock" Style="{ThemeResource CaptionTextBlockStyle}" />
                             </StackPanel>
                         </StackPanel>
 
                         <StackPanel Spacing="8">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon Glyph="&#xE722;" FontFamily="{StaticResource SymbolThemeFontFamily}"/>
+                                <FontIcon Glyph="&#xE722;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="14"/>
                                 <TextBlock Text="设备信息" Style="{ThemeResource BodyTextBlockStyle}"/>
                             </StackPanel>
-                            <StackPanel x:Name="DeviceInfoPanel" Orientation="Horizontal" Spacing="8" Margin="24,0,0,0"
+                            <StackPanel x:Name="DeviceInfoPanel" Orientation="Horizontal" Spacing="8" Margin="24,0,0,0" 
                                           Visibility="Collapsed">
                             </StackPanel>
                         </StackPanel>
 
                         <StackPanel Spacing="8">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon Glyph="&#xE8B7;" FontFamily="{StaticResource SymbolThemeFontFamily}"/>
+                                <FontIcon Glyph="&#xE8B7;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="14"/>
                                 <TextBlock Text="文件路径" Style="{ThemeResource BodyTextBlockStyle}"/>
                             </StackPanel>
-                            <StackPanel x:Name="FilePathPanel" Spacing="8" Margin="24,0,0,0">
+                            <StackPanel x:Name="FilePathPanel" Spacing="8" Margin="24,0,0,0" >
                             </StackPanel>
                         </StackPanel>
                     </StackPanel>

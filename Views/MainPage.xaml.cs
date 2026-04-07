@@ -128,6 +128,9 @@ public sealed partial class MainPage : Page
 
             newViewer.PrepareContent(imageFileInfo);
 
+            // 等待布局完成并应用初始缩放，然后再启动动画
+            await newViewer.PrepareForAnimationAsync();
+
             if (ImageGridView.ContainerFromItem(imageFileInfo) is GridViewItem container)
             {
                 ImageGridView.PrepareConnectedAnimation("ForwardConnectedAnimation", imageFileInfo, "thumbnailImage");

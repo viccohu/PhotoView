@@ -23,21 +23,15 @@ public sealed partial class ImageViewerControl : UserControl
 {
     public event EventHandler? Closed;
 
-    private static readonly HashSet<string> RawFileExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".nef", ".cr2", ".cr3", ".arw", ".dng", ".orf", ".rw2",
-        ".pef", ".raf", ".srw", ".x3f", ".mrw", ".erf", ".3fr",
-        ".kdc", ".dcr", ".raw", ".rwz"
-    };
-
     private ImageFileInfo? _imageFileInfo;
     private bool _is1To1Scale = false;
-    private double _originalZoomFactor = 1.0;
-    private bool _hasAppliedInitialZoom = false;
-    private ImageSource? _pendingHighResImageSource = null;
-    
-    private Windows.Foundation.Point _lastPointerPosition;
-    private bool _isDragging = false;
+    private double _fitScale = 1.0;
+    private bool _hasCalculatedFitScale = false;
+
+    private static readonly HashSet<string> RawFileExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".arw", ".srf", ".sr2", ".crw", ".cr2", ".cr3", ".nef", ".nrw", ".orf", ".pef", ".raf", ".rw2", ".dng", ".erf", ".3fr", ".kdc", ".mrw", ".mef", ".mos", ".rwl", ".srw", ".x3f", ".iiq", ".fff"
+    };
 
     public ImageViewerControl()
     {
@@ -47,29 +41,70 @@ public sealed partial class ImageViewerControl : UserControl
     public void PrepareContent(ImageFileInfo imageFileInfo)
     {
         _imageFileInfo = imageFileInfo;
-        
-        _hasAppliedInitialZoom = false;
-        _pendingHighResImageSource = null;
-        _originalZoomFactor = 1.0;
         _is1To1Scale = false;
-        
-        _isDragging = false;
-        
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareContent: 重置前 ZoomFactor={ImageScrollViewer.ZoomFactor}");
-        
-        ImageScrollViewer.UpdateLayout();
-        
-        ImageScrollViewer.ChangeView(0, 0, 1.0f, true);
-        
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareContent: 重置后 ZoomFactor={ImageScrollViewer.ZoomFactor}");
-        
+        _hasCalculatedFitScale = false;
+
         mainImage.Source = imageFileInfo.Thumbnail;
         ImageNameTextBox.Text = imageFileInfo.ImageName;
         ResolutionTextBlock.Text = $"{imageFileInfo.Width} x {imageFileInfo.Height}";
         System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareContent: 已设置缩略图, 文件名={imageFileInfo.ImageName}, 尺寸={imageFileInfo.Width}x{imageFileInfo.Height}");
+
         _ = LoadFileInfoAsync();
-        
+    }
+
+    public async Task PrepareForAnimationAsync()
+    {
+        System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareForAnimationAsync: 开始等待布局完成");
+
+        int retryCount = 0;
+        while ((ImageScrollView.ViewportWidth <= 0 || ImageScrollView.ViewportHeight <= 0) && retryCount < 50)
+        {
+            await Task.Delay(10);
+            retryCount++;
+            ImageScrollView.UpdateLayout();
+        }
+
+        System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareForAnimationAsync: 布局完成, ViewportWidth={ImageScrollView.ViewportWidth}, ViewportHeight={ImageScrollView.ViewportHeight}, 重试次数={retryCount}");
+
+        CalculateFitScale();
+
         _ = LoadHighResolutionImageAsync();
+    }
+
+    private void CalculateFitScale()
+    {
+        if (mainImage.Source is not BitmapSource currentSource)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] CalculateFitScale: Source 不是 BitmapSource");
+            return;
+        }
+
+        double vWidth = ImageScrollView.ViewportWidth;
+        double vHeight = ImageScrollView.ViewportHeight;
+
+        System.Diagnostics.Debug.WriteLine($"[ImageViewer] CalculateFitScale: vWidth={vWidth}, vHeight={vHeight}");
+
+        if (vWidth <= 0 || vHeight <= 0)
+            return;
+
+        double iWidth = currentSource.PixelWidth;
+        double iHeight = currentSource.PixelHeight;
+
+        System.Diagnostics.Debug.WriteLine($"[ImageViewer] CalculateFitScale: iWidth={iWidth}, iHeight={iHeight}");
+
+        if (iWidth <= 0 || iHeight <= 0)
+            return;
+
+        double scaleX = vWidth / iWidth;
+        double scaleY = vHeight / iHeight;
+        _fitScale = Math.Min(scaleX, scaleY);
+
+        _fitScale = Math.Max(_fitScale, 0.1);
+
+        ImageScrollView.ZoomTo((float)_fitScale, null);
+        _hasCalculatedFitScale = true;
+
+        System.Diagnostics.Debug.WriteLine($"[ImageViewer] CalculateFitScale: scaleX={scaleX:F3}, scaleY={scaleY:F3}, fitScale={_fitScale:F3}, 已应用缩放");
     }
 
     private async Task LoadFileInfoAsync()
@@ -150,7 +185,7 @@ public sealed partial class ImageViewerControl : UserControl
             {
                 Text = file.ImageFile.Path,
                 TextWrapping = TextWrapping.Wrap,
-                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(0xFF, 0x00, 0x78, 0xD4)),
+                Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(0xFF, 0x00, 0x78, 0xD4)),
                 IsTextSelectionEnabled = true
             };
 
@@ -313,9 +348,9 @@ public sealed partial class ImageViewerControl : UserControl
     public async Task ShowAfterAnimationAsync()
     {
         Visibility = Visibility.Visible;
-        
+
         var storyboard = new Storyboard();
-        
+
         var fadeInBackground = new DoubleAnimation
         {
             To = 1,
@@ -324,7 +359,7 @@ public sealed partial class ImageViewerControl : UserControl
         Storyboard.SetTarget(fadeInBackground, BackgroundOverlay);
         Storyboard.SetTargetProperty(fadeInBackground, "Opacity");
         storyboard.Children.Add(fadeInBackground);
-        
+
         var fadeInContainer = new DoubleAnimation
         {
             To = 1,
@@ -333,65 +368,13 @@ public sealed partial class ImageViewerControl : UserControl
         Storyboard.SetTarget(fadeInContainer, AnimationContainer);
         Storyboard.SetTargetProperty(fadeInContainer, "Opacity");
         storyboard.Children.Add(fadeInContainer);
-        
+
         var tcs = new TaskCompletionSource<bool>();
         storyboard.Completed += (s, e) => tcs.SetResult(true);
         storyboard.Begin();
         await tcs.Task;
 
-        _hasAppliedInitialZoom = true;
-        
-        if (_pendingHighResImageSource != null)
-        {
-            mainImage.Source = _pendingHighResImageSource;
-            _pendingHighResImageSource = null;
-        }
-    }
-
-    private void ApplyInitialZoomToFit()
-    {
-        if (_imageFileInfo == null)
-            return;
-
-        var viewerWidth = ImageScrollViewer.ActualWidth;
-        var viewerHeight = ImageScrollViewer.ActualHeight;
-
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] ApplyInitialZoomToFit: viewerWidth={viewerWidth}, viewerHeight={viewerHeight}");
-
-        if (viewerWidth <= 0 || viewerHeight <= 0)
-            return;
-
-        var imageWidth = (double)_imageFileInfo.Width;
-        var imageHeight = (double)_imageFileInfo.Height;
-
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] ApplyInitialZoomToFit: imageWidth={imageWidth}, imageHeight={imageHeight}");
-
-        if (imageWidth <= 0 || imageHeight <= 0)
-            return;
-
-        var scaleX = viewerWidth / imageWidth;
-        var scaleY = viewerHeight / imageHeight;
-        var fitScale = Math.Min(scaleX, scaleY);
-
-        fitScale = Math.Max(0.1, fitScale);
-
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] ApplyInitialZoomToFit: scaleX={scaleX:F3}, scaleY={scaleY:F3}, fitScale={fitScale:F3}");
-
-        ImageScrollViewer.ChangeView(null, null, (float)fitScale);
-        _originalZoomFactor = fitScale;
-        _is1To1Scale = false;
-        _hasAppliedInitialZoom = true;
-
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] ApplyInitialZoomToFit: 已设置 _hasAppliedInitialZoom=true");
-
-        if (_pendingHighResImageSource != null)
-        {
-            mainImage.Source = _pendingHighResImageSource;
-            _pendingHighResImageSource = null;
-
-            mainImage.UpdateLayout();
-            ImageScrollViewer.InvalidateScrollInfo();
-        }
+        System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 动画完成");
     }
 
     private static string FormatFileSize(ulong size)
@@ -416,56 +399,32 @@ public sealed partial class ImageViewerControl : UserControl
 
             System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 开始加载高清图, 文件名={_imageFileInfo.ImageName}");
 
-            double viewerWidth = 0, viewerHeight = 0;
+            double viewerWidth = 800;
+            double viewerHeight = 600;
+
             var tcs = new TaskCompletionSource<bool>();
             DispatcherQueue.TryEnqueue(() =>
             {
                 try
                 {
-                    viewerWidth = ImageScrollViewer.ActualWidth;
-                    viewerHeight = ImageScrollViewer.ActualHeight;
+                    var vw = ImageScrollView.ViewportWidth;
+                    var vh = ImageScrollView.ViewportHeight;
+                    if (vw > 0 && vh > 0)
+                    {
+                        viewerWidth = vw;
+                        viewerHeight = vh;
+                    }
                     tcs.SetResult(true);
                 }
                 catch (Exception ex)
                 {
-                    tcs.SetException(ex);
+                    System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 获取尺寸时出错，使用默认值: {ex}");
+                    tcs.SetResult(true);
                 }
             });
             await tcs.Task;
 
             System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: viewerWidth={viewerWidth}, viewerHeight={viewerHeight}");
-
-            int retryCount = 0;
-            while ((viewerWidth <= 0 || viewerHeight <= 0) && retryCount < 10)
-            {
-                System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 尺寸为 0，等待布局完成，重试次数={retryCount}");
-                await Task.Delay(50);
-                
-                tcs = new TaskCompletionSource<bool>();
-                DispatcherQueue.TryEnqueue(() =>
-                {
-                    try
-                    {
-                        viewerWidth = ImageScrollViewer.ActualWidth;
-                        viewerHeight = ImageScrollViewer.ActualHeight;
-                        tcs.SetResult(true);
-                    }
-                    catch (Exception ex)
-                    {
-                        tcs.SetException(ex);
-                    }
-                });
-                await tcs.Task;
-                
-                retryCount++;
-            }
-
-            if (viewerWidth <= 0 || viewerHeight <= 0)
-            {
-                viewerWidth = 800;
-                viewerHeight = 600;
-                System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 使用默认尺寸 {viewerWidth}x{viewerHeight}");
-            }
 
             var targetLongSide = (uint)Math.Max(viewerWidth, viewerHeight);
             System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 查看器最长边={targetLongSide}, 开始用 WIC 解码");
@@ -475,22 +434,44 @@ public sealed partial class ImageViewerControl : UserControl
 
             if (imageSource != null)
             {
-                System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 高清图加载完成, _hasAppliedInitialZoom={_hasAppliedInitialZoom}");
-                
-                if (_hasAppliedInitialZoom)
-                {
-                    DispatcherQueue.TryEnqueue(() =>
-                    {
-                        mainImage.Source = imageSource;
+                System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 高清图加载完成");
 
-                        System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 已替换高清图");
-                    });
-                }
-                else
+                DispatcherQueue.TryEnqueue(() =>
                 {
-                    System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 还未应用初始缩放，保存等待");
-                    _pendingHighResImageSource = imageSource;
-                }
+                    var visualWidth = mainImage.ActualWidth;
+                    var visualHeight = mainImage.ActualHeight;
+
+                    mainImage.Width = visualWidth;
+                    mainImage.Height = visualHeight;
+
+                    mainImage.Source = imageSource;
+
+                    mainImage.UpdateLayout();
+
+                    if (imageSource is BitmapSource newSource)
+                    {
+                        double vWidth = ImageScrollView.ViewportWidth;
+                        double vHeight = ImageScrollView.ViewportHeight;
+
+                        if (vWidth > 0 && vHeight > 0)
+                        {
+                            double iWidth = newSource.PixelWidth;
+                            double iHeight = newSource.PixelHeight;
+
+                            double scaleX = vWidth / iWidth;
+                            double scaleY = vHeight / iHeight;
+                            _fitScale = Math.Min(scaleX, scaleY);
+                            _fitScale = Math.Max(_fitScale, 0.1);
+                        }
+                    }
+
+                    mainImage.ClearValue(FrameworkElement.WidthProperty);
+                    mainImage.ClearValue(FrameworkElement.HeightProperty);
+
+                    ImageScrollView.ZoomTo((float)_fitScale, null);
+
+                    System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 高清图比例已校正为: {_fitScale:F3}");
+                });
             }
             else
             {
@@ -512,7 +493,7 @@ public sealed partial class ImageViewerControl : UserControl
     public async Task CompleteCloseAsync()
     {
         var storyboard = new Storyboard();
-        
+
         var fadeOutBackground = new DoubleAnimation
         {
             To = 0,
@@ -521,7 +502,7 @@ public sealed partial class ImageViewerControl : UserControl
         Storyboard.SetTarget(fadeOutBackground, BackgroundOverlay);
         Storyboard.SetTargetProperty(fadeOutBackground, "Opacity");
         storyboard.Children.Add(fadeOutBackground);
-        
+
         var fadeOutContainer = new DoubleAnimation
         {
             To = 0,
@@ -530,12 +511,12 @@ public sealed partial class ImageViewerControl : UserControl
         Storyboard.SetTarget(fadeOutContainer, AnimationContainer);
         Storyboard.SetTargetProperty(fadeOutContainer, "Opacity");
         storyboard.Children.Add(fadeOutContainer);
-        
+
         var tcs = new TaskCompletionSource<bool>();
         storyboard.Completed += (s, e) => tcs.SetResult(true);
         storyboard.Begin();
         await tcs.Task;
-        
+
         Visibility = Visibility.Collapsed;
     }
 
@@ -567,107 +548,15 @@ public sealed partial class ImageViewerControl : UserControl
     {
         if (_is1To1Scale)
         {
-            ImageScrollViewer.ChangeView(null, null, (float?)_originalZoomFactor);
+            ImageScrollView.ZoomTo((float)_fitScale, null);
             _is1To1Scale = false;
         }
         else
         {
-            _originalZoomFactor = ImageScrollViewer.ZoomFactor;
-            ImageScrollViewer.ChangeView(null, null, 1.0f);
+            ImageScrollView.ZoomTo(1.0f, null);
             _is1To1Scale = true;
         }
         e.Handled = true;
-    }
-
-    private void ImageScrollViewer_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
-    {
-        var pointerPoint = e.GetCurrentPoint(ImageScrollViewer);
-        var delta = pointerPoint.Properties.MouseWheelDelta;
-
-        double oldZoomFactor = ImageScrollViewer.ZoomFactor;
-        double newZoomFactor = oldZoomFactor;
-
-        if (delta > 0)
-        {
-            newZoomFactor *= 1.1;
-        }
-        else if (delta < 0)
-        {
-            newZoomFactor /= 1.1;
-        }
-
-        newZoomFactor = Math.Max(0.1, Math.Min(newZoomFactor, 5.0));
-
-        if (Math.Abs(newZoomFactor - oldZoomFactor) < 0.001)
-        {
-            e.Handled = true;
-            return;
-        }
-
-        var pointerPosition = pointerPoint.Position;
-
-        double ratio = newZoomFactor / oldZoomFactor;
-
-        double targetX = (ImageScrollViewer.HorizontalOffset + pointerPosition.X) * ratio - pointerPosition.X;
-        double targetY = (ImageScrollViewer.VerticalOffset + pointerPosition.Y) * ratio - pointerPosition.Y;
-
-        ImageScrollViewer.ChangeView(targetX, targetY, (float)newZoomFactor, true);
-
-        e.Handled = true;
-    }
-
-    private void ImageScrollViewer_PointerPressed(object sender, PointerRoutedEventArgs e)
-    {
-        var pointerPoint = e.GetCurrentPoint(ImageScrollViewer);
-        if (!pointerPoint.Properties.IsLeftButtonPressed)
-            return;
-
-        _isDragging = true;
-        _lastPointerPosition = pointerPoint.Position;
-        ImageScrollViewer.CapturePointer(e.Pointer);
-        e.Handled = true;
-    }
-
-    private void ImageScrollViewer_PointerMoved(object sender, PointerRoutedEventArgs e)
-    {
-        if (!_isDragging)
-            return;
-
-        var pointerPoint = e.GetCurrentPoint(ImageScrollViewer);
-        var currentPosition = pointerPoint.Position;
-
-        double dX = _lastPointerPosition.X - currentPosition.X;
-        double dY = _lastPointerPosition.Y - currentPosition.Y;
-
-        ImageScrollViewer.ChangeView(
-            ImageScrollViewer.HorizontalOffset + dX,
-            ImageScrollViewer.VerticalOffset + dY,
-            null,
-            true);
-
-        _lastPointerPosition = currentPosition;
-        e.Handled = true;
-    }
-
-    private void ImageScrollViewer_PointerReleased(object sender, PointerRoutedEventArgs e)
-    {
-        EndDrag();
-        e.Handled = true;
-    }
-
-    private void ImageScrollViewer_PointerCanceled(object sender, PointerRoutedEventArgs e)
-    {
-        EndDrag();
-        e.Handled = true;
-    }
-
-    private void EndDrag()
-    {
-        if (!_isDragging)
-            return;
-
-        _isDragging = false;
-        ImageScrollViewer.ReleasePointerCaptures();
     }
 
     protected override void OnKeyDown(KeyRoutedEventArgs e)
