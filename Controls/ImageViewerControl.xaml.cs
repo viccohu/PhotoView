@@ -59,13 +59,78 @@ public sealed partial class ImageViewerControl : UserControl
 
     #region 物理参数
 
+    /// <summary>
+    /// 惯性衰减系数（影响拖动后的滑动距离）
+    /// 值越大：滑动距离越远，手感越滑（推荐范围：0.85 - 0.95）
+    /// 值越小：滑动距离越短，手感越粘
+    /// </summary>
     private const double InertiaDamping = 0.92;
+
+    /// <summary>
+    /// 缩放缓动系数（影响缩放的响应速度）
+    /// 值越大：缩放响应越快，过渡越生硬（推荐范围：0.1 - 0.3）
+    /// 值越小：缩放响应越慢，过渡越平滑
+    /// </summary>
     private const double ZoomEasingFactor = 0.15;
+
+    /// <summary>
+    /// 边界阻尼系数（已弃用，保留用于兼容）
+    /// </summary>
     private const double BoundaryDamping = 0.3;
+
+    /// <summary>
+    /// 回弹速度系数（已弃用，保留用于兼容）
+    /// </summary>
     private const double SpringBackFactor = 0.12;
+
+    /// <summary>
+    /// 速度阈值（用于判断惯性是否停止）
+    /// 值越大：停止得越早
+    /// 值越小：滑动得越久（推荐范围：0.1 - 1.0）
+    /// </summary>
     private const double VelocityThreshold = 0.5;
+
+    /// <summary>
+    /// 100% 吸附阈值（影响吸附的灵敏度）
+    /// 值越大：吸附范围越大，越容易吸附到 100%（推荐范围：0.03 - 0.1）
+    /// 值越小：吸附范围越小，越难吸附到 100%
+    /// </summary>
     private const double SnapThreshold = 0.05;
+
+    /// <summary>
+    /// 100% 吸附停留次数（影响离开 100% 的难度）
+    /// 值越大：需要滚动更多次才能离开 100%（推荐范围：2 - 6）
+    /// 值越小：很容易离开 100%
+    /// </summary>
     private const int SnapStayCount = 4;
+
+    /// <summary>
+    /// 橡皮筋阻力系数（拖拽时拉出边界的阻力感）
+    /// 值越大：越难拉出边界，阻力感越强（推荐范围：0.1 - 0.3）
+    /// 值越小：越容易拉出边界，阻力感越弱
+    /// </summary>
+    private const double RubberBandResistance = 0.1;
+
+    /// <summary>
+    /// 弹簧刚度系数（松手后回弹的速度）
+    /// 值越大：回弹速度越快，手感越硬（推荐范围：0.1 - 0.3）
+    /// 值越小：回弹速度越慢，手感越软
+    /// </summary>
+    private const double SpringStiffness = 0.2;
+
+    /// <summary>
+    /// 弹簧阻尼系数（回弹时的衰减速度，防止过度抖动）
+    /// 值越大：衰减越快，回弹越干脆（推荐范围：0.6 - 0.8）
+    /// 值越小：衰减越慢，回弹越有弹性但可能抖动
+    /// </summary>
+    private const double SpringDamping = 0.7;
+
+    /// <summary>
+    /// 弹簧停止阈值（判断回弹是否完成的精度）
+    /// 值越大：停止得越早，但可能停在偏差位置
+    /// 值越小：停止得越晚，但位置更精确（推荐范围：0.05 - 0.2）
+    /// </summary>
+    private const double SpringEpsilon = 0.1;
 
     #endregion
 
@@ -678,7 +743,10 @@ public sealed partial class ImageViewerControl : UserControl
             needsUpdate = true;
         }
 
-        needsUpdate |= ApplyBoundsWithDamping();
+        if (!_isDragging)
+        {
+            needsUpdate |= ApplyBoundsWithSpring();
+        }
 
         if (needsUpdate)
         {
@@ -780,7 +848,9 @@ public sealed partial class ImageViewerControl : UserControl
 
         if (CanPanHorizontal())
         {
-            _translateX += deltaX;
+            var offsetX = GetBoundsOffsetX();
+            var adjustedDeltaX = ApplyRubberBand(deltaX, offsetX);
+            _translateX += adjustedDeltaX;
             _velocityX = deltaX;
         }
         else
@@ -790,7 +860,9 @@ public sealed partial class ImageViewerControl : UserControl
 
         if (CanPanVertical())
         {
-            _translateY += deltaY;
+            var offsetY = GetBoundsOffsetY();
+            var adjustedDeltaY = ApplyRubberBand(deltaY, offsetY);
+            _translateY += adjustedDeltaY;
             _velocityY = deltaY;
         }
         else
@@ -851,115 +923,127 @@ public sealed partial class ImageViewerControl : UserControl
         }
     }
 
-    private bool ApplyBoundsWithDamping()
+    /// <summary>
+    /// 计算 X 轴当前超出边界的距离
+    /// </summary>
+    /// <returns>正数表示向右超出，负数表示向左超出，0 表示在边界内</returns>
+    private double GetBoundsOffsetX()
     {
-        if (MainImage?.Source == null || ImageContainer == null) return false;
+        if (MainImage?.Source == null || ImageContainer == null) return 0;
 
         var containerWidth = ImageContainer.ActualWidth;
-        var containerHeight = ImageContainer.ActualHeight;
-
-        if (containerWidth <= 0 || containerHeight <= 0) return false;
-
-        var (imageWidth, imageHeight) = GetScaledImageSize();
-        bool needsUpdate = false;
+        var (imageWidth, _) = GetScaledImageSize();
 
         if (imageWidth <= containerWidth)
         {
-            if (Math.Abs(_translateX) > 0.5)
-            {
-                _translateX *= (1 - SpringBackFactor);
-                _velocityX = 0;
-                needsUpdate = true;
-            }
-            else if (Math.Abs(_translateX) > 0.01)
-            {
-                _translateX = 0;
-                needsUpdate = true;
-            }
+            return _translateX;
         }
         else
         {
             var maxTranslateX = imageWidth / 2 - containerWidth / 2;
-
             if (_translateX > maxTranslateX)
             {
-                if (!_isDragging)
-                {
-                    _translateX += (maxTranslateX - _translateX) * SpringBackFactor;
-                    _velocityX = 0;
-                }
-                else
-                {
-                    _translateX = maxTranslateX + (_translateX - maxTranslateX) * BoundaryDamping;
-                    _velocityX *= -0.3;
-                }
-                needsUpdate = true;
+                return _translateX - maxTranslateX;
             }
             else if (_translateX < -maxTranslateX)
             {
-                if (!_isDragging)
-                {
-                    _translateX += (-maxTranslateX - _translateX) * SpringBackFactor;
-                    _velocityX = 0;
-                }
-                else
-                {
-                    _translateX = -maxTranslateX + (_translateX + maxTranslateX) * BoundaryDamping;
-                    _velocityX *= -0.3;
-                }
-                needsUpdate = true;
+                return _translateX + maxTranslateX;
             }
+            return 0;
         }
+    }
+
+    /// <summary>
+    /// 计算 Y 轴当前超出边界的距离
+    /// </summary>
+    /// <returns>正数表示向下超出，负数表示向上超出，0 表示在边界内</returns>
+    private double GetBoundsOffsetY()
+    {
+        if (MainImage?.Source == null || ImageContainer == null) return 0;
+
+        var containerHeight = ImageContainer.ActualHeight;
+        var (_, imageHeight) = GetScaledImageSize();
 
         if (imageHeight <= containerHeight)
         {
-            if (Math.Abs(_translateY) > 0.5)
-            {
-                _translateY *= (1 - SpringBackFactor);
-                _velocityY = 0;
-                needsUpdate = true;
-            }
-            else if (Math.Abs(_translateY) > 0.01)
-            {
-                _translateY = 0;
-                needsUpdate = true;
-            }
+            return _translateY;
         }
         else
         {
             var maxTranslateY = imageHeight / 2 - containerHeight / 2;
-
             if (_translateY > maxTranslateY)
             {
-                if (!_isDragging)
-                {
-                    _translateY += (maxTranslateY - _translateY) * SpringBackFactor;
-                    _velocityY = 0;
-                }
-                else
-                {
-                    _translateY = maxTranslateY + (_translateY - maxTranslateY) * BoundaryDamping;
-                    _velocityY *= -0.3;
-                }
-                needsUpdate = true;
+                return _translateY - maxTranslateY;
             }
             else if (_translateY < -maxTranslateY)
             {
-                if (!_isDragging)
-                {
-                    _translateY += (-maxTranslateY - _translateY) * SpringBackFactor;
-                    _velocityY = 0;
-                }
-                else
-                {
-                    _translateY = -maxTranslateY + (_translateY + maxTranslateY) * BoundaryDamping;
-                    _velocityY *= -0.3;
-                }
-                needsUpdate = true;
+                return _translateY + maxTranslateY;
             }
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// 应用橡皮筋效果：越超出边界，移动越困难
+    /// </summary>
+    /// <param name="delta">原始的拖拽距离</param>
+    /// <param name="offset">当前超出边界的距离</param>
+    /// <returns>经过阻尼调整后的实际移动距离</returns>
+    private double ApplyRubberBand(double delta, double offset)
+    {
+        if (offset == 0)
+            return delta;
+
+        double factor = 1.0 / (Math.Abs(offset) * RubberBandResistance + 1);
+        return delta * factor;
+    }
+
+    /// <summary>
+    /// 应用弹簧回弹效果（仅在松手后调用）
+    /// 使用弹簧-阻尼模型让图片平滑回弹到边界内
+    /// </summary>
+    /// <returns>是否需要更新 UI</returns>
+    private bool ApplyBoundsWithSpring()
+    {
+        bool changed = false;
+
+        double offsetX = GetBoundsOffsetX();
+        double offsetY = GetBoundsOffsetY();
+
+        // X 轴回弹
+        if (Math.Abs(offsetX) > SpringEpsilon)
+        {
+            // 弹簧力：指向平衡位置
+            _velocityX += -offsetX * SpringStiffness;
+            // 阻尼力：衰减速度
+            _velocityX *= SpringDamping;
+            _translateX += _velocityX;
+            changed = true;
+        }
+        else if (Math.Abs(offsetX) > 0)
+        {
+            // 距离足够小时直接归位
+            _translateX -= offsetX;
+            _velocityX = 0;
+            changed = true;
         }
 
-        return needsUpdate;
+        // Y 轴回弹
+        if (Math.Abs(offsetY) > SpringEpsilon)
+        {
+            _velocityY += -offsetY * SpringStiffness;
+            _velocityY *= SpringDamping;
+            _translateY += _velocityY;
+            changed = true;
+        }
+        else if (Math.Abs(offsetY) > 0)
+        {
+            _translateY -= offsetY;
+            _velocityY = 0;
+            changed = true;
+        }
+
+        return changed;
     }
 
     #endregion
