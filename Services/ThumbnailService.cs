@@ -44,7 +44,8 @@ public class ThumbnailService : IThumbnailService
         await _decodeGate.WaitAsync(cancellationToken);
         try
         {
-            return await DecodeThumbnailAsync(file, (uint)size, cancellationToken);
+            var result = await DecodeThumbnailAsync(file, (uint)size, cancellationToken);
+            return result?.ImageSource;
         }
         finally
         {
@@ -53,6 +54,20 @@ public class ThumbnailService : IThumbnailService
     }
 
     public async Task<ImageSource?> GetThumbnailByLongSideAsync(StorageFile file, uint longSidePixels, CancellationToken cancellationToken)
+    {
+        await _decodeGate.WaitAsync(cancellationToken);
+        try
+        {
+            var result = await DecodeThumbnailAsync(file, longSidePixels, cancellationToken);
+            return result?.ImageSource;
+        }
+        finally
+        {
+            _decodeGate.Release();
+        }
+    }
+
+    public async Task<DecodeResult?> GetThumbnailWithSizeAsync(StorageFile file, uint longSidePixels, CancellationToken cancellationToken)
     {
         await _decodeGate.WaitAsync(cancellationToken);
         try
@@ -73,7 +88,7 @@ public class ThumbnailService : IThumbnailService
     {
     }
 
-    private static async Task<ImageSource?> DecodeThumbnailAsync(StorageFile file, uint longSidePixels, CancellationToken cancellationToken)
+    private static async Task<DecodeResult?> DecodeThumbnailAsync(StorageFile file, uint longSidePixels, CancellationToken cancellationToken)
     {
         using var stream = await file.OpenReadAsync().AsTask(cancellationToken);
         var decoder = await BitmapDecoder.CreateAsync(stream).AsTask(cancellationToken);
@@ -82,18 +97,18 @@ public class ThumbnailService : IThumbnailService
         uint scaledWidth, scaledHeight;
         if (decoder.PixelWidth >= decoder.PixelHeight)
         {
-            // 横向图片，宽度设为最长边
             scaledWidth = Math.Max(1u, longSidePixels);
             var aspectRatio = decoder.PixelWidth == 0 ? 1d : (double)decoder.PixelHeight / decoder.PixelWidth;
             scaledHeight = Math.Max(1u, (uint)Math.Round(scaledWidth * aspectRatio));
         }
         else
         {
-            // 纵向图片，高度设为最长边
             scaledHeight = Math.Max(1u, longSidePixels);
             var aspectRatio = decoder.PixelHeight == 0 ? 1d : (double)decoder.PixelWidth / decoder.PixelHeight;
             scaledWidth = Math.Max(1u, (uint)Math.Round(scaledHeight * aspectRatio));
         }
+
+        System.Diagnostics.Debug.WriteLine($"[ThumbnailService] DecodeThumbnailAsync: 文件={file.Name}, 解码尺寸={scaledWidth}x{scaledHeight}");
 
         var transform = new BitmapTransform
         {
@@ -110,7 +125,9 @@ public class ThumbnailService : IThumbnailService
             ColorManagementMode.ColorManageToSRgb).AsTask(cancellationToken);
 
         cancellationToken.ThrowIfCancellationRequested();
-        return await CreateSoftwareBitmapSourceAsync(softwareBitmap, cancellationToken);
+        var imageSource = await CreateSoftwareBitmapSourceAsync(softwareBitmap, cancellationToken);
+
+        return imageSource != null ? new DecodeResult(scaledWidth, scaledHeight, imageSource) : null;
     }
 
     private static async Task<ImageSource?> CreateSoftwareBitmapSourceAsync(SoftwareBitmap softwareBitmap, CancellationToken cancellationToken)

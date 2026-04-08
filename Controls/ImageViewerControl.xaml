@@ -23,6 +23,19 @@
                 <ColumnDefinition Width="380"/>
             </Grid.ColumnDefinitions>
 
+            <!-- 阶段1：动画用 -->
+            <Grid
+                x:Name="AnimationImageContainer"
+                Grid.Column="0"
+                Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+                <Image
+                    x:Name="AnimationImage"
+                    Stretch="Uniform"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"/>
+            </Grid>
+
+            <!-- 阶段2：查看器 -->
             <ScrollView
                 x:Name="ImageScrollView"
                 Grid.Column="0"
@@ -32,10 +45,11 @@
                 MaxZoomFactor="10.0"
                 HorizontalScrollBarVisibility="Auto"
                 VerticalScrollBarVisibility="Auto"
-                Tapped="ImageScrollViewer_Tapped">
+                Tapped="ImageScrollViewer_Tapped"
+                Opacity="0">
                 <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                     <Image
-                        x:Name="mainImage"
+                        x:Name="MainImage"
                         Stretch="None"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"

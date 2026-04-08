@@ -10,7 +10,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Windows.Graphics.Display;
@@ -27,7 +26,8 @@ public sealed partial class ImageViewerControl : UserControl
     private ImageFileInfo? _imageFileInfo;
     private bool _is1To1Scale = false;
     private double _fitScale = 1.0;
-    private bool _hasCalculatedFitScale = false;
+    private uint _targetDecodeLongSide = 1920;
+    private Task<DecodeResult?>? _highResLoadTask;
 
     private static readonly HashSet<string> RawFileExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -43,69 +43,28 @@ public sealed partial class ImageViewerControl : UserControl
     {
         _imageFileInfo = imageFileInfo;
         _is1To1Scale = false;
-        _hasCalculatedFitScale = false;
 
-        mainImage.Source = imageFileInfo.Thumbnail;
+        // 在 UI 线程获取分辨率
+        _targetDecodeLongSide = GetTargetDecodeLongSide();
+        System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareContent: 解码最长边={_targetDecodeLongSide}");
+
+        // 阶段1：只设置动画层
+        AnimationImage.Source = imageFileInfo.Thumbnail;
         ImageNameTextBox.Text = imageFileInfo.ImageName;
         ResolutionTextBlock.Text = $"{imageFileInfo.Width} x {imageFileInfo.Height}";
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareContent: 已设置缩略图, 文件名={imageFileInfo.ImageName}, 尺寸={imageFileInfo.Width}x{imageFileInfo.Height}");
+
+        System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareContent: 已设置动画层缩略图, 文件名={imageFileInfo.ImageName}");
+
+        // 启动高清图异步加载（不等待）
+        _highResLoadTask = LoadHighResolutionImageAsync();
 
         _ = LoadFileInfoAsync();
     }
 
-    public async Task PrepareForAnimationAsync()
+    public Task PrepareForAnimationAsync()
     {
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareForAnimationAsync: 开始等待布局完成");
-
-        int retryCount = 0;
-        while ((ImageScrollView.ViewportWidth <= 0 || ImageScrollView.ViewportHeight <= 0) && retryCount < 50)
-        {
-            await Task.Delay(10);
-            retryCount++;
-            ImageScrollView.UpdateLayout();
-        }
-
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareForAnimationAsync: 布局完成, ViewportWidth={ImageScrollView.ViewportWidth}, ViewportHeight={ImageScrollView.ViewportHeight}, 重试次数={retryCount}");
-
-        CalculateFitScale();
-
-        _ = LoadHighResolutionImageAsync();
-    }
-
-    private void CalculateFitScale()
-    {
-        if (mainImage.Source is not BitmapSource currentSource)
-        {
-            System.Diagnostics.Debug.WriteLine($"[ImageViewer] CalculateFitScale: Source 不是 BitmapSource");
-            return;
-        }
-
-        double vWidth = ImageScrollView.ViewportWidth;
-        double vHeight = ImageScrollView.ViewportHeight;
-
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] CalculateFitScale: vWidth={vWidth}, vHeight={vHeight}");
-
-        if (vWidth <= 0 || vHeight <= 0)
-            return;
-
-        double iWidth = currentSource.PixelWidth;
-        double iHeight = currentSource.PixelHeight;
-
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] CalculateFitScale: iWidth={iWidth}, iHeight={iHeight}");
-
-        if (iWidth <= 0 || iHeight <= 0)
-            return;
-
-        double scaleX = vWidth / iWidth;
-        double scaleY = vHeight / iHeight;
-        _fitScale = Math.Min(scaleX, scaleY);
-
-        _fitScale = Math.Max(_fitScale, 0.1);
-
-        ImageScrollView.ZoomTo((float)_fitScale, null);
-        _hasCalculatedFitScale = true;
-
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] CalculateFitScale: scaleX={scaleX:F3}, scaleY={scaleY:F3}, fitScale={_fitScale:F3}, 已应用缩放");
+        System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareForAnimationAsync: 完成");
+        return Task.CompletedTask;
     }
 
     private uint GetMonitorLongSide()
@@ -142,6 +101,112 @@ public sealed partial class ImageViewerControl : UserControl
         return targetLongSide;
     }
 
+    public async Task ShowAfterAnimationAsync()
+    {
+        Visibility = Visibility.Visible;
+
+        // 入场动画
+        var storyboard = new Storyboard();
+
+        var fadeInBackground = new DoubleAnimation
+        {
+            To = 1,
+            Duration = TimeSpan.FromMilliseconds(300)
+        };
+        Storyboard.SetTarget(fadeInBackground, BackgroundOverlay);
+        Storyboard.SetTargetProperty(fadeInBackground, "Opacity");
+        storyboard.Children.Add(fadeInBackground);
+
+        var fadeInContainer = new DoubleAnimation
+        {
+            To = 1,
+            Duration = TimeSpan.FromMilliseconds(300)
+        };
+        Storyboard.SetTarget(fadeInContainer, AnimationContainer);
+        Storyboard.SetTargetProperty(fadeInContainer, "Opacity");
+        storyboard.Children.Add(fadeInContainer);
+
+        var tcs = new TaskCompletionSource<bool>();
+        storyboard.Completed += (s, e) => tcs.SetResult(true);
+        storyboard.Begin();
+        await tcs.Task;
+
+        System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 动画完成");
+
+        // 等待高清图加载完成（带超时）
+        DecodeResult? highResResult = null;
+        if (_highResLoadTask != null)
+        {
+            var timeoutTask = Task.Delay(2000);
+            var completedTask = await Task.WhenAny(_highResLoadTask, timeoutTask);
+            if (completedTask == _highResLoadTask)
+            {
+                highResResult = await _highResLoadTask;
+                System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 高清图已加载");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 高清图加载超时，使用缩略图");
+            }
+        }
+
+        // 切换到查看层
+        await SwitchToViewerLayerAsync(highResResult);
+    }
+
+    private async Task SwitchToViewerLayerAsync(DecodeResult? highResResult)
+    {
+        // 1. 等待布局完成
+        int retryCount = 0;
+        while ((ImageScrollView.ViewportWidth <= 0 || ImageScrollView.ViewportHeight <= 0) && retryCount < 50)
+        {
+            await Task.Delay(10);
+            retryCount++;
+            ImageScrollView.UpdateLayout();
+        }
+
+        System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 布局完成, ViewportWidth={ImageScrollView.ViewportWidth}, ViewportHeight={ImageScrollView.ViewportHeight}");
+
+        // 2. 设置查看层图片（优先使用高清图）
+        var source = highResResult?.ImageSource ?? _imageFileInfo?.Thumbnail;
+        MainImage.Source = source;
+        MainImage.Stretch = Stretch.Uniform;
+
+        System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 使用 {(highResResult != null ? "高清图" : "缩略图")}");
+
+        // 3. 切换层
+        AnimationImage.Opacity = 0;
+        ImageScrollView.Opacity = 1;
+
+        System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 已切换到查看层");
+
+        // 4. 如果高清图还没加载完，启动渐进式加载
+        if (highResResult == null && _highResLoadTask != null)
+        {
+            _ = WaitForHighResAndReplaceAsync();
+        }
+    }
+
+    private async Task WaitForHighResAndReplaceAsync()
+    {
+        try
+        {
+            var highResResult = await _highResLoadTask;
+            if (highResResult?.ImageSource != null)
+            {
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    MainImage.Source = highResResult.ImageSource;
+                    System.Diagnostics.Debug.WriteLine($"[ImageViewer] WaitForHighResAndReplaceAsync: 高清图渐进式替换完成");
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] WaitForHighResAndReplaceAsync error: {ex}");
+        }
+    }
+
     private async Task LoadFileInfoAsync()
     {
         try
@@ -152,13 +217,11 @@ public sealed partial class ImageViewerControl : UserControl
             var file = _imageFileInfo.ImageFile;
             var fileExtension = Path.GetExtension(file.Name);
             var isRawFile = RawFileExtensions.Contains(fileExtension);
-            System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadFileInfoAsync: 文件名={file.Name}, 扩展名={fileExtension}, 是否RAW={isRawFile}");
 
             try
             {
                 var basicProps = await file.GetBasicPropertiesAsync();
                 FileSizeTextBlock.Text = FormatFileSize(basicProps.Size);
-                System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadFileInfoAsync: 文件大小读取完成");
             }
             catch (Exception ex)
             {
@@ -380,38 +443,6 @@ public sealed partial class ImageViewerControl : UserControl
         }
     }
 
-    public async Task ShowAfterAnimationAsync()
-    {
-        Visibility = Visibility.Visible;
-
-        var storyboard = new Storyboard();
-
-        var fadeInBackground = new DoubleAnimation
-        {
-            To = 1,
-            Duration = TimeSpan.FromMilliseconds(300)
-        };
-        Storyboard.SetTarget(fadeInBackground, BackgroundOverlay);
-        Storyboard.SetTargetProperty(fadeInBackground, "Opacity");
-        storyboard.Children.Add(fadeInBackground);
-
-        var fadeInContainer = new DoubleAnimation
-        {
-            To = 1,
-            Duration = TimeSpan.FromMilliseconds(300)
-        };
-        Storyboard.SetTarget(fadeInContainer, AnimationContainer);
-        Storyboard.SetTargetProperty(fadeInContainer, "Opacity");
-        storyboard.Children.Add(fadeInContainer);
-
-        var tcs = new TaskCompletionSource<bool>();
-        storyboard.Completed += (s, e) => tcs.SetResult(true);
-        storyboard.Begin();
-        await tcs.Task;
-
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 动画完成");
-    }
-
     private static string FormatFileSize(ulong size)
     {
         string[] sizes = { "B", "KB", "MB", "GB" };
@@ -425,76 +456,47 @@ public sealed partial class ImageViewerControl : UserControl
         return $"{len:0.0} {sizes[order]}";
     }
 
-    private async Task LoadHighResolutionImageAsync()
+    private async Task<DecodeResult?> LoadHighResolutionImageAsync()
     {
         try
         {
             if (_imageFileInfo?.ImageFile == null)
-                return;
+                return null;
 
-            System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 开始加载高清图, 文件名={_imageFileInfo.ImageName}");
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 开始加载高清图, 解码最长边={_targetDecodeLongSide}");
 
-            var targetLongSide = GetTargetDecodeLongSide();
-            System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 解码最长边={targetLongSide}, 开始用 WIC 解码");
+            using var cts = new CancellationTokenSource();
+            cts.CancelAfter(5000);
 
             var thumbnailService = App.GetService<IThumbnailService>();
-            var imageSource = await thumbnailService.GetThumbnailByLongSideAsync(_imageFileInfo.ImageFile, targetLongSide, CancellationToken.None);
+            var decodeResult = await thumbnailService.GetThumbnailWithSizeAsync(_imageFileInfo.ImageFile, _targetDecodeLongSide, cts.Token);
 
-            if (imageSource != null)
+            if (decodeResult?.ImageSource != null)
             {
-                System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 高清图加载完成");
-
-                DispatcherQueue.TryEnqueue(() =>
-                {
-                    var visualWidth = mainImage.ActualWidth;
-                    var visualHeight = mainImage.ActualHeight;
-
-                    mainImage.Width = visualWidth;
-                    mainImage.Height = visualHeight;
-
-                    mainImage.Source = imageSource;
-
-                    mainImage.UpdateLayout();
-
-                    if (imageSource is BitmapSource newSource)
-                    {
-                        double vWidth = ImageScrollView.ViewportWidth;
-                        double vHeight = ImageScrollView.ViewportHeight;
-
-                        if (vWidth > 0 && vHeight > 0)
-                        {
-                            double iWidth = newSource.PixelWidth;
-                            double iHeight = newSource.PixelHeight;
-
-                            double scaleX = vWidth / iWidth;
-                            double scaleY = vHeight / iHeight;
-                            _fitScale = Math.Min(scaleX, scaleY);
-                            _fitScale = Math.Max(_fitScale, 0.1);
-                        }
-                    }
-
-                    mainImage.ClearValue(FrameworkElement.WidthProperty);
-                    mainImage.ClearValue(FrameworkElement.HeightProperty);
-
-                    ImageScrollView.ZoomTo((float)_fitScale, null);
-
-                    System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 高清图比例已校正为: {_fitScale:F3}");
-                });
+                System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 高清图加载完成, 实际解码尺寸={decodeResult.Width}x{decodeResult.Height}");
+                return decodeResult;
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 高清图加载失败, imageSource 为 null");
+                System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 高清图加载失败");
+                return null;
             }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"LoadHighResolutionImageAsync error: {ex}");
+            return null;
         }
     }
 
     public void PrepareCloseAnimation()
     {
-        ConnectedAnimationService.GetForCurrentView().PrepareToAnimate("BackConnectedAnimation", mainImage);
+        // 准备返回动画（使用 AnimationImage）
+        AnimationImage.Source = MainImage.Source;
+        AnimationImage.Opacity = 1;
+        ImageScrollView.Opacity = 0;
+
+        ConnectedAnimationService.GetForCurrentView().PrepareToAnimate("BackConnectedAnimation", AnimationImage);
         Closed?.Invoke(this, EventArgs.Empty);
     }
 
@@ -528,7 +530,7 @@ public sealed partial class ImageViewerControl : UserControl
         Visibility = Visibility.Collapsed;
     }
 
-    public FrameworkElement GetMainImage() => mainImage;
+    public FrameworkElement GetMainImage() => AnimationImage;
 
     public UIElement[] GetCoordinatedElements() => new UIElement[] { InfoPanel };
 
