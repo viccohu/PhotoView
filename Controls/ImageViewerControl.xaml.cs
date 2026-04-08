@@ -55,6 +55,14 @@ public sealed partial class ImageViewerControl : UserControl
     private bool _justSnappedTo100Percent = false;
     private int _snapStayCounter = 0;
 
+    private bool _isClosing = false;
+    private bool _isRunning = false;
+    private bool _isLoadingHighRes = false;
+    private bool _isViewerLayerReady = false;
+
+    private ScaleTransform? _cachedScaleTransform;
+    private TranslateTransform? _cachedTranslateTransform;
+
     #endregion
 
     #region 物理参数
@@ -109,7 +117,7 @@ public sealed partial class ImageViewerControl : UserControl
     /// 值越大：越难拉出边界，阻力感越强（推荐范围：0.1 - 0.3）
     /// 值越小：越容易拉出边界，阻力感越弱
     /// </summary>
-    private const double RubberBandResistance = 0.1;
+    private const double RubberBandResistance = 0.15;
 
     /// <summary>
     /// 弹簧刚度系数（松手后回弹的速度）
@@ -141,20 +149,40 @@ public sealed partial class ImageViewerControl : UserControl
         Unloaded += ImageViewerControl_Unloaded;
     }
 
+    private void StartPhysics()
+    {
+        if (_isRunning) return;
+
+        CompositionTarget.Rendering += OnPhysicsRendering;
+        _isRunning = true;
+    }
+
+    private void StopPhysics()
+    {
+        if (!_isRunning) return;
+
+        CompositionTarget.Rendering -= OnPhysicsRendering;
+        _isRunning = false;
+    }
+
     private void ImageViewerControl_Loaded(object sender, RoutedEventArgs e)
     {
-        CompositionTarget.Rendering += OnPhysicsRendering;
+        _cachedScaleTransform = ImageScaleTransform;
+        _cachedTranslateTransform = ImageTranslateTransform;
+        StartPhysics();
     }
 
     private void ImageViewerControl_Unloaded(object sender, RoutedEventArgs e)
     {
-        CompositionTarget.Rendering -= OnPhysicsRendering;
+        StopPhysics();
     }
 
     public void PrepareContent(ImageFileInfo imageFileInfo)
     {
         _imageFileInfo = imageFileInfo;
         _is1To1Scale = false;
+        _isClosing = false;
+        _isViewerLayerReady = false;
 
         _targetDecodeLongSide = GetTargetDecodeLongSide();
         System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareContent: 解码最长边={_targetDecodeLongSide}");
@@ -262,6 +290,12 @@ public sealed partial class ImageViewerControl : UserControl
 
     private async Task SwitchToViewerLayerAsync(DecodeResult? highResResult)
     {
+        if (_isViewerLayerReady)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 已切换过，跳过");
+            return;
+        }
+
         int retryCount = 0;
         while ((ImageContainer.ActualWidth <= 0 || ImageContainer.ActualHeight <= 0) && retryCount < 50)
         {
@@ -270,11 +304,21 @@ public sealed partial class ImageViewerControl : UserControl
             ImageContainer.UpdateLayout();
         }
 
+        if (ImageContainer.ActualWidth <= 0 || ImageContainer.ActualHeight <= 0)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 布局未完成，跳过");
+            return;
+        }
+
         System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 布局完成, ContainerWidth={ImageContainer.ActualWidth}, ContainerHeight={ImageContainer.ActualHeight}");
 
+        _isViewerLayerReady = true;
+
+        StopPhysics();
         var source = highResResult?.ImageSource ?? _imageFileInfo?.Thumbnail;
         MainImage.Source = source;
         MainImage.Stretch = Stretch.Uniform;
+        StartPhysics();
 
         System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 使用 {(highResResult != null ? "高清图" : "缩略图")}");
 
@@ -311,18 +355,40 @@ public sealed partial class ImageViewerControl : UserControl
     {
         try
         {
+            _isLoadingHighRes = true;
             var highResResult = await _highResLoadTask;
+            
+            if (_isClosing || !_isRunning)
+            {
+                _isLoadingHighRes = false;
+                return;
+            }
+
             if (highResResult?.ImageSource != null)
             {
                 DispatcherQueue.TryEnqueue(() =>
                 {
+                    if (_isClosing || !_isRunning)
+                    {
+                        _isLoadingHighRes = false;
+                        return;
+                    }
+
+                    StopPhysics();
                     MainImage.Source = highResResult.ImageSource;
                     System.Diagnostics.Debug.WriteLine($"[ImageViewer] WaitForHighResAndReplaceAsync: 高清图渐进式替换完成");
+                    _isLoadingHighRes = false;
+                    StartPhysics();
                 });
+            }
+            else
+            {
+                _isLoadingHighRes = false;
             }
         }
         catch (Exception ex)
         {
+            _isLoadingHighRes = false;
             System.Diagnostics.Debug.WriteLine($"[ImageViewer] WaitForHighResAndReplaceAsync error: {ex}");
         }
     }
@@ -611,6 +677,12 @@ public sealed partial class ImageViewerControl : UserControl
 
     public void PrepareCloseAnimation()
     {
+        if (_isClosing)
+            return;
+
+        _isClosing = true;
+        StopPhysics();
+
         AnimationImage.Source = MainImage.Source;
         AnimationImage.Opacity = 1;
         ImageContainer.Opacity = 0;
@@ -703,6 +775,8 @@ public sealed partial class ImageViewerControl : UserControl
 
     private void OnPhysicsRendering(object sender, object e)
     {
+        if (!_isRunning) return;
+        if (_isLoadingHighRes) return;
         if (MainImage?.Source == null || ImageContainer == null) return;
 
         bool needsUpdate = false;
@@ -880,6 +954,10 @@ public sealed partial class ImageViewerControl : UserControl
 
         _isDragging = false;
         ImageContainer.ReleasePointerCapture(e.Pointer);
+
+        // 松手时清除速度，回弹时只按位置回弹，不保留拖拽惯性
+        _velocityX = 0;
+        _velocityY = 0;
     }
 
     private void ImageContainer_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -1000,7 +1078,7 @@ public sealed partial class ImageViewerControl : UserControl
 
     /// <summary>
     /// 应用弹簧回弹效果（仅在松手后调用）
-    /// 使用弹簧-阻尼模型让图片平滑回弹到边界内
+    /// 直接平滑回弹到边界内，不保留拖拽速度
     /// </summary>
     /// <returns>是否需要更新 UI</returns>
     private bool ApplyBoundsWithSpring()
@@ -1010,36 +1088,29 @@ public sealed partial class ImageViewerControl : UserControl
         double offsetX = GetBoundsOffsetX();
         double offsetY = GetBoundsOffsetY();
 
-        // X 轴回弹
+        // X 轴回弹：直接向边界移动，忽略拖拽速度
         if (Math.Abs(offsetX) > SpringEpsilon)
         {
-            // 弹簧力：指向平衡位置
-            _velocityX += -offsetX * SpringStiffness;
-            // 阻尼力：衰减速度
-            _velocityX *= SpringDamping;
-            _translateX += _velocityX;
+            // 直接向目标位置平滑移动
+            _translateX -= offsetX * SpringStiffness;
             changed = true;
         }
         else if (Math.Abs(offsetX) > 0)
         {
             // 距离足够小时直接归位
             _translateX -= offsetX;
-            _velocityX = 0;
             changed = true;
         }
 
         // Y 轴回弹
         if (Math.Abs(offsetY) > SpringEpsilon)
         {
-            _velocityY += -offsetY * SpringStiffness;
-            _velocityY *= SpringDamping;
-            _translateY += _velocityY;
+            _translateY -= offsetY * SpringStiffness;
             changed = true;
         }
         else if (Math.Abs(offsetY) > 0)
         {
             _translateY -= offsetY;
-            _velocityY = 0;
             changed = true;
         }
 
@@ -1052,12 +1123,12 @@ public sealed partial class ImageViewerControl : UserControl
 
     private void ApplyTransform()
     {
-        if (ImageScaleTransform == null || ImageTranslateTransform == null) return;
+        if (_cachedScaleTransform == null || _cachedTranslateTransform == null) return;
 
-        ImageScaleTransform.ScaleX = _zoomScale;
-        ImageScaleTransform.ScaleY = _zoomScale;
-        ImageTranslateTransform.X = _translateX;
-        ImageTranslateTransform.Y = _translateY;
+        _cachedScaleTransform.ScaleX = _zoomScale;
+        _cachedScaleTransform.ScaleY = _zoomScale;
+        _cachedTranslateTransform.X = _translateX;
+        _cachedTranslateTransform.Y = _translateY;
     }
 
     private bool CanPan()
