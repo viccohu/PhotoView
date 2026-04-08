@@ -34,9 +34,56 @@ public sealed partial class ImageViewerControl : UserControl
         ".arw", ".srf", ".sr2", ".crw", ".cr2", ".cr3", ".nef", ".nrw", ".orf", ".pef", ".raf", ".rw2", ".dng", ".erf", ".3fr", ".kdc", ".mrw", ".mef", ".mos", ".rwl", ".srw", ".x3f", ".iiq", ".fff"
     };
 
+    #region 物理状态
+
+    private double _zoomScale = 1.0;
+    private double _targetZoomScale = 1.0;
+    private double _translateX = 0;
+    private double _translateY = 0;
+    private double _velocityX = 0;
+    private double _velocityY = 0;
+
+    private bool _isDragging = false;
+    private Windows.Foundation.Point _lastDragPoint;
+
+    private bool _hasZoomAnchor = false;
+    private double _zoomAnchorImgX = 0;
+    private double _zoomAnchorImgY = 0;
+    private double _zoomAnchorScreenX = 0;
+    private double _zoomAnchorScreenY = 0;
+
+    private bool _justSnappedTo100Percent = false;
+    private int _snapStayCounter = 0;
+
+    #endregion
+
+    #region 物理参数
+
+    private const double InertiaDamping = 0.92;
+    private const double ZoomEasingFactor = 0.15;
+    private const double BoundaryDamping = 0.3;
+    private const double SpringBackFactor = 0.12;
+    private const double VelocityThreshold = 0.5;
+    private const double SnapThreshold = 0.05;
+    private const int SnapStayCount = 4;
+
+    #endregion
+
     public ImageViewerControl()
     {
         InitializeComponent();
+        Loaded += ImageViewerControl_Loaded;
+        Unloaded += ImageViewerControl_Unloaded;
+    }
+
+    private void ImageViewerControl_Loaded(object sender, RoutedEventArgs e)
+    {
+        CompositionTarget.Rendering += OnPhysicsRendering;
+    }
+
+    private void ImageViewerControl_Unloaded(object sender, RoutedEventArgs e)
+    {
+        CompositionTarget.Rendering -= OnPhysicsRendering;
     }
 
     public void PrepareContent(ImageFileInfo imageFileInfo)
@@ -44,18 +91,15 @@ public sealed partial class ImageViewerControl : UserControl
         _imageFileInfo = imageFileInfo;
         _is1To1Scale = false;
 
-        // 在 UI 线程获取分辨率
         _targetDecodeLongSide = GetTargetDecodeLongSide();
         System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareContent: 解码最长边={_targetDecodeLongSide}");
 
-        // 阶段1：只设置动画层
         AnimationImage.Source = imageFileInfo.Thumbnail;
         ImageNameTextBox.Text = imageFileInfo.ImageName;
         ResolutionTextBlock.Text = $"{imageFileInfo.Width} x {imageFileInfo.Height}";
 
         System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareContent: 已设置动画层缩略图, 文件名={imageFileInfo.ImageName}");
 
-        // 启动高清图异步加载（不等待）
         _highResLoadTask = LoadHighResolutionImageAsync();
 
         _ = LoadFileInfoAsync();
@@ -105,7 +149,6 @@ public sealed partial class ImageViewerControl : UserControl
     {
         Visibility = Visibility.Visible;
 
-        // 入场动画
         var storyboard = new Storyboard();
 
         var fadeInBackground = new DoubleAnimation
@@ -133,7 +176,6 @@ public sealed partial class ImageViewerControl : UserControl
 
         System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 动画完成");
 
-        // 等待高清图加载完成（带超时）
         DecodeResult? highResResult = null;
         if (_highResLoadTask != null)
         {
@@ -150,41 +192,54 @@ public sealed partial class ImageViewerControl : UserControl
             }
         }
 
-        // 切换到查看层
         await SwitchToViewerLayerAsync(highResResult);
     }
 
     private async Task SwitchToViewerLayerAsync(DecodeResult? highResResult)
     {
-        // 1. 等待布局完成
         int retryCount = 0;
-        while ((ImageScrollView.ViewportWidth <= 0 || ImageScrollView.ViewportHeight <= 0) && retryCount < 50)
+        while ((ImageContainer.ActualWidth <= 0 || ImageContainer.ActualHeight <= 0) && retryCount < 50)
         {
             await Task.Delay(10);
             retryCount++;
-            ImageScrollView.UpdateLayout();
+            ImageContainer.UpdateLayout();
         }
 
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 布局完成, ViewportWidth={ImageScrollView.ViewportWidth}, ViewportHeight={ImageScrollView.ViewportHeight}");
+        System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 布局完成, ContainerWidth={ImageContainer.ActualWidth}, ContainerHeight={ImageContainer.ActualHeight}");
 
-        // 2. 设置查看层图片（优先使用高清图）
         var source = highResResult?.ImageSource ?? _imageFileInfo?.Thumbnail;
         MainImage.Source = source;
         MainImage.Stretch = Stretch.Uniform;
 
         System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 使用 {(highResResult != null ? "高清图" : "缩略图")}");
 
-        // 3. 切换层
         AnimationImage.Opacity = 0;
-        ImageScrollView.Opacity = 1;
+        ImageContainer.Opacity = 1;
 
         System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 已切换到查看层");
 
-        // 4. 如果高清图还没加载完，启动渐进式加载
+        ResetViewer();
+
         if (highResResult == null && _highResLoadTask != null)
         {
             _ = WaitForHighResAndReplaceAsync();
         }
+    }
+
+    private void ResetViewer()
+    {
+        _zoomScale = 1.0;
+        _targetZoomScale = 1.0;
+        _translateX = 0;
+        _translateY = 0;
+        _velocityX = 0;
+        _velocityY = 0;
+        _hasZoomAnchor = false;
+        _justSnappedTo100Percent = false;
+        _snapStayCounter = 0;
+        _is1To1Scale = false;
+
+        ApplyTransform();
     }
 
     private async Task WaitForHighResAndReplaceAsync()
@@ -491,10 +546,9 @@ public sealed partial class ImageViewerControl : UserControl
 
     public void PrepareCloseAnimation()
     {
-        // 准备返回动画（使用 AnimationImage）
         AnimationImage.Source = MainImage.Source;
         AnimationImage.Opacity = 1;
-        ImageScrollView.Opacity = 0;
+        ImageContainer.Opacity = 0;
 
         ConnectedAnimationService.GetForCurrentView().PrepareToAnimate("BackConnectedAnimation", AnimationImage);
         Closed?.Invoke(this, EventArgs.Empty);
@@ -539,7 +593,7 @@ public sealed partial class ImageViewerControl : UserControl
         PrepareCloseAnimation();
     }
 
-    private void ImageScrollViewer_Tapped(object sender, TappedRoutedEventArgs e)
+    private void ImageContainer_Tapped(object sender, TappedRoutedEventArgs e)
     {
         e.Handled = true;
     }
@@ -554,18 +608,19 @@ public sealed partial class ImageViewerControl : UserControl
         PrepareCloseAnimation();
     }
 
-    private void mainImage_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    private void ImageTransformContainer_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
         if (_is1To1Scale)
         {
-            ImageScrollView.ZoomTo((float)_fitScale, null);
+            _targetZoomScale = 1.0;
             _is1To1Scale = false;
         }
         else
         {
-            ImageScrollView.ZoomTo(1.0f, null);
+            _targetZoomScale = CalculateOriginalScale();
             _is1To1Scale = true;
         }
+        _hasZoomAnchor = false;
         e.Handled = true;
     }
 
@@ -578,4 +633,405 @@ public sealed partial class ImageViewerControl : UserControl
         }
         base.OnKeyDown(e);
     }
+
+    #region 物理引擎
+
+    private void OnPhysicsRendering(object sender, object e)
+    {
+        if (MainImage?.Source == null || ImageContainer == null) return;
+
+        bool needsUpdate = false;
+        bool isZooming = Math.Abs(_zoomScale - _targetZoomScale) > 0.0001;
+
+        if (isZooming)
+        {
+            var oldScale = _zoomScale;
+            _zoomScale += (_targetZoomScale - _zoomScale) * ZoomEasingFactor;
+
+            if (_hasZoomAnchor)
+            {
+                _translateX = _zoomAnchorScreenX - _zoomAnchorImgX * _zoomScale;
+                _translateY = _zoomAnchorScreenY - _zoomAnchorImgY * _zoomScale;
+            }
+            else
+            {
+                var scaleRatio = _zoomScale / oldScale;
+                _translateX *= scaleRatio;
+                _translateY *= scaleRatio;
+            }
+
+            ClampTranslation();
+            needsUpdate = true;
+        }
+        else if (_hasZoomAnchor)
+        {
+            _hasZoomAnchor = false;
+        }
+
+        if (!_isDragging &&
+            (Math.Abs(_velocityX) > VelocityThreshold || Math.Abs(_velocityY) > VelocityThreshold))
+        {
+            _translateX += _velocityX;
+            _translateY += _velocityY;
+            _velocityX *= InertiaDamping;
+            _velocityY *= InertiaDamping;
+            needsUpdate = true;
+        }
+
+        needsUpdate |= ApplyBoundsWithDamping();
+
+        if (needsUpdate)
+        {
+            ApplyTransform();
+        }
+    }
+
+    #endregion
+
+    #region 输入处理
+
+    private void ImageContainer_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
+    {
+        if (MainImage?.Source == null || ImageContainer == null) return;
+
+        var pointer = e.GetCurrentPoint(ImageContainer);
+        var mouse = pointer.Position;
+        var delta = pointer.Properties.MouseWheelDelta;
+
+        if (delta == 0) return;
+
+        double scaleFactor = Math.Pow(1.0015, delta);
+        double newTarget = _targetZoomScale * scaleFactor;
+
+        double originalScaleForFit = CalculateOriginalScale();
+
+        if (_justSnappedTo100Percent)
+        {
+            _snapStayCounter++;
+            if (_snapStayCounter < SnapStayCount)
+            {
+                newTarget = originalScaleForFit;
+            }
+            else
+            {
+                _justSnappedTo100Percent = false;
+                _snapStayCounter = 0;
+            }
+        }
+        else
+        {
+            bool wasBelow100 = _targetZoomScale < originalScaleForFit * (1.0 - SnapThreshold);
+            bool wasAbove100 = _targetZoomScale > originalScaleForFit * (1.0 + SnapThreshold);
+            bool willBeAbove100 = newTarget > originalScaleForFit * (1.0 + SnapThreshold);
+            bool willBeBelow100 = newTarget < originalScaleForFit * (1.0 - SnapThreshold);
+            bool isNear100 = Math.Abs(_targetZoomScale - originalScaleForFit) < originalScaleForFit * SnapThreshold * 1.5;
+
+            if ((wasBelow100 && willBeAbove100) || (wasAbove100 && willBeBelow100) || isNear100)
+            {
+                newTarget = originalScaleForFit;
+                _justSnappedTo100Percent = true;
+                _snapStayCounter = 0;
+            }
+        }
+
+        newTarget = Math.Clamp(newTarget, 0.1, 8.0);
+
+        var containerCenterX = ImageContainer.ActualWidth / 2;
+        var containerCenterY = ImageContainer.ActualHeight / 2;
+
+        var mouseRelativeToCenterX = mouse.X - containerCenterX;
+        var mouseRelativeToCenterY = mouse.Y - containerCenterY;
+
+        _zoomAnchorImgX = (mouseRelativeToCenterX - _translateX) / _zoomScale;
+        _zoomAnchorImgY = (mouseRelativeToCenterY - _translateY) / _zoomScale;
+        _zoomAnchorScreenX = mouseRelativeToCenterX;
+        _zoomAnchorScreenY = mouseRelativeToCenterY;
+        _hasZoomAnchor = true;
+
+        _targetZoomScale = newTarget;
+        e.Handled = true;
+    }
+
+    private void ImageContainer_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        if (!CanPan() && !_isDragging) return;
+
+        var pointer = e.GetCurrentPoint(ImageContainer);
+        if (!pointer.Properties.IsLeftButtonPressed) return;
+
+        _isDragging = true;
+        _lastDragPoint = pointer.Position;
+        ImageContainer.CapturePointer(e.Pointer);
+
+        _velocityX = 0;
+        _velocityY = 0;
+        _hasZoomAnchor = false;
+    }
+
+    private void ImageContainer_PointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_isDragging) return;
+
+        var pointer = e.GetCurrentPoint(ImageContainer);
+        var currentPoint = pointer.Position;
+
+        var deltaX = currentPoint.X - _lastDragPoint.X;
+        var deltaY = currentPoint.Y - _lastDragPoint.Y;
+
+        if (CanPanHorizontal())
+        {
+            _translateX += deltaX;
+            _velocityX = deltaX;
+        }
+        else
+        {
+            _velocityX = 0;
+        }
+
+        if (CanPanVertical())
+        {
+            _translateY += deltaY;
+            _velocityY = deltaY;
+        }
+        else
+        {
+            _velocityY = 0;
+        }
+
+        _lastDragPoint = currentPoint;
+        ApplyTransform();
+    }
+
+    private void ImageContainer_PointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_isDragging) return;
+
+        _isDragging = false;
+        ImageContainer.ReleasePointerCapture(e.Pointer);
+    }
+
+    private void ImageContainer_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        ImageClip.Rect = new Windows.Foundation.Rect(0, 0, ImageContainer.ActualWidth, ImageContainer.ActualHeight);
+    }
+
+    #endregion
+
+    #region 边界处理
+
+    private void ClampTranslation()
+    {
+        if (MainImage?.Source == null || ImageContainer == null) return;
+
+        var containerWidth = ImageContainer.ActualWidth;
+        var containerHeight = ImageContainer.ActualHeight;
+
+        if (containerWidth <= 0 || containerHeight <= 0) return;
+
+        var (imageWidth, imageHeight) = GetScaledImageSize();
+
+        if (imageWidth <= containerWidth)
+        {
+            _translateX = 0;
+        }
+        else
+        {
+            var maxTranslateX = imageWidth / 2 - containerWidth / 2;
+            _translateX = Math.Max(-maxTranslateX, Math.Min(maxTranslateX, _translateX));
+        }
+
+        if (imageHeight <= containerHeight)
+        {
+            _translateY = 0;
+        }
+        else
+        {
+            var maxTranslateY = imageHeight / 2 - containerHeight / 2;
+            _translateY = Math.Max(-maxTranslateY, Math.Min(maxTranslateY, _translateY));
+        }
+    }
+
+    private bool ApplyBoundsWithDamping()
+    {
+        if (MainImage?.Source == null || ImageContainer == null) return false;
+
+        var containerWidth = ImageContainer.ActualWidth;
+        var containerHeight = ImageContainer.ActualHeight;
+
+        if (containerWidth <= 0 || containerHeight <= 0) return false;
+
+        var (imageWidth, imageHeight) = GetScaledImageSize();
+        bool needsUpdate = false;
+
+        if (imageWidth <= containerWidth)
+        {
+            if (Math.Abs(_translateX) > 0.5)
+            {
+                _translateX *= (1 - SpringBackFactor);
+                _velocityX = 0;
+                needsUpdate = true;
+            }
+            else if (Math.Abs(_translateX) > 0.01)
+            {
+                _translateX = 0;
+                needsUpdate = true;
+            }
+        }
+        else
+        {
+            var maxTranslateX = imageWidth / 2 - containerWidth / 2;
+
+            if (_translateX > maxTranslateX)
+            {
+                if (!_isDragging)
+                {
+                    _translateX += (maxTranslateX - _translateX) * SpringBackFactor;
+                    _velocityX = 0;
+                }
+                else
+                {
+                    _translateX = maxTranslateX + (_translateX - maxTranslateX) * BoundaryDamping;
+                    _velocityX *= -0.3;
+                }
+                needsUpdate = true;
+            }
+            else if (_translateX < -maxTranslateX)
+            {
+                if (!_isDragging)
+                {
+                    _translateX += (-maxTranslateX - _translateX) * SpringBackFactor;
+                    _velocityX = 0;
+                }
+                else
+                {
+                    _translateX = -maxTranslateX + (_translateX + maxTranslateX) * BoundaryDamping;
+                    _velocityX *= -0.3;
+                }
+                needsUpdate = true;
+            }
+        }
+
+        if (imageHeight <= containerHeight)
+        {
+            if (Math.Abs(_translateY) > 0.5)
+            {
+                _translateY *= (1 - SpringBackFactor);
+                _velocityY = 0;
+                needsUpdate = true;
+            }
+            else if (Math.Abs(_translateY) > 0.01)
+            {
+                _translateY = 0;
+                needsUpdate = true;
+            }
+        }
+        else
+        {
+            var maxTranslateY = imageHeight / 2 - containerHeight / 2;
+
+            if (_translateY > maxTranslateY)
+            {
+                if (!_isDragging)
+                {
+                    _translateY += (maxTranslateY - _translateY) * SpringBackFactor;
+                    _velocityY = 0;
+                }
+                else
+                {
+                    _translateY = maxTranslateY + (_translateY - maxTranslateY) * BoundaryDamping;
+                    _velocityY *= -0.3;
+                }
+                needsUpdate = true;
+            }
+            else if (_translateY < -maxTranslateY)
+            {
+                if (!_isDragging)
+                {
+                    _translateY += (-maxTranslateY - _translateY) * SpringBackFactor;
+                    _velocityY = 0;
+                }
+                else
+                {
+                    _translateY = -maxTranslateY + (_translateY + maxTranslateY) * BoundaryDamping;
+                    _velocityY *= -0.3;
+                }
+                needsUpdate = true;
+            }
+        }
+
+        return needsUpdate;
+    }
+
+    #endregion
+
+    #region 辅助方法
+
+    private void ApplyTransform()
+    {
+        if (ImageScaleTransform == null || ImageTranslateTransform == null) return;
+
+        ImageScaleTransform.ScaleX = _zoomScale;
+        ImageScaleTransform.ScaleY = _zoomScale;
+        ImageTranslateTransform.X = _translateX;
+        ImageTranslateTransform.Y = _translateY;
+    }
+
+    private bool CanPan()
+    {
+        if (MainImage?.Source == null || ImageContainer == null) return false;
+
+        var (imageWidth, imageHeight) = GetScaledImageSize();
+        return imageWidth > ImageContainer.ActualWidth || imageHeight > ImageContainer.ActualHeight;
+    }
+
+    private bool CanPanHorizontal()
+    {
+        if (MainImage == null || ImageContainer == null) return false;
+        var (imageWidth, _) = GetScaledImageSize();
+        return imageWidth > ImageContainer.ActualWidth;
+    }
+
+    private bool CanPanVertical()
+    {
+        if (MainImage == null || ImageContainer == null) return false;
+        var (_, imageHeight) = GetScaledImageSize();
+        return imageHeight > ImageContainer.ActualHeight;
+    }
+
+    private (double width, double height) GetScaledImageSize()
+    {
+        if (MainImage == null) return (0, 0);
+
+        var actualWidth = MainImage.ActualWidth * _zoomScale;
+        var actualHeight = MainImage.ActualHeight * _zoomScale;
+
+        return (actualWidth, actualHeight);
+    }
+
+    private double CalculateFitToScreenScale()
+    {
+        if (_imageFileInfo == null || _imageFileInfo.Width <= 0 || _imageFileInfo.Height <= 0) return 1.0;
+        if (ImageContainer == null) return 1.0;
+
+        var containerWidth = ImageContainer.ActualWidth;
+        var containerHeight = ImageContainer.ActualHeight;
+
+        if (containerWidth <= 0 || containerHeight <= 0) return 1.0;
+
+        var scaleX = containerWidth / _imageFileInfo.Width;
+        var scaleY = containerHeight / _imageFileInfo.Height;
+
+        return Math.Min(scaleX, scaleY);
+    }
+
+    private double CalculateOriginalScale()
+    {
+        var fitScale = CalculateFitToScreenScale();
+        if (fitScale <= 0) return 1.0;
+
+        var dpiScale = XamlRoot?.RasterizationScale ?? 1.0;
+        return (1.0 / fitScale) / dpiScale;
+    }
+
+    #endregion
 }

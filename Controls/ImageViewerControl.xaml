@@ -10,12 +10,13 @@
 
     <Grid
         x:Name="BackgroundOverlay"
-        Background="#80000000"
+       Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}"
         Opacity="0"
         Tapped="BackgroundOverlay_Tapped">
         
         <Grid
             x:Name="AnimationContainer"
+            
             Opacity="0">
             
             <Grid.ColumnDefinitions>
@@ -27,7 +28,7 @@
             <Grid
                 x:Name="AnimationImageContainer"
                 Grid.Column="0"
-                Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+                >
                 <Image
                     x:Name="AnimationImage"
                     Stretch="Uniform"
@@ -36,32 +37,48 @@
             </Grid>
 
             <!-- 阶段2：查看器 -->
-            <ScrollView
-                x:Name="ImageScrollView"
+            <Grid
+                x:Name="ImageContainer"
                 Grid.Column="0"
-                Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
-                ZoomMode="Enabled"
-                MinZoomFactor="0.1"
-                MaxZoomFactor="10.0"
-                HorizontalScrollBarVisibility="Auto"
-                VerticalScrollBarVisibility="Auto"
-                Tapped="ImageScrollViewer_Tapped"
+                
+                Tapped="ImageContainer_Tapped"
+                PointerPressed="ImageContainer_PointerPressed"
+                PointerMoved="ImageContainer_PointerMoved"
+                PointerReleased="ImageContainer_PointerReleased"
+                PointerCanceled="ImageContainer_PointerReleased"
+                PointerCaptureLost="ImageContainer_PointerReleased"
+                PointerWheelChanged="ImageContainer_PointerWheelChanged"
+                SizeChanged="ImageContainer_SizeChanged"
                 Opacity="0">
-                <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <Grid.Clip>
+                    <RectangleGeometry x:Name="ImageClip"/>
+                </Grid.Clip>
+                <Grid
+                    x:Name="ImageTransformContainer"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    RenderTransformOrigin="0.5,0.5"
+                    DoubleTapped="ImageTransformContainer_DoubleTapped">
+                    <Grid.RenderTransform>
+                        <TransformGroup>
+                            <ScaleTransform x:Name="ImageScaleTransform" ScaleX="1" ScaleY="1"/>
+                            <TranslateTransform x:Name="ImageTranslateTransform" X="0" Y="0"/>
+                        </TransformGroup>
+                    </Grid.RenderTransform>
                     <Image
                         x:Name="MainImage"
-                        Stretch="None"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        DoubleTapped="mainImage_DoubleTapped"/>
+                        Stretch="Uniform"/>
                 </Grid>
-            </ScrollView>
+            </Grid>
 
             <Border
+                BorderBrush="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderThickness="1.5,0,0,0"
                 x:Name="InfoPanel"
+                 CornerRadius="12,0,0,12"
                 Grid.Column="1"
                 Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}"
-                Padding="24"
+                Padding="12"
                 Tapped="InfoPanel_Tapped">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Spacing="16">

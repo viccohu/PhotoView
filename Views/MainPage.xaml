@@ -466,6 +466,7 @@
 
         <ContentPresenter
             x:Name="ViewerContainer"
+           
             Grid.Column="0"
             Grid.ColumnSpan="2"
             Grid.Row="0"
