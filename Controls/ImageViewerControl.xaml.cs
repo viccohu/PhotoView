@@ -224,18 +224,23 @@ public sealed partial class ImageViewerControl : UserControl
 
     private uint GetTargetDecodeLongSide()
     {
-        var monitorLongSide = GetMonitorLongSide();
+        var settingsService = App.GetService<ISettingsService>();
+        var scaleFactor = settingsService.DecodeScaleFactor;
 
-        uint targetLongSide = monitorLongSide switch
+        if (ImageContainer.ActualWidth > 0 && ImageContainer.ActualHeight > 0)
         {
-            <= 1920 => 1920,
-            <= 2560 => 2560,
-            <= 3840 => 3840,
-            _ => monitorLongSide
-        };
-
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] GetTargetDecodeLongSide: 显示器最长边={monitorLongSide}, 解码最长边={targetLongSide}");
-        return targetLongSide;
+            var containerLongSide = Math.Max(ImageContainer.ActualWidth, ImageContainer.ActualHeight);
+            var targetSize = (uint)(containerLongSide * scaleFactor);
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] GetTargetDecodeLongSide: 视窗尺寸={ImageContainer.ActualWidth}x{ImageContainer.ActualHeight}, 系数={scaleFactor}, 解码尺寸={targetSize}");
+            return targetSize;
+        }
+        else
+        {
+            var fallbackSize = 1080u;
+            var targetSize = (uint)(fallbackSize * scaleFactor);
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] GetTargetDecodeLongSide: 视窗未布局，使用兜底尺寸={fallbackSize}, 系数={scaleFactor}, 解码尺寸={targetSize}");
+            return targetSize;
+        }
     }
 
     public async Task ShowAfterAnimationAsync()

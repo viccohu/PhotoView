@@ -21,6 +21,7 @@ public class SettingsService : ISettingsService
     private bool _exportRawEnabled = false;
     private int _exportRawMinRating = 1;
     private string _exportRawFolderName = "RAW";
+    private double _decodeScaleFactor = 2.0;
 
     public event EventHandler<NavigationViewPaneDisplayMode>? NavigationViewModeChanged;
     public event EventHandler<int>? BatchSizeChanged;
@@ -199,6 +200,18 @@ public class SettingsService : ISettingsService
             if (_exportRawFolderName != value)
             {
                 _exportRawFolderName = value;
+            }
+        }
+    }
+
+    public double DecodeScaleFactor
+    {
+        get => _decodeScaleFactor;
+        set
+        {
+            if (Math.Abs(_decodeScaleFactor - value) > 0.01)
+            {
+                _decodeScaleFactor = value;
             }
         }
     }
@@ -432,6 +445,22 @@ public class SettingsService : ISettingsService
         return _exportRawFolderName;
     }
 
+    public async Task SaveDecodeScaleFactorAsync(double factor)
+    {
+        await _localSettingsService.SaveSettingAsync("DecodeScaleFactor", factor);
+    }
+
+    public async Task<double> LoadDecodeScaleFactorAsync()
+    {
+        var factor = await _localSettingsService.ReadSettingAsync<double?>("DecodeScaleFactor");
+        if (factor.HasValue)
+        {
+            _decodeScaleFactor = factor.Value;
+            return factor.Value;
+        }
+        return _decodeScaleFactor;
+    }
+
     public async Task InitializeAsync()
     {
         await LoadNavigationViewModeAsync();
@@ -448,5 +477,6 @@ public class SettingsService : ISettingsService
         await LoadExportRawEnabledAsync();
         await LoadExportRawMinRatingAsync();
         await LoadExportRawFolderNameAsync();
+        await LoadDecodeScaleFactorAsync();
     }
 }

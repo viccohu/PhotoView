@@ -75,6 +75,11 @@ public interface ISettingsService
         set;
     }
 
+    double DecodeScaleFactor {
+        get;
+        set;
+    }
+
     event EventHandler<NavigationViewPaneDisplayMode> NavigationViewModeChanged;
     event EventHandler<int> BatchSizeChanged;
     event EventHandler<PerformanceMode>? PerformanceModeChanged;
@@ -110,6 +115,8 @@ public interface ISettingsService
     Task<int> LoadExportRawMinRatingAsync();
     Task SaveExportRawFolderNameAsync(string name);
     Task<string> LoadExportRawFolderNameAsync();
+    Task SaveDecodeScaleFactorAsync(double factor);
+    Task<double> LoadDecodeScaleFactorAsync();
 
     Task InitializeAsync();
 }
