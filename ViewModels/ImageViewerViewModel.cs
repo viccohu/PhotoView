@@ -317,17 +317,37 @@ public partial class ImageViewerViewModel : ObservableRecipient
     [RelayCommand]
     private async Task SetRatingAsync(uint rating)
     {
-        if (_currentImage == null) return;
+        System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 开始执行");
+        System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: _currentImage={( _currentImage == null ? "null" : _currentImage.ImageName )}, newRating={rating}");
+        
+        if (_currentImage == null)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: _currentImage 为 null，退出");
+            return;
+        }
 
+        System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 更新 ViewModel.Rating 从 {Rating} 到 {rating}");
         Rating = rating;
+        System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 更新 _currentImage.Rating 从 {_currentImage.Rating} 到 {rating}");
         _currentImage.Rating = rating;
         
         if (_currentImage.ImageFile != null)
         {
+            System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 准备调用 RatingService.SetRatingAsync, 文件={_currentImage.ImageFile.Path}");
             await _ratingService.SetRatingAsync(_currentImage.ImageFile, rating);
+            System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: RatingService.SetRatingAsync 完成");
+            
+            System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 更新 _currentImage.RatingSource 为 WinRT");
             _currentImage.RatingSource = Services.RatingSource.WinRT;
+            System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 更新 ViewModel.RatingSource 为 WinRT");
             RatingSource = Services.RatingSource.WinRT.ToString();
         }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: _currentImage.ImageFile 为 null，跳过 RatingService 调用");
+        }
+        
+        System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 执行完成");
     }
 
     public async Task OpenInExplorerAsync(string path)

@@ -517,10 +517,19 @@ public sealed partial class ImageViewerControl : UserControl
 
     protected override void OnKeyDown(KeyRoutedEventArgs e)
     {
+        System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 按键={e.Key}, e.Handled={e.Handled}");
+        
         if (e.Key == Windows.System.VirtualKey.Escape)
         {
             PrepareCloseAnimation();
             e.Handled = true;
+            System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 处理了Escape键");
+        }
+        else if (e.Key == Windows.System.VirtualKey.Left || e.Key == Windows.System.VirtualKey.Right ||
+                 e.Key == Windows.System.VirtualKey.Up || e.Key == Windows.System.VirtualKey.Down)
+        {
+            e.Handled = true;
+            System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 阻止了方向键 {e.Key}");
         }
         base.OnKeyDown(e);
     }
@@ -1055,9 +1064,18 @@ public sealed partial class ImageViewerControl : UserControl
 
     private void ImageRatingControl_ValueChanged(Microsoft.UI.Xaml.Controls.RatingControl sender, object args)
     {
+        System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged: 触发事件");
+        System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged: sender.Value={sender.Value}, ViewModel.Rating={ViewModel?.Rating}");
+        
         if (ViewModel != null && sender.Value != ViewModel.Rating)
         {
-            _ = ViewModel.SetRatingCommand.ExecuteAsync((uint)sender.Value);
+            uint newRating = (uint)sender.Value;
+            System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged: 准备执行 SetRatingCommand, newRating={newRating}");
+            _ = ViewModel.SetRatingCommand.ExecuteAsync(newRating);
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged: 跳过执行命令 (ViewModel null 或值未变化)");
         }
     }
 

@@ -865,18 +865,30 @@ public sealed partial class MainPage : Page
 
     private void MainPage_KeyDown(object sender, KeyRoutedEventArgs e)
     {
+        System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_KeyDown: 按键={e.Key}, _currentViewer={( _currentViewer == null ? "null" : "not null" )}, e.Handled初始值={e.Handled}");
+        
         if (_currentViewer != null)
         {
+            System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_KeyDown: _currentViewer 存在，进入预览模式处理");
+            
             if (e.Key == VirtualKey.Escape)
             {
+                System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_KeyDown: 处理了Escape键");
                 _currentViewer.PrepareCloseAnimation();
                 e.Handled = true;
             }
             else if (e.Key == VirtualKey.Left || e.Key == VirtualKey.Right ||
                      e.Key == VirtualKey.Up || e.Key == VirtualKey.Down)
             {
+                System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_KeyDown: 阻止了方向键 {e.Key}");
                 e.Handled = true;
             }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_KeyDown: 未处理的按键 {e.Key}");
+            }
+            
+            System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_KeyDown: 预览模式处理完成，e.Handled最终值={e.Handled}");
             return;
         }
 
