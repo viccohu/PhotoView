@@ -28,6 +28,8 @@ public sealed partial class ImageViewerControl : UserControl
     private double _fitScale = 1.0;
     private uint _targetDecodeLongSide = 1920;
     private Task<DecodeResult?>? _highResLoadTask;
+    private bool _hasPrepared = false;
+    private bool _hasShown = false;
 
     private static readonly HashSet<string> RawFileExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -179,21 +181,23 @@ public sealed partial class ImageViewerControl : UserControl
 
     public void PrepareContent(ImageFileInfo imageFileInfo)
     {
+        if (_hasPrepared)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareContent: 已准备过，跳过重复调用");
+            return;
+        }
+
         _imageFileInfo = imageFileInfo;
         _is1To1Scale = false;
         _isClosing = false;
         _isViewerLayerReady = false;
+        _hasPrepared = true;
 
-        _targetDecodeLongSide = GetTargetDecodeLongSide();
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareContent: 解码最长边={_targetDecodeLongSide}");
+        System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareContent: 已设置动画层缩略图, 文件名={imageFileInfo.ImageName}");
 
         AnimationImage.Source = imageFileInfo.Thumbnail;
         ImageNameTextBox.Text = imageFileInfo.ImageName;
         ResolutionTextBlock.Text = $"{imageFileInfo.Width} x {imageFileInfo.Height}";
-
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareContent: 已设置动画层缩略图, 文件名={imageFileInfo.ImageName}");
-
-        _highResLoadTask = LoadHighResolutionImageAsync();
 
         _ = LoadFileInfoAsync();
     }
@@ -245,6 +249,12 @@ public sealed partial class ImageViewerControl : UserControl
 
     public async Task ShowAfterAnimationAsync()
     {
+        if (_hasShown)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 已显示过，跳过重复调用");
+            return;
+        }
+
         Visibility = Visibility.Visible;
 
         var storyboard = new Storyboard();
@@ -274,26 +284,11 @@ public sealed partial class ImageViewerControl : UserControl
 
         System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 动画完成");
 
-        DecodeResult? highResResult = null;
-        if (_highResLoadTask != null)
-        {
-            var timeoutTask = Task.Delay(2000);
-            var completedTask = await Task.WhenAny(_highResLoadTask, timeoutTask);
-            if (completedTask == _highResLoadTask)
-            {
-                highResResult = await _highResLoadTask;
-                System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 高清图已加载");
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 高清图加载超时，使用缩略图");
-            }
-        }
-
-        await SwitchToViewerLayerAsync(highResResult);
+        _hasShown = true;
+        await SwitchToViewerLayerAsync();
     }
 
-    private async Task SwitchToViewerLayerAsync(DecodeResult? highResResult)
+    private async Task SwitchToViewerLayerAsync()
     {
         if (_isViewerLayerReady)
         {
@@ -319,13 +314,15 @@ public sealed partial class ImageViewerControl : UserControl
 
         _isViewerLayerReady = true;
 
+        _targetDecodeLongSide = GetTargetDecodeLongSide();
+        System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 解码最长边={_targetDecodeLongSide}");
+
         StopPhysics();
-        var source = highResResult?.ImageSource ?? _imageFileInfo?.Thumbnail;
-        MainImage.Source = source;
+        MainImage.Source = _imageFileInfo?.Thumbnail;
         MainImage.Stretch = Stretch.Uniform;
         StartPhysics();
 
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 使用 {(highResResult != null ? "高清图" : "缩略图")}");
+        System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 使用缩略图");
 
         AnimationImage.Opacity = 0;
         ImageContainer.Opacity = 1;
@@ -334,10 +331,8 @@ public sealed partial class ImageViewerControl : UserControl
 
         ResetViewer();
 
-        if (highResResult == null && _highResLoadTask != null)
-        {
-            _ = WaitForHighResAndReplaceAsync();
-        }
+        _highResLoadTask = LoadHighResolutionImageAsync();
+        _ = WaitForHighResAndReplaceAsync();
     }
 
     private void ResetViewer()
