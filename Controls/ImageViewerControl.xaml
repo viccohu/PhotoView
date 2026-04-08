@@ -4,9 +4,16 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:models="using:PhotoView.Models"
+    xmlns:converters="using:PhotoView.Converters"
     mc:Ignorable="d"
     d:DesignHeight="300"
     d:DesignWidth="400">
+
+    <UserControl.Resources>
+        <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
+        <converters:StringToColorConverter x:Key="StringToColorConverter"/>
+    </UserControl.Resources>
 
     <Grid
         x:Name="BackgroundOverlay"
@@ -82,66 +89,303 @@
                 Tapped="InfoPanel_Tapped">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Spacing="16">
-                        <Grid>
-                            <TextBlock Text="信息" Style="{ThemeResource BodyTextBlockStyle}" Margin="0,0,48,0"/>
-                            <Button
-                                x:Name="CloseButton"
-                                HorizontalAlignment="Right"
-                                VerticalAlignment="Top"
-                                Background="Transparent"
-                                BorderBrush="Transparent"
-                                BorderThickness="0"
-                                Click="CloseButton_Click">
-                                <FontIcon Glyph="&#xE711;" FontFamily="{StaticResource SymbolThemeFontFamily}"/>
-                            </Button>
-                        </Grid>
+                        <TextBlock Text="信息" Style="{ThemeResource BodyTextBlockStyle}" FontWeight="SemiBold"/>
 
-                        <StackPanel Spacing="4">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon Glyph="&#xE8B9;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="14"/>
-                                <TextBlock x:Name="ImageNameTextBox" TextWrapping="Wrap" Style="{ThemeResource CaptionTextBlockStyle}"/>
-                            </StackPanel>
+                        <TextBox 
+                            Text="{Binding ImageName, Mode=OneWay}"
+                            IsReadOnly="True"
+                            TextWrapping="Wrap"
+                            AcceptsReturn="False"
+                            Style="{ThemeResource CaptionTextBlockStyle}"
+                            Padding="8"
+                            Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                            BorderThickness="0"/>
+
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="评级" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            <Grid>
+                                <RatingControl 
+                                    x:Name="ImageRatingControl"
+                                    Value="{Binding Rating, Mode=TwoWay}"
+                                    MaxRating="5"
+                                    IsClearEnabled="True"
+                                    HorizontalAlignment="Left"
+                                    ValueChanged="ImageRatingControl_ValueChanged"/>
+                            </Grid>
                         </StackPanel>
 
                         <StackPanel Spacing="8">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <FontIcon Glyph="&#xE787;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="14"/>
-                                <DatePicker x:Name="CaptureDatePicker"  IsEnabled="False" HorizontalAlignment="Center" Width="300"/>
+                                <DatePicker Date="{Binding CaptureDate, Mode=OneWay}" IsEnabled="False" HorizontalAlignment="Center" Width="300"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <FontIcon Glyph="&#xEC92;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="14"/>
-                                <TimePicker x:Name="CaptureTimePicker" IsEnabled="False" HorizontalAlignment="Center" Width="300"/>
+                                <TimePicker Time="{Binding CaptureTime, Mode=OneWay}" IsEnabled="False" HorizontalAlignment="Center" Width="300"/>
                             </StackPanel>
                         </StackPanel>
 
-                        <StackPanel Spacing="8">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon Glyph="&#xF4A5;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="14"/>
-                                <TextBlock Text="大小信息" Style="{ThemeResource BodyTextBlockStyle}"/>
+                        <Border 
+                            Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                            CornerRadius="8"
+                            Padding="12">
+                            <StackPanel Spacing="8">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE8B7;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="14"/>
+                                    <TextBlock Text="文件信息" Style="{ThemeResource BodyTextBlockStyle}"/>
+                                </StackPanel>
+                                <StackPanel Spacing="4" Margin="24,0,0,0">
+                                    <Grid Height="32" 
+                                          Background="Transparent"
+                                          PointerEntered="InfoItem_PointerEntered"
+                                          PointerExited="InfoItem_PointerExited"
+                                          Tapped="Resolution_Tapped">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="尺寸" Width="60" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Resolution, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}"/>
+                                    </Grid>
+                                    <AppBarSeparator/>
+                                    <Grid Height="32"
+                                          Background="Transparent"
+                                          PointerEntered="InfoItem_PointerEntered"
+                                          PointerExited="InfoItem_PointerExited"
+                                          Tapped="FileSize_Tapped">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="大小" Width="60" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding FileSize, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}"/>
+                                    </Grid>
+                                    <AppBarSeparator/>
+                                    <Grid Height="32"
+                                          Background="Transparent"
+                                          PointerEntered="InfoItem_PointerEntered"
+                                          PointerExited="InfoItem_PointerExited"
+                                          Tapped="Dpi_Tapped"
+                                          Visibility="{Binding Dpi, Converter={StaticResource StringToVisibilityConverter}, Mode=OneWay}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="DPI" Width="60" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Dpi, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}"/>
+                                    </Grid>
+                                    <AppBarSeparator/>
+                                    <Grid Height="32"
+                                          Background="Transparent"
+                                          PointerEntered="InfoItem_PointerEntered"
+                                          PointerExited="InfoItem_PointerExited"
+                                          Tapped="BitDepth_Tapped"
+                                          Visibility="{Binding BitDepth, Converter={StaticResource StringToVisibilityConverter}, Mode=OneWay}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="色深" Width="60" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding BitDepth, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}"/>
+                                    </Grid>
+                                    <AppBarSeparator/>
+                                    <Grid Height="32"
+                                          Background="Transparent"
+                                          PointerEntered="InfoItem_PointerEntered"
+                                          PointerExited="InfoItem_PointerExited"
+                                          Tapped="RatingSource_Tapped">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="评级来源" Width="60" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding RatingSource, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}"/>
+                                    </Grid>
+                                </StackPanel>
                             </StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="16" Margin="24,0,0,0">
-                                <TextBlock x:Name="ResolutionTextBlock" Style="{ThemeResource CaptionTextBlockStyle}"/>
-                                <TextBlock x:Name="FileSizeTextBlock" Style="{ThemeResource CaptionTextBlockStyle}" />
-                            </StackPanel>
-                        </StackPanel>
+                        </Border>
 
-                        <StackPanel Spacing="8">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon Glyph="&#xE722;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="14"/>
-                                <TextBlock Text="设备信息" Style="{ThemeResource BodyTextBlockStyle}"/>
+                        <Border 
+                            Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                            CornerRadius="8"
+                            Padding="12"
+                            Visibility="{Binding HasDeviceInfo, Mode=OneWay}">
+                            <StackPanel Spacing="8">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE722;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="14"/>
+                                    <TextBlock Text="设备信息" Style="{ThemeResource BodyTextBlockStyle}"/>
+                                </StackPanel>
+                                <StackPanel Spacing="4" Margin="24,0,0,0">
+                                    <Grid Height="32"
+                                          Background="Transparent"
+                                          PointerEntered="InfoItem_PointerEntered"
+                                          PointerExited="InfoItem_PointerExited"
+                                          Tapped="CameraModel_Tapped"
+                                          Visibility="{Binding HasDeviceInfo, Mode=OneWay}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="相机" Width="60" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <ItemsControl Grid.Column="1" ItemsSource="{Binding DeviceInfo, Mode=OneWay}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal" Spacing="8"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="x:String">
+                                                    <TextBlock Text="{x:Bind}" Style="{ThemeResource CaptionTextBlockStyle}"/>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Grid>
+                                    <AppBarSeparator Visibility="{Binding LensModel, Converter={StaticResource StringToVisibilityConverter}, Mode=OneWay}"/>
+                                    <Grid Height="32"
+                                          Background="Transparent"
+                                          PointerEntered="InfoItem_PointerEntered"
+                                          PointerExited="InfoItem_PointerExited"
+                                          Tapped="LensModel_Tapped"
+                                          Visibility="{Binding LensModel, Converter={StaticResource StringToVisibilityConverter}, Mode=OneWay}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="镜头" Width="60" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding LensModel, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" TextWrapping="Wrap"/>
+                                    </Grid>
+                                    <AppBarSeparator Visibility="{Binding FocalLength, Converter={StaticResource StringToVisibilityConverter}, Mode=OneWay}"/>
+                                    <Grid Height="32"
+                                          Background="Transparent"
+                                          PointerEntered="InfoItem_PointerEntered"
+                                          PointerExited="InfoItem_PointerExited"
+                                          Tapped="FocalLength_Tapped"
+                                          Visibility="{Binding FocalLength, Converter={StaticResource StringToVisibilityConverter}, Mode=OneWay}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="焦距" Width="60" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding FocalLength, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}"/>
+                                    </Grid>
+                                    <AppBarSeparator Visibility="{Binding ExposureTime, Converter={StaticResource StringToVisibilityConverter}, Mode=OneWay}"/>
+                                    <Grid Height="32"
+                                          Background="Transparent"
+                                          PointerEntered="InfoItem_PointerEntered"
+                                          PointerExited="InfoItem_PointerExited"
+                                          Tapped="ExposureTime_Tapped"
+                                          Visibility="{Binding ExposureTime, Converter={StaticResource StringToVisibilityConverter}, Mode=OneWay}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="曝光" Width="60" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock Grid.Column="1" Style="{ThemeResource CaptionTextBlockStyle}">
+                                            <Run Text="{Binding ExposureTime, Mode=OneWay}"/>
+                                            <Run Text="  "/>
+                                            <Run Text="{Binding FNumber, Mode=OneWay}"/>
+                                            <Run Text="  "/>
+                                            <Run Text="{Binding Iso, Mode=OneWay}"/>
+                                        </TextBlock>
+                                    </Grid>
+                                    <AppBarSeparator Visibility="{Binding ExposureProgram, Converter={StaticResource StringToVisibilityConverter}, Mode=OneWay}"/>
+                                    <Grid Height="32"
+                                          Background="Transparent"
+                                          PointerEntered="InfoItem_PointerEntered"
+                                          PointerExited="InfoItem_PointerExited"
+                                          Tapped="ExposureProgram_Tapped"
+                                          Visibility="{Binding ExposureProgram, Converter={StaticResource StringToVisibilityConverter}, Mode=OneWay}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="程序" Width="60" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding ExposureProgram, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}"/>
+                                    </Grid>
+                                    <AppBarSeparator Visibility="{Binding ExposureBias, Converter={StaticResource StringToVisibilityConverter}, Mode=OneWay}"/>
+                                    <Grid Height="32"
+                                          Background="Transparent"
+                                          PointerEntered="InfoItem_PointerEntered"
+                                          PointerExited="InfoItem_PointerExited"
+                                          Tapped="ExposureBias_Tapped"
+                                          Visibility="{Binding ExposureBias, Converter={StaticResource StringToVisibilityConverter}, Mode=OneWay}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="补偿" Width="60" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding ExposureBias, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}"/>
+                                    </Grid>
+                                    <AppBarSeparator Visibility="{Binding Flash, Converter={StaticResource StringToVisibilityConverter}, Mode=OneWay}"/>
+                                    <Grid Height="32"
+                                          Background="Transparent"
+                                          PointerEntered="InfoItem_PointerEntered"
+                                          PointerExited="InfoItem_PointerExited"
+                                          Tapped="Flash_Tapped"
+                                          Visibility="{Binding Flash, Converter={StaticResource StringToVisibilityConverter}, Mode=OneWay}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="闪光灯" Width="60" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Flash, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}"/>
+                                    </Grid>
+                                </StackPanel>
                             </StackPanel>
-                            <StackPanel x:Name="DeviceInfoPanel" Orientation="Horizontal" Spacing="8" Margin="24,0,0,0" 
-                                          Visibility="Collapsed">
-                            </StackPanel>
-                        </StackPanel>
+                        </Border>
 
                         <StackPanel Spacing="8">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <FontIcon Glyph="&#xE8B7;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="14"/>
                                 <TextBlock Text="文件路径" Style="{ThemeResource BodyTextBlockStyle}"/>
                             </StackPanel>
-                            <StackPanel x:Name="FilePathPanel" Spacing="8" Margin="24,0,0,0" >
-                            </StackPanel>
+                            <ItemsControl ItemsSource="{Binding FilePaths, Mode=OneWay}" Margin="24,0,0,0">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="8"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:FilePathItem">
+                                        <Grid ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border 
+                                                Grid.Column="0"
+                                                Background="{Binding FileFormatColor, Converter={StaticResource StringToColorConverter}, Mode=OneWay}"
+                                                CornerRadius="4"
+                                                Padding="6,2"
+                                                VerticalAlignment="Center">
+                                                <TextBlock 
+                                                    Text="{Binding FileFormat, Mode=OneWay}"
+                                                    Style="{ThemeResource CaptionTextBlockStyle}"
+                                                    Foreground="White"
+                                                    FontWeight="SemiBold"/>
+                                            </Border>
+                                            <TextBlock 
+                                                Grid.Column="1" 
+                                                Text="{x:Bind Path}" 
+                                                TextWrapping="Wrap"
+                                                Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                                IsTextSelectionEnabled="True"
+                                                Style="{ThemeResource CaptionTextBlockStyle}"
+                                                PointerPressed="PathText_PointerPressed"/>
+                                            <Button
+                                                Grid.Column="2"
+                                                Command="{x:Bind CopyPathCommand}"
+                                                Padding="8"
+                                                Background="Transparent"
+                                                BorderBrush="Transparent"
+                                                BorderThickness="0">
+                                                <FontIcon Glyph="&#xE8C8;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="14"/>
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>

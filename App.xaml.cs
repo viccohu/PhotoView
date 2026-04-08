@@ -60,6 +60,7 @@ public partial class App : Application
             services.AddSingleton<RatingCacheService>();
             services.AddSingleton<RatingService>();
             services.AddSingleton<IThumbnailService, ThumbnailService>();
+            services.AddSingleton<IExifService, ExifService>();
 
             services.AddSingleton<IActivationService, ActivationService>();
             services.AddSingleton<IPageService, PageService>();
@@ -77,6 +78,7 @@ public partial class App : Application
             services.AddTransient<ShellViewModel>();
             services.AddTransient<CollectPage>();
             services.AddTransient<CollectViewModel>();
+            services.AddTransient<ImageViewerViewModel>();
 
             // Configuration
             services.Configure<LocalSettingsOptions>(context.Configuration.GetSection(nameof(LocalSettingsOptions)));

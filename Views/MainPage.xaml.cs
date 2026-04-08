@@ -872,6 +872,11 @@ public sealed partial class MainPage : Page
                 _currentViewer.PrepareCloseAnimation();
                 e.Handled = true;
             }
+            else if (e.Key == VirtualKey.Left || e.Key == VirtualKey.Right ||
+                     e.Key == VirtualKey.Up || e.Key == VirtualKey.Down)
+            {
+                e.Handled = true;
+            }
             return;
         }
 
