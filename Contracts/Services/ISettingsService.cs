@@ -80,12 +80,18 @@ public interface ISettingsService
         set;
     }
 
+    bool AlwaysDecodeRaw {
+        get;
+        set;
+    }
+
     event EventHandler<NavigationViewPaneDisplayMode> NavigationViewModeChanged;
     event EventHandler<int> BatchSizeChanged;
     event EventHandler<PerformanceMode>? PerformanceModeChanged;
     event EventHandler<ThumbnailSize>? ThumbnailSizeChanged;
     event EventHandler<bool>? RememberLastFolderChanged;
     event EventHandler<bool>? DeleteToRecycleBinChanged;
+    event EventHandler<bool>? AlwaysDecodeRawChanged;
 
     Task SaveNavigationViewModeAsync(NavigationViewPaneDisplayMode mode);
     Task<NavigationViewPaneDisplayMode> LoadNavigationViewModeAsync();
@@ -117,6 +123,8 @@ public interface ISettingsService
     Task<string> LoadExportRawFolderNameAsync();
     Task SaveDecodeScaleFactorAsync(double factor);
     Task<double> LoadDecodeScaleFactorAsync();
+    Task SaveAlwaysDecodeRawAsync(bool alwaysDecode);
+    Task<bool> LoadAlwaysDecodeRawAsync();
 
     Task InitializeAsync();
 }

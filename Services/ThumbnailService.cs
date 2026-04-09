@@ -88,8 +88,113 @@ public class ThumbnailService : IThumbnailService
     {
     }
 
-    private static async Task<DecodeResult?> DecodeThumbnailAsync(StorageFile file, uint longSidePixels, CancellationToken cancellationToken)
+    private static bool IsRawFile(string extension)
     {
+        var rawExtensions = new[] {
+            ".cr2", ".cr3", ".crw",
+            ".nef", ".nrw",
+            ".arw", ".srf", ".sr2",
+            ".raf",
+            ".orf",
+            ".rw2",
+            ".pef",
+            ".dng",
+            ".3fr", ".iiq", ".eip",
+            ".srw",
+            ".raw"
+        };
+        return rawExtensions.Contains(extension.ToLowerInvariant());
+    }
+
+    private static async Task<DecodeResult?> TryGetRawEmbeddedPreviewAsync(
+        StorageFile file,
+        uint targetLongSide,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var thumbnail = await file.GetThumbnailAsync(
+                Windows.Storage.FileProperties.ThumbnailMode.SingleItem,
+                1920,
+                Windows.Storage.FileProperties.ThumbnailOptions.UseCurrentScale).AsTask(cancellationToken);
+            
+            if (thumbnail == null || thumbnail.Size == 0)
+                return null;
+            
+            cancellationToken.ThrowIfCancellationRequested();
+            
+            var dispatcherQueue = App.MainWindow.DispatcherQueue;
+            if (dispatcherQueue == null || dispatcherQueue.HasThreadAccess)
+            {
+                var bitmap = new BitmapImage();
+                await bitmap.SetSourceAsync(thumbnail);
+                var previewLongSide = Math.Max(bitmap.PixelWidth, bitmap.PixelHeight);
+                
+                System.Diagnostics.Debug.WriteLine($"[ThumbnailService] RAW 内嵌预览尺寸: {bitmap.PixelWidth}x{bitmap.PixelHeight}, 目标: {targetLongSide}");
+                
+                if (previewLongSide < targetLongSide)
+                    return null;
+                
+                return new DecodeResult((uint)bitmap.PixelWidth, (uint)bitmap.PixelHeight, bitmap);
+            }
+            
+            var tcs = new TaskCompletionSource<DecodeResult?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            if (!dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, async () =>
+                {
+                    try
+                    {
+                        var bitmap = new BitmapImage();
+                        await bitmap.SetSourceAsync(thumbnail);
+                        var previewLongSide = Math.Max(bitmap.PixelWidth, bitmap.PixelHeight);
+                        
+                        System.Diagnostics.Debug.WriteLine($"[ThumbnailService] RAW 内嵌预览尺寸: {bitmap.PixelWidth}x{bitmap.PixelHeight}, 目标: {targetLongSide}");
+                        
+                        if (previewLongSide < targetLongSide)
+                        {
+                            tcs.TrySetResult(null);
+                        }
+                        else
+                        {
+                            tcs.TrySetResult(new DecodeResult((uint)bitmap.PixelWidth, (uint)bitmap.PixelHeight, bitmap));
+                        }
+                    }
+                    catch (OperationCanceledException ex)
+                    {
+                        tcs.TrySetCanceled(ex.CancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        tcs.TrySetException(ex);
+                    }
+                }))
+            {
+                throw new OperationCanceledException("Failed to enqueue RAW preview creation.", cancellationToken);
+            }
+            
+            return await tcs.Task;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private async Task<DecodeResult?> DecodeThumbnailAsync(StorageFile file, uint longSidePixels, CancellationToken cancellationToken)
+    {
+        var extension = file.FileType.ToLowerInvariant();
+        
+        if (IsRawFile(extension) && !_settingsService.AlwaysDecodeRaw)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ThumbnailService] 尝试获取 RAW 内嵌预览: {file.Name}");
+            var previewResult = await TryGetRawEmbeddedPreviewAsync(file, longSidePixels, cancellationToken);
+            if (previewResult != null)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ThumbnailService] 使用 RAW 内嵌预览: {file.Name}");
+                return previewResult;
+            }
+            System.Diagnostics.Debug.WriteLine($"[ThumbnailService] RAW 内嵌预览不可用或尺寸不足，使用完整解码: {file.Name}");
+        }
+        
         using var stream = await file.OpenReadAsync().AsTask(cancellationToken);
         var decoder = await BitmapDecoder.CreateAsync(stream).AsTask(cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();

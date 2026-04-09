@@ -96,6 +96,13 @@
                         </ComboBox>
                     </toolkit:SettingsCard>
                     
+                    <toolkit:SettingsCard Description="关闭时优先展示内置 HD 图片" Header="RAW 文件始终解码">
+                        <toolkit:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE7B8;" />
+                        </toolkit:SettingsCard.HeaderIcon>
+                        <ToggleSwitch x:Name="AlwaysDecodeRawToggleSwitch" Toggled="AlwaysDecodeRawToggleSwitch_Toggled" />
+                    </toolkit:SettingsCard>
+                    
                     <!-- Display -->
                     <TextBlock Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" Text="Display" />
                     

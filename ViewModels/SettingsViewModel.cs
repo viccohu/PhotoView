@@ -112,6 +112,19 @@ public class SettingsViewModel : ObservableRecipient
         }
     }
 
+    public bool AlwaysDecodeRaw
+    {
+        get => _settingsService.AlwaysDecodeRaw;
+        set
+        {
+            if (_settingsService.AlwaysDecodeRaw != value)
+            {
+                _settingsService.AlwaysDecodeRaw = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public ICommand SwitchThemeCommand
     {
         get;
@@ -143,6 +156,11 @@ public class SettingsViewModel : ObservableRecipient
     }
 
     public ICommand SetDeleteToRecycleBinCommand
+    {
+        get;
+    }
+
+    public ICommand SetAlwaysDecodeRawCommand
     {
         get;
     }
@@ -221,6 +239,16 @@ public class SettingsViewModel : ObservableRecipient
                 {
                     DeleteToRecycleBin = param;
                     await _settingsService.SaveDeleteToRecycleBinAsync(param);
+                }
+            });
+
+        SetAlwaysDecodeRawCommand = new RelayCommand<bool>(
+            async (param) =>
+            {
+                if (AlwaysDecodeRaw != param)
+                {
+                    AlwaysDecodeRaw = param;
+                    await _settingsService.SaveAlwaysDecodeRawAsync(param);
                 }
             });
     }

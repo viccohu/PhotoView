@@ -14,13 +14,40 @@
     <UserControl.Resources>
         <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
         <converters:StringToColorConverter x:Key="StringToColorConverter"/>
+        
+        <Style x:Key="CloseButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{ThemeResource SubtleFillColorSecondaryBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="25"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Opacity" Value="0.3"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+                            <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE70D;" FontSize="16" Opacity="0.7"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <Style x:Key="CloseButtonPointerOverStyle" TargetType="Button" BasedOn="{StaticResource CloseButtonStyle}">
+            <Setter Property="Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}"/>
+            <Setter Property="Opacity" Value="0.6"/>
+        </Style>
+        
+        <Style x:Key="CloseButtonPressedStyle" TargetType="Button" BasedOn="{StaticResource CloseButtonStyle}">
+            <Setter Property="Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}"/>
+            <Setter Property="Opacity" Value="0.8"/>
+        </Style>
     </UserControl.Resources>
 
     <Grid
         x:Name="BackgroundOverlay"
        Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}"
-        Opacity="0"
-        Tapped="BackgroundOverlay_Tapped">
+        Opacity="0">
 
         <Grid
             x:Name="AnimationContainer"
@@ -75,6 +102,20 @@
                         x:Name="MainImage"
                         Stretch="Uniform"/>
                 </Grid>
+                
+                <!-- 关闭按钮 -->
+                <Button
+                    x:Name="CloseButton"
+                    Width="360"
+                    Height="50"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Bottom"
+                    Style="{StaticResource CloseButtonStyle}"
+                    Click="CloseButton_Click"
+                    PointerEntered="CloseButton_PointerEntered"
+                    PointerPressed="CloseButton_PointerPressed"
+                    PointerExited="CloseButton_PointerExited">
+                </Button>
             </Grid>
 
             <Border

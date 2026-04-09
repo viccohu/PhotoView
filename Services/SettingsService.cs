@@ -22,6 +22,7 @@ public class SettingsService : ISettingsService
     private int _exportRawMinRating = 1;
     private string _exportRawFolderName = "RAW";
     private double _decodeScaleFactor = 2.0;
+    private bool _alwaysDecodeRaw = false;
 
     public event EventHandler<NavigationViewPaneDisplayMode>? NavigationViewModeChanged;
     public event EventHandler<int>? BatchSizeChanged;
@@ -29,6 +30,7 @@ public class SettingsService : ISettingsService
     public event EventHandler<ThumbnailSize>? ThumbnailSizeChanged;
     public event EventHandler<bool>? RememberLastFolderChanged;
     public event EventHandler<bool>? DeleteToRecycleBinChanged;
+    public event EventHandler<bool>? AlwaysDecodeRawChanged;
 
     public NavigationViewPaneDisplayMode NavigationViewMode
     {
@@ -212,6 +214,19 @@ public class SettingsService : ISettingsService
             if (Math.Abs(_decodeScaleFactor - value) > 0.01)
             {
                 _decodeScaleFactor = value;
+            }
+        }
+    }
+
+    public bool AlwaysDecodeRaw
+    {
+        get => _alwaysDecodeRaw;
+        set
+        {
+            if (_alwaysDecodeRaw != value)
+            {
+                _alwaysDecodeRaw = value;
+                AlwaysDecodeRawChanged?.Invoke(this, value);
             }
         }
     }
@@ -461,6 +476,22 @@ public class SettingsService : ISettingsService
         return _decodeScaleFactor;
     }
 
+    public async Task SaveAlwaysDecodeRawAsync(bool alwaysDecode)
+    {
+        await _localSettingsService.SaveSettingAsync("AlwaysDecodeRaw", alwaysDecode);
+    }
+
+    public async Task<bool> LoadAlwaysDecodeRawAsync()
+    {
+        var alwaysDecode = await _localSettingsService.ReadSettingAsync<bool?>("AlwaysDecodeRaw");
+        if (alwaysDecode.HasValue)
+        {
+            _alwaysDecodeRaw = alwaysDecode.Value;
+            return alwaysDecode.Value;
+        }
+        return _alwaysDecodeRaw;
+    }
+
     public async Task InitializeAsync()
     {
         await LoadNavigationViewModeAsync();
@@ -478,5 +509,6 @@ public class SettingsService : ISettingsService
         await LoadExportRawMinRatingAsync();
         await LoadExportRawFolderNameAsync();
         await LoadDecodeScaleFactorAsync();
+        await LoadAlwaysDecodeRawAsync();
     }
 }

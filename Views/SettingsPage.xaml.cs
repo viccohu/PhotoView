@@ -58,6 +58,7 @@ public sealed partial class SettingsPage : Page
         UpdateThumbnailSizeSelection();
         UpdateRememberLastFolderSelection();
         UpdateDeleteToRecycleBinSelection();
+        UpdateAlwaysDecodeRawSelection();
         
         _isInitialized = true;
     }
@@ -113,6 +114,11 @@ public sealed partial class SettingsPage : Page
     private void UpdateDeleteToRecycleBinSelection()
     {
         DeleteToRecycleBinToggleSwitch.IsOn = ViewModel.DeleteToRecycleBin;
+    }
+
+    private void UpdateAlwaysDecodeRawSelection()
+    {
+        AlwaysDecodeRawToggleSwitch.IsOn = ViewModel.AlwaysDecodeRaw;
     }
 
     private void themeMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -199,5 +205,13 @@ public sealed partial class SettingsPage : Page
             return;
 
         ViewModel.SetDeleteToRecycleBinCommand.Execute(DeleteToRecycleBinToggleSwitch.IsOn);
+    }
+
+    private void AlwaysDecodeRawToggleSwitch_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (!_isInitialized)
+            return;
+
+        ViewModel.SetAlwaysDecodeRawCommand.Execute(AlwaysDecodeRawToggleSwitch.IsOn);
     }
 }
