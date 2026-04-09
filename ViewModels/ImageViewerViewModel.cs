@@ -400,6 +400,8 @@ public partial class ImageViewerViewModel : ObservableRecipient
                 continue;
 
             var ext = System.IO.Path.GetExtension(file.ImageName).ToLowerInvariant();
+            System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] LoadFilePaths: 文件名={file.ImageName}, 扩展名={ext}");
+            
             var fileFormat = ext switch
             {
                 ".jpg" or ".jpeg" => "JPG",
@@ -416,20 +418,28 @@ public partial class ImageViewerViewModel : ObservableRecipient
                 _ => ext.ToUpper().TrimStart('.')
             };
 
-            var fileFormatColor = ext switch
+            Microsoft.UI.Xaml.Media.Brush backgroundBrush = ext switch
             {
-                ".jpg" or ".jpeg" => "Blue",
-                ".png" => "Green",
-                ".cr2" or ".cr3" or ".crw" or ".nef" or ".nrw" or ".arw" or ".srf" or ".sr2" or ".dng" or ".orf" or ".pef" or ".raf" or ".rw2" => "Orange",
-                _ => "Gray"
+                // 压缩格式 - 蓝色
+                ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp" => new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.DodgerBlue),
+                // RAW 格式 - 橙色
+                ".cr2" or ".cr3" or ".crw" or ".nef" or ".nrw" or ".arw" or ".srf" or ".sr2" or 
+                ".dng" or ".orf" or ".pef" or ".raf" or ".rw2" or ".raw" or ".3fr" or ".fff" or 
+                ".mos" or ".erf" or ".dcr" or ".mrw" or ".rwl" or ".srw" or ".kdc" or ".mef" or ".iiq" or ".x3f" => new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Orange),
+                // 无压缩格式 - 绿色
+                ".tiff" or ".tif" or ".bmp" => new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.SeaGreen),
+                // 其他格式 - 灰色
+                _ => new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Gray)
             };
+            
+            System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] LoadFilePaths: 格式={fileFormat}, 背景Brush已创建");
 
             var filePathItem = new FilePathItem
             {
                 Path = file.ImageFile.Path,
                 FileName = file.ImageName,
                 FileFormat = fileFormat,
-                FileFormatColor = fileFormatColor,
+                FileFormatBackgroundBrush = backgroundBrush,
                 OpenInExplorerCommand = new AsyncRelayCommand(() => OpenInExplorerAsync(file.ImageFile.Path)),
                 CopyPathCommand = new AsyncRelayCommand(() => CopyPathToClipboardAsync(file.ImageFile.Path))
             };

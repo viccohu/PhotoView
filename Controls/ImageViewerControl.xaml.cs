@@ -528,17 +528,24 @@ public sealed partial class ImageViewerControl : UserControl
 
     private void BackgroundOverlay_Tapped(object sender, TappedRoutedEventArgs e)
     {
+        System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] BackgroundOverlay_Tapped: 被点击，准备关闭");
         PrepareCloseAnimation();
     }
 
     private void ImageContainer_Tapped(object sender, TappedRoutedEventArgs e)
     {
         e.Handled = true;
+        // 确保控件保持焦点，这样ESC键才能正常工作
+        this.Focus(FocusState.Programmatic);
+        System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageContainer_Tapped: 重新设置焦点");
     }
 
     private void InfoPanel_Tapped(object sender, TappedRoutedEventArgs e)
     {
         e.Handled = true;
+        // 确保控件保持焦点，这样ESC键才能正常工作
+        this.Focus(FocusState.Programmatic);
+        System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] InfoPanel_Tapped: 重新设置焦点");
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
