@@ -19,13 +19,13 @@ public partial class ImageViewerViewModel : ObservableRecipient
     private ImageFileInfo? _currentImage;
 
     [ObservableProperty]
-    private string _imageName = "None";
+    private string _imageName = "----";
 
     [ObservableProperty]
-    private string _resolution = "None";
+    private string _resolution = "----";
 
     [ObservableProperty]
-    private string _fileSize = "None";
+    private string _fileSize = "----";
 
     [ObservableProperty]
     private DateTimeOffset? _captureDate;
@@ -34,19 +34,19 @@ public partial class ImageViewerViewModel : ObservableRecipient
     private TimeSpan? _captureTime;
 
     [ObservableProperty]
-    private string _formattedDateTime = "None";
+    private string _formattedDateTime = "----";
 
     [ObservableProperty]
-    private string _captureYear = "None";
+    private string _captureYear = "----";
 
     [ObservableProperty]
-    private string _captureMonth = "None";
+    private string _captureMonth = "----";
 
     [ObservableProperty]
-    private string _captureDay = "None";
+    private string _captureDay = "----";
 
     [ObservableProperty]
-    private string _captureTimeOfDay = "None";
+    private string _captureTimeOfDay = "----";
 
     [ObservableProperty]
     private bool _hasDeviceInfo;
@@ -58,43 +58,43 @@ public partial class ImageViewerViewModel : ObservableRecipient
     private ObservableCollection<FilePathItem> _filePaths = new();
 
     [ObservableProperty]
-    private uint _rating;
+    private int _rating;
 
     [ObservableProperty]
-    private string _ratingSource = "None";
+    private string _ratingSource = "----";
 
     [ObservableProperty]
-    private string _dpi = "None";
+    private string _dpi = "----";
 
     [ObservableProperty]
-    private string _bitDepth = "None";
+    private string _bitDepth = "----";
 
     [ObservableProperty]
-    private string _lensModel = "None";
+    private string _lensModel = "----";
 
     [ObservableProperty]
-    private string _focalLength = "None";
+    private string _focalLength = "----";
 
     [ObservableProperty]
-    private string _exposureTime = "None";
+    private string _exposureTime = "----";
 
     [ObservableProperty]
-    private string _fNumber = "None";
+    private string _fNumber = "----";
 
     [ObservableProperty]
-    private string _iso = "None";
+    private string _iso = "----";
 
     [ObservableProperty]
-    private string _exposureProgram = "None";
+    private string _exposureProgram = "----";
 
     [ObservableProperty]
-    private string _exposureBias = "None";
+    private string _exposureBias = "----";
 
     [ObservableProperty]
-    private string _flash = "None";
+    private string _flash = "----";
 
     [ObservableProperty]
-    private string _fileFormat = "None";
+    private string _fileFormat = "----";
 
     [ObservableProperty]
     private string _fileFormatColor = "Gray";
@@ -108,6 +108,32 @@ public partial class ImageViewerViewModel : ObservableRecipient
         _ratingService = ratingService;
     }
 
+    private static int RatingToStars(uint rating)
+    {
+        if (rating == 0) return -1;
+        if (rating >= 1 && rating <= 12) return 1;
+        if (rating >= 13 && rating <= 37) return 2;
+        if (rating >= 38 && rating <= 62) return 3;
+        if (rating >= 63 && rating <= 87) return 4;
+        if (rating >= 88 && rating <= 99) return 5;
+        return -1;
+    }
+
+    private static uint StarsToRating(int stars)
+    {
+        return stars switch
+        {
+            -1 => 0,
+            0 => 0,
+            1 => 1,
+            2 => 25,
+            3 => 50,
+            4 => 75,
+            5 => 99,
+            _ => 0
+        };
+    }
+
     public void SetBasicInfo(ImageFileInfo imageFileInfo)
     {
         if (imageFileInfo == null)
@@ -116,7 +142,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
         _currentImage = imageFileInfo;
         ImageName = imageFileInfo.ImageName;
         Resolution = $"{imageFileInfo.Width} x {imageFileInfo.Height}";
-        Rating = imageFileInfo.Rating;
+        Rating = RatingToStars(imageFileInfo.Rating);
         RatingSource = imageFileInfo.RatingSource.ToString();
 
         SetFileFormatInfo(imageFileInfo.ImageName);
@@ -195,11 +221,11 @@ public partial class ImageViewerViewModel : ObservableRecipient
             }
             else
             {
-                FormattedDateTime = "None";
-                CaptureYear = "None";
-                CaptureMonth = "None";
-                CaptureDay = "None";
-                CaptureTimeOfDay = "None";
+                FormattedDateTime = "----";
+                CaptureYear = "----";
+                CaptureMonth = "----";
+                CaptureDay = "----";
+                CaptureTimeOfDay = "----";
                 Debug.WriteLine($"[ImageViewerViewModel] 日期时间: 未找到");
             }
 
@@ -209,7 +235,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
             }
             else
             {
-                Dpi = "None";
+                Dpi = "----";
             }
 
             if (exifData.BitDepth.HasValue)
@@ -218,7 +244,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
             }
             else
             {
-                BitDepth = "None";
+                BitDepth = "----";
             }
 
             UpdateDeviceInfo(exifData);
@@ -266,7 +292,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
         }
         else
         {
-            LensModel = "None";
+            LensModel = "----";
             Debug.WriteLine($"[ImageViewerViewModel] LensModel: 未找到");
         }
 
@@ -285,7 +311,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
         }
         else
         {
-            FocalLength = "None";
+            FocalLength = "----";
             Debug.WriteLine($"[ImageViewerViewModel] FocalLength: 未找到");
         }
 
@@ -296,7 +322,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
         }
         else
         {
-            ExposureTime = "None";
+            ExposureTime = "----";
             Debug.WriteLine($"[ImageViewerViewModel] ExposureTime: 未找到");
         }
 
@@ -307,7 +333,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
         }
         else
         {
-            FNumber = "None";
+            FNumber = "----";
             Debug.WriteLine($"[ImageViewerViewModel] FNumber: 未找到");
         }
 
@@ -318,7 +344,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
         }
         else
         {
-            Iso = "None";
+            Iso = "----";
             Debug.WriteLine($"[ImageViewerViewModel] ISO: 未找到");
         }
 
@@ -328,7 +354,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
         }
         else
         {
-            ExposureProgram = "None";
+            ExposureProgram = "----";
         }
 
         if (exifData.ExposureBias.HasValue)
@@ -337,7 +363,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
         }
         else
         {
-            ExposureBias = "None";
+            ExposureBias = "----";
         }
 
         if (exifData.Flash.HasValue)
@@ -346,7 +372,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
         }
         else
         {
-            Flash = "None";
+            Flash = "----";
         }
     }
 
@@ -416,10 +442,10 @@ public partial class ImageViewerViewModel : ObservableRecipient
     public event EventHandler<(ImageFileInfo Image, uint Rating)>? RatingUpdated;
 
     [RelayCommand]
-    private async Task SetRatingAsync(uint rating)
+    private async Task SetRatingAsync(int rating)
     {
         System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 开始执行");
-        System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: _currentImage={( _currentImage == null ? "null" : _currentImage.ImageName )}, newRating={rating}");
+        System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: _currentImage={( _currentImage == null ? "null" : _currentImage.ImageName )}, newRatingStars={rating}");
         
         if (_currentImage == null)
         {
@@ -427,15 +453,17 @@ public partial class ImageViewerViewModel : ObservableRecipient
             return;
         }
 
-        System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 更新 ViewModel.Rating 从 {Rating} 到 {rating}");
+        var rawRating = StarsToRating(rating);
+        
+        System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 更新 ViewModel.Rating 从 {Rating} 到 {rating} (stars), raw={rawRating}");
         Rating = rating;
-        System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 更新 _currentImage.Rating 从 {_currentImage.Rating} 到 {rating}");
-        _currentImage.Rating = rating;
+        System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 更新 _currentImage.Rating 从 {_currentImage.Rating} 到 {rawRating}");
+        _currentImage.Rating = rawRating;
         
         if (_currentImage.ImageFile != null)
         {
-            System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 准备调用 RatingService.SetRatingAsync, 文件={_currentImage.ImageFile.Path}");
-            await _ratingService.SetRatingAsync(_currentImage.ImageFile, rating);
+            System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 准备调用 RatingService.SetRatingAsync, 文件={_currentImage.ImageFile.Path}, rawRating={rawRating}");
+            await _ratingService.SetRatingAsync(_currentImage.ImageFile, rawRating);
             System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: RatingService.SetRatingAsync 完成");
             
             System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 更新 _currentImage.RatingSource 为 WinRT");
@@ -449,8 +477,8 @@ public partial class ImageViewerViewModel : ObservableRecipient
         }
         
         // 触发评级更新事件，通知其他组件（如 MainViewModel）
-        RatingUpdated?.Invoke(this, (_currentImage, rating));
-        System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 已触发 RatingUpdated 事件");
+        RatingUpdated?.Invoke(this, (_currentImage, rawRating));
+        System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 已触发 RatingUpdated 事件, rawRating={rawRating}");
         
         System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 执行完成");
     }
@@ -523,32 +551,32 @@ public partial class ImageViewerViewModel : ObservableRecipient
     public void Clear()
     {
         _currentImage = null;
-        ImageName = "None";
-        Resolution = "None";
-        FileSize = "None";
+        ImageName = "----";
+        Resolution = "----";
+        FileSize = "----";
         CaptureDate = null;
         CaptureTime = null;
-        FormattedDateTime = "None";
-        CaptureYear = "None";
-        CaptureMonth = "None";
-        CaptureDay = "None";
-        CaptureTimeOfDay = "None";
+        FormattedDateTime = "----";
+        CaptureYear = "----";
+        CaptureMonth = "----";
+        CaptureDay = "----";
+        CaptureTimeOfDay = "----";
         HasDeviceInfo = false;
         DeviceInfo.Clear();
         FilePaths.Clear();
         Rating = 0;
-        RatingSource = "None";
-        Dpi = "None";
-        BitDepth = "None";
-        LensModel = "None";
-        FocalLength = "None";
-        ExposureTime = "None";
-        FNumber = "None";
-        Iso = "None";
-        ExposureProgram = "None";
-        ExposureBias = "None";
-        Flash = "None";
-        FileFormat = "None";
+        RatingSource = "----";
+        Dpi = "----";
+        BitDepth = "----";
+        LensModel = "----";
+        FocalLength = "----";
+        ExposureTime = "----";
+        FNumber = "----";
+        Iso = "----";
+        ExposureProgram = "----";
+        ExposureBias = "----";
+        Flash = "----";
+        FileFormat = "----";
         FileFormatColor = "Gray";
     }
 }

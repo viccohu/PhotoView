@@ -13,7 +13,40 @@ public class ExifService : IExifService
 {
     private static readonly HashSet<string> WinRTSupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".jpg", ".jpeg", ".tif", ".tiff", ".png", ".heic", ".heif", ".dng"
+        // 标准图像格式
+        ".jpg", ".jpeg", ".tif", ".tiff", ".png", ".heic", ".heif",
+        // RAW 格式 - Canon
+        ".crw", ".cr2", ".cr3",
+        // RAW 格式 - Nikon
+        ".nef", ".nrw",
+        // RAW 格式 - Sony
+        ".arw", ".srf", ".sr2",
+        // RAW 格式 - Fujifilm
+        ".raf",
+        // RAW 格式 - Panasonic
+        ".rw2",
+        // RAW 格式 - Olympus
+        ".orf",
+        // RAW 格式 - Pentax
+        ".pef",
+        // RAW 格式 - Leica
+        ".rwl",
+        // RAW 格式 - Samsung
+        ".srw",
+        // RAW 格式 - Epson
+        ".erf",
+        // RAW 格式 - Kodak
+        ".dcr",
+        // RAW 格式 - Minolta
+        ".mrw",
+        // RAW 格式 - Hasselblad
+        ".3fr", ".fff",
+        // RAW 格式 - Leaf
+        ".mos",
+        // RAW 格式 - Adobe
+        ".dng",
+        // 通用 RAW 格式
+        ".raw"
     };
 
     private static readonly string[] ExifPropertyNames = {
@@ -76,7 +109,29 @@ public class ExifService : IExifService
         try
         {
             var exifData = new ExifData();
+            
+            System.Diagnostics.Debug.WriteLine($"[ExifService] 开始处理文件: {file.Name}, 格式: {file.FileType}");
 
+            // 1. 首先尝试使用 ImageProperties API 获取 DateTaken
+            try
+            {
+                var imageProperties = await file.Properties.GetImagePropertiesAsync();
+                if (imageProperties.DateTaken != DateTimeOffset.MinValue && imageProperties.DateTaken != default)
+                {
+                    exifData.DateTaken = imageProperties.DateTaken.DateTime;
+                    System.Diagnostics.Debug.WriteLine($"[ExifService] DateTaken (ImageProperties): {imageProperties.DateTaken}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ExifService] DateTaken (ImageProperties): 未找到");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ExifService] ImageProperties 获取失败: {ex.Message}");
+            }
+
+            // 2. 使用 BitmapDecoder 获取其他属性
             using var stream = await file.OpenReadAsync().AsTask(cancellationToken);
             var decoder = await BitmapDecoder.CreateAsync(stream).AsTask(cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
@@ -99,14 +154,18 @@ public class ExifService : IExifService
             {
                 var properties = await decoder.BitmapProperties.GetPropertiesAsync(ExifPropertyNames);
 
-                if (properties.TryGetValue("System.Photo.DateTaken", out var dateProp) && dateProp.Value is DateTime dateTaken)
+                // 如果 ImageProperties 没有获取到 DateTaken，尝试 BitmapProperties
+                if (!exifData.DateTaken.HasValue)
                 {
-                    exifData.DateTaken = dateTaken;
-                    System.Diagnostics.Debug.WriteLine($"[ExifService] DateTaken: {dateTaken}");
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine($"[ExifService] DateTaken: 未找到");
+                    if (properties.TryGetValue("System.Photo.DateTaken", out var dateProp) && dateProp.Value is DateTime dateTaken)
+                    {
+                        exifData.DateTaken = dateTaken;
+                        System.Diagnostics.Debug.WriteLine($"[ExifService] DateTaken (BitmapProperties): {dateTaken}");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ExifService] DateTaken (BitmapProperties): 未找到");
+                    }
                 }
 
                 if (properties.TryGetValue("System.Photo.CameraManufacturer", out var manuProp) && manuProp.Value is string manufacturer)
@@ -146,10 +205,39 @@ public class ExifService : IExifService
                     System.Diagnostics.Debug.WriteLine($"[ExifService] FNumber: 未找到");
                 }
 
-                if (properties.TryGetValue("System.Photo.ISOSpeed", out var isoProp) && isoProp.Value is uint isoSpeed)
+                // ISOSpeed - 尝试多种数据类型
+                if (properties.TryGetValue("System.Photo.ISOSpeed", out var isoProp))
                 {
-                    exifData.ISOSpeed = isoSpeed;
-                    System.Diagnostics.Debug.WriteLine($"[ExifService] ISOSpeed: {isoSpeed}");
+                    System.Diagnostics.Debug.WriteLine($"[ExifService] ISOSpeed 原始值: {isoProp.Value}, 类型: {isoProp.Value?.GetType().Name}");
+                    
+                    if (isoProp.Value is ushort isoSpeedUshort)
+                    {
+                        exifData.ISOSpeed = isoSpeedUshort;
+                        System.Diagnostics.Debug.WriteLine($"[ExifService] ISOSpeed (ushort): {isoSpeedUshort}");
+                    }
+                    else if (isoProp.Value is uint isoSpeedUint)
+                    {
+                        exifData.ISOSpeed = isoSpeedUint;
+                        System.Diagnostics.Debug.WriteLine($"[ExifService] ISOSpeed (uint): {isoSpeedUint}");
+                    }
+                    else if (isoProp.Value is double isoSpeedDouble)
+                    {
+                        exifData.ISOSpeed = (uint)isoSpeedDouble;
+                        System.Diagnostics.Debug.WriteLine($"[ExifService] ISOSpeed (double): {isoSpeedDouble}");
+                    }
+                    else if (isoProp.Value != null)
+                    {
+                        // 尝试直接转换
+                        try
+                        {
+                            exifData.ISOSpeed = Convert.ToUInt32(isoProp.Value);
+                            System.Diagnostics.Debug.WriteLine($"[ExifService] ISOSpeed (converted): {exifData.ISOSpeed}");
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[ExifService] ISOSpeed 转换失败: {ex.Message}");
+                        }
+                    }
                 }
                 else
                 {

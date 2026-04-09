@@ -462,7 +462,7 @@ public sealed partial class ImageViewerControl : UserControl
         if (key >= Windows.System.VirtualKey.Number1 && key <= Windows.System.VirtualKey.Number5)
         {
             // 处理数字键评级
-            uint rating = (uint)(key - Windows.System.VirtualKey.Number1 + 1);
+            int rating = (int)(key - Windows.System.VirtualKey.Number1 + 1);
             System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] HandleRatingKey: 数字键评级, rating={rating}");
             
             if (ViewModel != null)
@@ -482,7 +482,7 @@ public sealed partial class ImageViewerControl : UserControl
             
             if (ViewModel != null)
             {
-                _ = ViewModel.SetRatingCommand.ExecuteAsync(0);
+                _ = ViewModel.SetRatingCommand.ExecuteAsync(-1);
                 System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] HandleRatingKey: 执行了清除评级命令");
             }
             else
@@ -1181,10 +1181,19 @@ public sealed partial class ImageViewerControl : UserControl
             }
             
             double senderValue = sender.Value;
-            uint viewModelRating = ViewModel.Rating;
+            int viewModelRating = ViewModel.Rating;
             System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged: sender.Value={senderValue}, ViewModel.Rating={viewModelRating}");
             
-            uint newRating = (uint)senderValue;
+            int newRating;
+            if (senderValue < 0)
+            {
+                newRating = -1;
+            }
+            else
+            {
+                newRating = (int)Math.Round(senderValue, MidpointRounding.AwayFromZero);
+                newRating = Math.Clamp(newRating, 0, 5);
+            }
             System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged: 准备执行 SetRatingCommand, newRating={newRating}");
             
             // 无论值是否变化都执行命令，确保评级操作能够成功
