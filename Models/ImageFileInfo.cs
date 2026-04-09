@@ -71,21 +71,29 @@ public class ImageFileInfo : INotifyPropertyChanged
         {
             var requestedSize = (uint)size;
             var optimalSize = GetOptimalThumbnailSize(requestedSize);
+            var dispatcher = App.MainWindow.DispatcherQueue;
 
-            var thumbnail = await ImageFile.GetThumbnailAsync(
-                ThumbnailMode.SingleItem,
-                optimalSize,
-                ThumbnailOptions.None).AsTask(cancellationToken);
-
-            if (thumbnail != null && thumbnail.Size > 0)
+            if (dispatcher.HasThreadAccess)
             {
-                using (thumbnail)
-                {
-                    return await CreateBitmapOnUIThreadAsync(thumbnail, optimalSize, cancellationToken);
-                }
+                return await GetThumbnailOnUIThreadAsync(optimalSize, cancellationToken);
             }
-
-            return new BitmapImage();
+            else
+            {
+                var tcs = new TaskCompletionSource<BitmapImage>();
+                dispatcher.TryEnqueue(async () =>
+                {
+                    try
+                    {
+                        var bmp = await GetThumbnailOnUIThreadAsync(optimalSize, cancellationToken);
+                        tcs.SetResult(bmp);
+                    }
+                    catch (Exception ex)
+                    {
+                        tcs.SetException(ex);
+                    }
+                });
+                return await tcs.Task;
+            }
         }
         catch (OperationCanceledException)
         {
@@ -98,66 +106,27 @@ public class ImageFileInfo : INotifyPropertyChanged
         }
     }
 
-    private static async Task<BitmapImage> CreateBitmapOnUIThreadAsync(
-        IRandomAccessStream stream, 
-        uint decodePixelWidth,
+    private async Task<BitmapImage> GetThumbnailOnUIThreadAsync(
+        uint optimalSize,
         CancellationToken cancellationToken)
     {
-        if (AppLifetime.IsShuttingDown)
+        if (cancellationToken.IsCancellationRequested || AppLifetime.IsShuttingDown)
             return new BitmapImage();
 
-        BitmapImage? bitmap = null;
-        var dispatcherQueue = App.MainWindow.DispatcherQueue;
-        var tcs = new TaskCompletionSource<bool>();
+        using var thumbnail = await ImageFile.GetThumbnailAsync(
+            ThumbnailMode.SingleItem,
+            optimalSize,
+            ThumbnailOptions.None);
 
-        if (dispatcherQueue.HasThreadAccess)
+        if (thumbnail != null && thumbnail.Size > 0)
         {
-            try
-            {
-                if (cancellationToken.IsCancellationRequested || AppLifetime.IsShuttingDown)
-                {
-                    return new BitmapImage();
-                }
-
-                bitmap = new BitmapImage();
-                bitmap.DecodePixelWidth = (int)decodePixelWidth;
-                bitmap.SetSource(stream);
-                return bitmap;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"CreateBitmapOnUIThreadAsync error: {ex}");
-                return new BitmapImage();
-            }
+            var bitmap = new BitmapImage();
+            bitmap.DecodePixelWidth = (int)optimalSize;
+            bitmap.SetSource(thumbnail);
+            return bitmap;
         }
 
-        if (!dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Normal, () =>
-        {
-            try
-            {
-                if (cancellationToken.IsCancellationRequested || AppLifetime.IsShuttingDown)
-                {
-                    tcs.TrySetCanceled();
-                    return;
-                }
-
-                bitmap = new BitmapImage();
-                bitmap.DecodePixelWidth = (int)decodePixelWidth;
-                bitmap.SetSource(stream);
-
-                tcs.SetResult(true);
-            }
-            catch (Exception ex)
-            {
-                tcs.SetException(ex);
-            }
-        }))
-        {
-            throw new OperationCanceledException("Failed to enqueue thumbnail creation.", cancellationToken);
-        }
-
-        await tcs.Task;
-        return bitmap!;
+        return new BitmapImage();
     }
 
     public BitmapImage? Thumbnail

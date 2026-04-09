@@ -64,6 +64,7 @@ public sealed partial class ImageViewerControl : UserControl
     private bool _isRunning = false;
     private bool _isLoadingHighRes = false;
     private bool _isViewerLayerReady = false;
+    private bool _isLoadingExif = false;
 
     private ScaleTransform? _cachedScaleTransform;
     private TranslateTransform? _cachedTranslateTransform;
@@ -202,7 +203,7 @@ public sealed partial class ImageViewerControl : UserControl
 
         AnimationImage.Source = imageFileInfo.Thumbnail;
 
-        _ = ViewModel.LoadFileInfoAsync(imageFileInfo);
+        ViewModel.SetBasicInfo(imageFileInfo);
     }
 
     public Task PrepareForAnimationAsync()
@@ -369,7 +370,7 @@ public sealed partial class ImageViewerControl : UserControl
 
             if (highResResult?.ImageSource != null)
             {
-                DispatcherQueue.TryEnqueue(() =>
+                DispatcherQueue.TryEnqueue(async () =>
                 {
                     if (_isClosing || !_isRunning)
                     {
@@ -382,6 +383,11 @@ public sealed partial class ImageViewerControl : UserControl
                     System.Diagnostics.Debug.WriteLine($"[ImageViewer] WaitForHighResAndReplaceAsync: 高清图渐进式替换完成");
                     _isLoadingHighRes = false;
                     StartPhysics();
+
+                    if (_imageFileInfo?.ImageFile != null)
+                    {
+                        _ = LoadExifAfterImageAsync(_imageFileInfo.ImageFile);
+                    }
                 });
             }
             else
@@ -517,21 +523,61 @@ public sealed partial class ImageViewerControl : UserControl
 
     protected override void OnKeyDown(KeyRoutedEventArgs e)
     {
-        System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 按键={e.Key}, e.Handled={e.Handled}");
-        
-        if (e.Key == Windows.System.VirtualKey.Escape)
+        try
         {
-            PrepareCloseAnimation();
-            e.Handled = true;
-            System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 处理了Escape键");
+            System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 按键={e.Key}, e.Handled={e.Handled}");
+            
+            if (e.Key == Windows.System.VirtualKey.Escape)
+            {
+                PrepareCloseAnimation();
+                e.Handled = true;
+                System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 处理了Escape键");
+            }
+            else if (e.Key == Windows.System.VirtualKey.Left || e.Key == Windows.System.VirtualKey.Right ||
+                     e.Key == Windows.System.VirtualKey.Up || e.Key == Windows.System.VirtualKey.Down)
+            {
+                e.Handled = true;
+                System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 阻止了方向键 {e.Key}");
+            }
+            else if (e.Key >= Windows.System.VirtualKey.Number1 && e.Key <= Windows.System.VirtualKey.Number5)
+            {
+                // 处理数字键评级
+                uint rating = (uint)(e.Key - Windows.System.VirtualKey.Number1 + 1);
+                System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 数字键评级, rating={rating}");
+                
+                if (ViewModel != null)
+                {
+                    _ = ViewModel.SetRatingCommand.ExecuteAsync(rating);
+                    e.Handled = true;
+                    System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 执行了评级命令");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: ViewModel 为 null，无法执行评级");
+                }
+            }
+            else if (e.Key == Windows.System.VirtualKey.Number0)
+            {
+                // 数字0清除评级
+                System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 数字键清除评级");
+                
+                if (ViewModel != null)
+                {
+                    _ = ViewModel.SetRatingCommand.ExecuteAsync(0);
+                    e.Handled = true;
+                    System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 执行了清除评级命令");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: ViewModel 为 null，无法清除评级");
+                }
+            }
+            base.OnKeyDown(e);
         }
-        else if (e.Key == Windows.System.VirtualKey.Left || e.Key == Windows.System.VirtualKey.Right ||
-                 e.Key == Windows.System.VirtualKey.Up || e.Key == Windows.System.VirtualKey.Down)
+        catch (Exception ex)
         {
-            e.Handled = true;
-            System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 阻止了方向键 {e.Key}");
+            System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown 错误: {ex}");
         }
-        base.OnKeyDown(e);
     }
 
     #region 物理引擎
@@ -971,6 +1017,18 @@ public sealed partial class ImageViewerControl : UserControl
         }
     }
 
+    private void FileName_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        CopyToClipboard(ViewModel.ImageName);
+        e.Handled = true;
+    }
+
+    private void DateTime_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        CopyToClipboard(ViewModel.FormattedDateTime);
+        e.Handled = true;
+    }
+
     private void Resolution_Tapped(object sender, TappedRoutedEventArgs e)
     {
         CopyToClipboard(ViewModel.Resolution);
@@ -1022,6 +1080,13 @@ public sealed partial class ImageViewerControl : UserControl
         e.Handled = true;
     }
 
+    private void Exposure_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        var text = $"{ViewModel.ExposureTime} {ViewModel.FNumber} {ViewModel.Iso}";
+        CopyToClipboard(text);
+        e.Handled = true;
+    }
+
     private void ExposureTime_Tapped(object sender, TappedRoutedEventArgs e)
     {
         var text = $"{ViewModel.ExposureTime}  {ViewModel.FNumber}  {ViewModel.Iso}";
@@ -1064,18 +1129,45 @@ public sealed partial class ImageViewerControl : UserControl
 
     private void ImageRatingControl_ValueChanged(Microsoft.UI.Xaml.Controls.RatingControl sender, object args)
     {
-        System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged: 触发事件");
-        System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged: sender.Value={sender.Value}, ViewModel.Rating={ViewModel?.Rating}");
-        
-        if (ViewModel != null && sender.Value != ViewModel.Rating)
+        try
         {
-            uint newRating = (uint)sender.Value;
+            System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged: 触发事件");
+            
+            if (ViewModel == null)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged: ViewModel 为 null，退出");
+                return;
+            }
+            
+            double senderValue = sender.Value;
+            uint viewModelRating = ViewModel.Rating;
+            System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged: sender.Value={senderValue}, ViewModel.Rating={viewModelRating}");
+            
+            uint newRating = (uint)senderValue;
             System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged: 准备执行 SetRatingCommand, newRating={newRating}");
+            
+            // 无论值是否变化都执行命令，确保评级操作能够成功
             _ = ViewModel.SetRatingCommand.ExecuteAsync(newRating);
+            System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged: 执行了 SetRatingCommand");
         }
-        else
+        catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged: 跳过执行命令 (ViewModel null 或值未变化)");
+            System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged 错误: {ex}");
+        }
+    }
+
+    private async Task LoadExifAfterImageAsync(StorageFile file)
+    {
+        try
+        {
+            _isLoadingExif = true;
+            await ViewModel.LoadFileDetailsAsync(file);
+            _isLoadingExif = false;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadExifAfterImageAsync error: {ex}");
+            _isLoadingExif = false;
         }
     }
 

@@ -19,19 +19,34 @@ public partial class ImageViewerViewModel : ObservableRecipient
     private ImageFileInfo? _currentImage;
 
     [ObservableProperty]
-    private string _imageName = string.Empty;
+    private string _imageName = "None";
 
     [ObservableProperty]
-    private string _resolution = string.Empty;
+    private string _resolution = "None";
 
     [ObservableProperty]
-    private string _fileSize = string.Empty;
+    private string _fileSize = "None";
 
     [ObservableProperty]
     private DateTimeOffset? _captureDate;
 
     [ObservableProperty]
     private TimeSpan? _captureTime;
+
+    [ObservableProperty]
+    private string _formattedDateTime = "/";
+
+    [ObservableProperty]
+    private string _captureYear = "/";
+
+    [ObservableProperty]
+    private string _captureMonth = "/";
+
+    [ObservableProperty]
+    private string _captureDay = "/";
+
+    [ObservableProperty]
+    private string _captureTimeOfDay = "/";
 
     [ObservableProperty]
     private bool _hasDeviceInfo;
@@ -46,43 +61,46 @@ public partial class ImageViewerViewModel : ObservableRecipient
     private uint _rating;
 
     [ObservableProperty]
-    private string _ratingSource = string.Empty;
+    private string _ratingSource = "None";
 
     [ObservableProperty]
-    private string _dpi = string.Empty;
+    private string _dpi = "None";
 
     [ObservableProperty]
-    private string _bitDepth = string.Empty;
+    private string _bitDepth = "None";
 
     [ObservableProperty]
-    private string _lensModel = string.Empty;
+    private string _lensModel = "None";
 
     [ObservableProperty]
-    private string _focalLength = string.Empty;
+    private string _focalLength = "None";
 
     [ObservableProperty]
-    private string _exposureTime = string.Empty;
+    private string _exposureTime = "None";
 
     [ObservableProperty]
-    private string _fNumber = string.Empty;
+    private string _fNumber = "None";
 
     [ObservableProperty]
-    private string _iso = string.Empty;
+    private string _iso = "None";
 
     [ObservableProperty]
-    private string _exposureProgram = string.Empty;
+    private string _exposureProgram = "None";
 
     [ObservableProperty]
-    private string _exposureBias = string.Empty;
+    private string _exposureBias = "None";
 
     [ObservableProperty]
-    private string _flash = string.Empty;
+    private string _flash = "None";
 
     [ObservableProperty]
-    private string _fileFormat = string.Empty;
+    private string _fileFormat = "None";
 
     [ObservableProperty]
     private string _fileFormatColor = "Gray";
+
+    [ObservableProperty]
+    private bool _isLoadingExif = false;
 
     public ImageViewerViewModel(IExifService exifService, RatingService ratingService)
     {
@@ -90,7 +108,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
         _ratingService = ratingService;
     }
 
-    public async Task LoadFileInfoAsync(ImageFileInfo imageFileInfo)
+    public void SetBasicInfo(ImageFileInfo imageFileInfo)
     {
         if (imageFileInfo == null)
             return;
@@ -102,13 +120,19 @@ public partial class ImageViewerViewModel : ObservableRecipient
         RatingSource = imageFileInfo.RatingSource.ToString();
 
         SetFileFormatInfo(imageFileInfo.ImageName);
+        LoadFilePaths(imageFileInfo);
+
+        IsLoadingExif = true;
+    }
+
+    public async Task LoadFileInfoAsync(ImageFileInfo imageFileInfo)
+    {
+        SetBasicInfo(imageFileInfo);
 
         if (imageFileInfo.ImageFile != null)
         {
             await LoadFileDetailsAsync(imageFileInfo.ImageFile);
         }
-
-        LoadFilePaths(imageFileInfo);
     }
 
     private void SetFileFormatInfo(string fileName)
@@ -140,7 +164,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
         };
     }
 
-    private async Task LoadFileDetailsAsync(StorageFile file)
+    public async Task LoadFileDetailsAsync(StorageFile file)
     {
         try
         {
@@ -160,16 +184,37 @@ public partial class ImageViewerViewModel : ObservableRecipient
             {
                 CaptureDate = exifData.DateTaken.Value.Date;
                 CaptureTime = exifData.DateTaken.Value.TimeOfDay;
+                FormattedDateTime = $"{exifData.DateTaken.Value:yyyy年 M月 d日 HH:mm}";
+                CaptureYear = $"{exifData.DateTaken.Value:yyyy年}";
+                CaptureMonth = $"{exifData.DateTaken.Value:M月}";
+                CaptureDay = $"{exifData.DateTaken.Value:d日}";
+                CaptureTimeOfDay = $"{exifData.DateTaken.Value:HH:mm}";
+            }
+            else
+            {
+                FormattedDateTime = "None";
+                CaptureYear = "None";
+                CaptureMonth = "None";
+                CaptureDay = "None";
+                CaptureTimeOfDay = "None";
             }
 
             if (exifData.DpiX.HasValue && exifData.DpiY.HasValue)
             {
                 Dpi = $"{exifData.DpiX.Value:F0} x {exifData.DpiY.Value:F0}";
             }
+            else
+            {
+                Dpi = "None";
+            }
 
             if (exifData.BitDepth.HasValue)
             {
                 BitDepth = $"{exifData.BitDepth.Value} bit";
+            }
+            else
+            {
+                BitDepth = "None";
             }
 
             UpdateDeviceInfo(exifData);
@@ -177,6 +222,10 @@ public partial class ImageViewerViewModel : ObservableRecipient
         catch (Exception ex)
         {
             Debug.WriteLine($"LoadFileDetailsAsync - EXIF读取错误: {ex}");
+        }
+        finally
+        {
+            IsLoadingExif = false;
         }
     }
 
@@ -207,6 +256,10 @@ public partial class ImageViewerViewModel : ObservableRecipient
         {
             LensModel = exifData.LensModel;
         }
+        else
+        {
+            LensModel = "None";
+        }
 
         if (exifData.FocalLength.HasValue)
         {
@@ -220,35 +273,63 @@ public partial class ImageViewerViewModel : ObservableRecipient
                 FocalLength = focalLength;
             }
         }
+        else
+        {
+            FocalLength = "None";
+        }
 
         if (exifData.ExposureTime.HasValue)
         {
             ExposureTime = exifData.GetFormattedExposureTime();
+        }
+        else
+        {
+            ExposureTime = "None";
         }
 
         if (exifData.FNumber.HasValue)
         {
             FNumber = exifData.GetFormattedFNumber();
         }
+        else
+        {
+            FNumber = "None";
+        }
 
         if (exifData.ISOSpeed.HasValue)
         {
             Iso = $"ISO {exifData.ISOSpeed.Value}";
+        }
+        else
+        {
+            Iso = "None";
         }
 
         if (exifData.ExposureProgram.HasValue)
         {
             ExposureProgram = exifData.GetFormattedExposureProgram();
         }
+        else
+        {
+            ExposureProgram = "None";
+        }
 
         if (exifData.ExposureBias.HasValue)
         {
             ExposureBias = $"{(exifData.ExposureBias.Value >= 0 ? "+" : "")}{exifData.ExposureBias.Value:F1} EV";
         }
+        else
+        {
+            ExposureBias = "None";
+        }
 
         if (exifData.Flash.HasValue)
         {
             Flash = exifData.GetFormattedFlash();
+        }
+        else
+        {
+            Flash = "None";
         }
     }
 
@@ -418,27 +499,32 @@ public partial class ImageViewerViewModel : ObservableRecipient
     public void Clear()
     {
         _currentImage = null;
-        ImageName = string.Empty;
-        Resolution = string.Empty;
-        FileSize = string.Empty;
+        ImageName = "None";
+        Resolution = "None";
+        FileSize = "None";
         CaptureDate = null;
         CaptureTime = null;
+        FormattedDateTime = "None";
+        CaptureYear = "None";
+        CaptureMonth = "None";
+        CaptureDay = "None";
+        CaptureTimeOfDay = "None";
         HasDeviceInfo = false;
         DeviceInfo.Clear();
         FilePaths.Clear();
         Rating = 0;
-        RatingSource = string.Empty;
-        Dpi = string.Empty;
-        BitDepth = string.Empty;
-        LensModel = string.Empty;
-        FocalLength = string.Empty;
-        ExposureTime = string.Empty;
-        FNumber = string.Empty;
-        Iso = string.Empty;
-        ExposureProgram = string.Empty;
-        ExposureBias = string.Empty;
-        Flash = string.Empty;
-        FileFormat = string.Empty;
+        RatingSource = "None";
+        Dpi = "None";
+        BitDepth = "None";
+        LensModel = "None";
+        FocalLength = "None";
+        ExposureTime = "None";
+        FNumber = "None";
+        Iso = "None";
+        ExposureProgram = "None";
+        ExposureBias = "None";
+        Flash = "None";
+        FileFormat = "None";
         FileFormatColor = "Gray";
     }
 }
