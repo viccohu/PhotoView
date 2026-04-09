@@ -64,4 +64,9 @@ public sealed partial class ShimmerControl : UserControl
             ShimmerAnimation.Stop();
         }
     }
+
+    private void RootGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        RootClip.Rect = new Windows.Foundation.Rect(0, 0, e.NewSize.Width, e.NewSize.Height);
+    }
 }

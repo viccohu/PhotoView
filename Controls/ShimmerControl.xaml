@@ -19,7 +19,11 @@
         </Storyboard>
     </UserControl.Resources>
 
-    <Grid x:Name="RootGrid">
+    <Grid x:Name="RootGrid" SizeChanged="RootGrid_SizeChanged">
+        <Grid.Clip>
+            <RectangleGeometry x:Name="RootClip"/>
+        </Grid.Clip>
+        
         <ContentPresenter
             x:Name="ContentPresenter"
             Content="{x:Bind Content, Mode=OneWay}"/>
