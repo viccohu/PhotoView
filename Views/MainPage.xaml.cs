@@ -107,9 +107,15 @@ public sealed partial class MainPage : Page
 
             // 清理资源
             _currentViewer.Closed -= ImageViewer_Closed;
+            _currentViewer.ViewModel.RatingUpdated -= ViewModel_RatingUpdated;
             ViewerContainer.Content = null;
             _currentViewer = null;
         }
+    }
+
+    private void ViewModel_RatingUpdated(object? sender, (ImageFileInfo Image, uint Rating) e)
+    {
+        System.Diagnostics.Debug.WriteLine($"[MainPage] ViewModel_RatingUpdated: 图片 {e.Image.ImageName} 评级已更新为 {e.Rating}");
     }
 
     private async void ImageGridView_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
@@ -125,6 +131,9 @@ public sealed partial class MainPage : Page
 
             // 订阅关闭事件
             newViewer.Closed += ImageViewer_Closed;
+            
+            // 订阅评级更新事件
+            newViewer.ViewModel.RatingUpdated += ViewModel_RatingUpdated;
 
             newViewer.PrepareContent(imageFileInfo);
 
@@ -882,6 +891,15 @@ public sealed partial class MainPage : Page
             {
                 System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_KeyDown: 阻止了方向键 {e.Key}");
                 e.Handled = true;
+            }
+            else if (e.Key >= VirtualKey.Number0 && e.Key <= VirtualKey.Number5)
+            {
+                // 处理数字键评级，传递给 ImageViewerControl
+                System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_KeyDown: 处理数字键评级 {e.Key}");
+                e.Handled = true;
+                
+                // 调用 ImageViewerControl 的 HandleRatingKey 方法
+                _currentViewer.HandleRatingKey(e.Key);
             }
             else
             {

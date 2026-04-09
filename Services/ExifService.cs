@@ -102,16 +102,23 @@ public class ExifService : IExifService
                 if (properties.TryGetValue("System.Photo.DateTaken", out var dateProp) && dateProp.Value is DateTime dateTaken)
                 {
                     exifData.DateTaken = dateTaken;
+                    System.Diagnostics.Debug.WriteLine($"[ExifService] DateTaken: {dateTaken}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ExifService] DateTaken: 未找到");
                 }
 
                 if (properties.TryGetValue("System.Photo.CameraManufacturer", out var manuProp) && manuProp.Value is string manufacturer)
                 {
                     exifData.CameraManufacturer = manufacturer;
+                    System.Diagnostics.Debug.WriteLine($"[ExifService] CameraManufacturer: {manufacturer}");
                 }
 
                 if (properties.TryGetValue("System.Photo.CameraModel", out var modelProp) && modelProp.Value is string model)
                 {
                     exifData.CameraModel = model;
+                    System.Diagnostics.Debug.WriteLine($"[ExifService] CameraModel: {model}");
                 }
 
                 if (properties.TryGetValue("System.Photo.Orientation", out var orientProp) && orientProp.Value is ushort orientation)
@@ -122,26 +129,47 @@ public class ExifService : IExifService
                 if (properties.TryGetValue("System.Photo.ExposureTime", out var expProp) && expProp.Value is double exposureTime)
                 {
                     exifData.ExposureTime = exposureTime;
+                    System.Diagnostics.Debug.WriteLine($"[ExifService] ExposureTime: {exposureTime}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ExifService] ExposureTime: 未找到");
                 }
 
                 if (properties.TryGetValue("System.Photo.FNumber", out var fProp) && fProp.Value is double fNumber)
                 {
                     exifData.FNumber = fNumber;
+                    System.Diagnostics.Debug.WriteLine($"[ExifService] FNumber: {fNumber}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ExifService] FNumber: 未找到");
                 }
 
                 if (properties.TryGetValue("System.Photo.ISOSpeed", out var isoProp) && isoProp.Value is uint isoSpeed)
                 {
                     exifData.ISOSpeed = isoSpeed;
+                    System.Diagnostics.Debug.WriteLine($"[ExifService] ISOSpeed: {isoSpeed}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ExifService] ISOSpeed: 未找到");
                 }
 
                 if (properties.TryGetValue("System.Photo.FocalLength", out var flProp) && flProp.Value is double focalLength)
                 {
                     exifData.FocalLength = focalLength;
+                    System.Diagnostics.Debug.WriteLine($"[ExifService] FocalLength: {focalLength}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ExifService] FocalLength: 未找到");
                 }
 
                 if (properties.TryGetValue("System.Photo.FocalLengthInFilm", out var flfProp) && flfProp.Value is double focalLengthInFilm)
                 {
                     exifData.FocalLengthInFilm = focalLengthInFilm;
+                    System.Diagnostics.Debug.WriteLine($"[ExifService] FocalLengthInFilm: {focalLengthInFilm}");
                 }
 
                 if (properties.TryGetValue("System.Photo.ExposureProgram", out var epProp) && epProp.Value is ushort exposureProgram)
@@ -177,6 +205,11 @@ public class ExifService : IExifService
                 if (properties.TryGetValue("System.Photo.LensModel", out var lmProp) && lmProp.Value is string lensModel)
                 {
                     exifData.LensModel = lensModel;
+                    System.Diagnostics.Debug.WriteLine($"[ExifService] LensModel: {lensModel}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ExifService] LensModel: 未找到");
                 }
             }
             catch (Exception ex)

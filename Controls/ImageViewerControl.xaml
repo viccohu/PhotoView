@@ -87,9 +87,7 @@
                 Padding="12"
                 Tapped="InfoPanel_Tapped">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <controls:ShimmerControl IsLoading="{Binding IsLoadingExif, Mode=OneWay}">
-                        <controls:ShimmerControl.Content>
-                            <StackPanel Orientation="Vertical" Spacing="16" Padding="16,12,16,12">
+                    <StackPanel Orientation="Vertical" Spacing="16" Padding="16,12,16,12">
 
                             <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,0,0,8">
                                 <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE91B;" FontSize="16" VerticalAlignment="Center" />
@@ -104,26 +102,30 @@
 
                             <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,0,0,16">
                                 <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE787;" FontSize="16" VerticalAlignment="Center" />
-                                <Grid ColumnSpacing="0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="70"/>
-                                        <ColumnDefinition Width="70"/>
-                                        <ColumnDefinition Width="70"/>
-                                        <ColumnDefinition Width="80"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Border Grid.Column="0" CornerRadius="4,0,0,4" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                            <TextBlock Text="{Binding CaptureYear, Mode=OneWay}" Style="{StaticResource BodyTextBlockStyle}" HorizontalAlignment="Center" />
-                                    </Border>
-                                        <Border Grid.Column="1" CornerRadius="0" Margin="1,0,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                            <TextBlock Text="{Binding CaptureMonth, Mode=OneWay}" Style="{StaticResource BodyTextBlockStyle}" HorizontalAlignment="Center" />
-                                    </Border>
-                                        <Border Grid.Column="2" CornerRadius="0" Margin="1,0,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                            <TextBlock Text="{Binding CaptureDay, Mode=OneWay}" Style="{StaticResource BodyTextBlockStyle}" HorizontalAlignment="Center" />
-                                    </Border>
-                                        <Border Grid.Column="3" CornerRadius="0,4,4,0" Margin="1,0,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                            <TextBlock Text="{Binding CaptureTimeOfDay, Mode=OneWay}" Style="{StaticResource BodyTextBlockStyle}" HorizontalAlignment="Center" />
-                                    </Border>
-                                </Grid>
+                                <controls:ShimmerControl IsLoading="{Binding IsLoadingExif, Mode=OneWay}">
+                                    <controls:ShimmerControl.Content>
+                                        <Grid ColumnSpacing="0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="70"/>
+                                                <ColumnDefinition Width="70"/>
+                                                <ColumnDefinition Width="70"/>
+                                                <ColumnDefinition Width="80"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" CornerRadius="4,0,0,4" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
+                                                    <TextBlock Text="{Binding CaptureYear, Mode=OneWay}" Style="{StaticResource BodyTextBlockStyle}" HorizontalAlignment="Center" />
+                                            </Border>
+                                                <Border Grid.Column="1" CornerRadius="0" Margin="1,0,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
+                                                    <TextBlock Text="{Binding CaptureMonth, Mode=OneWay}" Style="{StaticResource BodyTextBlockStyle}" HorizontalAlignment="Center" />
+                                            </Border>
+                                                <Border Grid.Column="2" CornerRadius="0" Margin="1,0,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
+                                                    <TextBlock Text="{Binding CaptureDay, Mode=OneWay}" Style="{StaticResource BodyTextBlockStyle}" HorizontalAlignment="Center" />
+                                            </Border>
+                                                <Border Grid.Column="3" CornerRadius="0,4,4,0" Margin="1,0,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
+                                                    <TextBlock Text="{Binding CaptureTimeOfDay, Mode=OneWay}" Style="{StaticResource BodyTextBlockStyle}" HorizontalAlignment="Center" />
+                                            </Border>
+                                        </Grid>
+                                    </controls:ShimmerControl.Content>
+                                </controls:ShimmerControl>
                             </StackPanel>
 
                             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,0">
@@ -141,37 +143,55 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-                                    <Border Grid.Row="0" Grid.Column="0" CornerRadius="4" Margin="1,0,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
+                                <Border Grid.Row="0" Grid.Column="0" CornerRadius="4" Margin="1,0,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
                                     <StackPanel Orientation="Vertical" Spacing="6">
                                         <TextBlock Text="尺寸" Opacity="0.7" HorizontalAlignment="Center" Style="{StaticResource BodyTextBlockStyle}" />
                                         <TextBlock Text="{Binding Resolution, Mode=OneWay}"  HorizontalAlignment="Center"  Style="{StaticResource CaptionTextBlockStyle}" />
                                     </StackPanel>
                                 </Border>
-                                <Border Grid.Row="0" Grid.Column="1" CornerRadius="4" Margin="1,0,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                    <StackPanel Orientation="Vertical" Spacing="6">
-                                            <TextBlock Text="大小" Style="{StaticResource BodyTextBlockStyle}" Opacity="0.7" HorizontalAlignment="Center" />
-                                            <TextBlock Text="{Binding FileSize, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                    </StackPanel>
+                                <Border Grid.Row="0" Grid.Column="1" CornerRadius="4" Margin="1,0,0,0">
+                                    <controls:ShimmerControl IsLoading="{Binding IsLoadingExif, Mode=OneWay}">
+                                        <controls:ShimmerControl.Content>
+                                            <Border CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
+                                                <StackPanel Orientation="Vertical" Spacing="6">
+                                                        <TextBlock Text="大小" Style="{StaticResource BodyTextBlockStyle}" Opacity="0.7" HorizontalAlignment="Center" />
+                                                        <TextBlock Text="{Binding FileSize, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                                </StackPanel>
+                                            </Border>
+                                        </controls:ShimmerControl.Content>
+                                    </controls:ShimmerControl>
                                 </Border>
-                                    <Border Grid.Row="0" Grid.Column="2" CornerRadius="4" Margin="1,0,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                    <StackPanel Orientation="Vertical" Spacing="6">
-                                            <TextBlock Text="DPI" Style="{StaticResource BodyTextBlockStyle}" Opacity="0.7" HorizontalAlignment="Center" />
-                                            <TextBlock Text="{Binding Dpi, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                    </StackPanel>
+                                <Border Grid.Row="0" Grid.Column="2" CornerRadius="4" Margin="1,0,0,0">
+                                    <controls:ShimmerControl IsLoading="{Binding IsLoadingExif, Mode=OneWay}">
+                                        <controls:ShimmerControl.Content>
+                                            <Border CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
+                                                <StackPanel Orientation="Vertical" Spacing="6">
+                                                        <TextBlock Text="DPI" Style="{StaticResource BodyTextBlockStyle}" Opacity="0.7" HorizontalAlignment="Center" />
+                                                        <TextBlock Text="{Binding Dpi, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                                </StackPanel>
+                                            </Border>
+                                        </controls:ShimmerControl.Content>
+                                    </controls:ShimmerControl>
                                 </Border>
-                                    <Border Grid.Row="1" Grid.Column="0" CornerRadius="4" Margin="1,1,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                    <StackPanel Orientation="Vertical" Spacing="6">
-                                            <TextBlock Text="色深" Style="{StaticResource BodyTextBlockStyle}" Opacity="0.7" HorizontalAlignment="Center" />
-                                            <TextBlock Text="{Binding BitDepth, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                    </StackPanel>
+                                <Border Grid.Row="1" Grid.Column="0" CornerRadius="4" Margin="1,1,0,0">
+                                    <controls:ShimmerControl IsLoading="{Binding IsLoadingExif, Mode=OneWay}">
+                                        <controls:ShimmerControl.Content>
+                                            <Border CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
+                                                <StackPanel Orientation="Vertical" Spacing="6">
+                                                        <TextBlock Text="色深" Style="{StaticResource BodyTextBlockStyle}" Opacity="0.7" HorizontalAlignment="Center" />
+                                                        <TextBlock Text="{Binding BitDepth, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                                </StackPanel>
+                                            </Border>
+                                        </controls:ShimmerControl.Content>
+                                    </controls:ShimmerControl>
                                 </Border>
-                                    <Border Grid.Row="1" Grid.Column="1" CornerRadius="4" Margin="1,1,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
+                                <Border Grid.Row="1" Grid.Column="1" CornerRadius="4" Margin="1,1,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
                                     <StackPanel Orientation="Vertical" Spacing="6">
                                             <TextBlock Text="评级来源" Style="{StaticResource BodyTextBlockStyle}" Opacity="0.7" HorizontalAlignment="Center" />
                                             <TextBlock Text="{Binding RatingSource, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
                                     </StackPanel>
                                 </Border>
-                                    <Border Grid.Row="1" Grid.Column="2" CornerRadius="4" Margin="1,1,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
+                                <Border Grid.Row="1" Grid.Column="2" CornerRadius="4" Margin="1,1,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
                                     <StackPanel Orientation="Vertical" Spacing="6">
                                         <TextBlock Text="" FontSize="14" Opacity="0.7" HorizontalAlignment="Center" />
                                             <TextBlock Text="" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
@@ -194,52 +214,88 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-                                    <Border Grid.Row="0" Grid.Column="0" CornerRadius="4" Margin="1,0,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                    <StackPanel Orientation="Vertical" Spacing="6">
-                                        <TextBlock Text="相机" FontSize="14" Opacity="0.7" HorizontalAlignment="Center" />
-                                        <ItemsControl ItemsSource="{Binding DeviceInfo, Mode=OneWay}" HorizontalAlignment="Center">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <StackPanel Orientation="Horizontal" Spacing="8"/>
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate x:DataType="x:String">
-                                                        <TextBlock Text="{x:Bind}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </StackPanel>
+                                <Border Grid.Row="0" Grid.Column="0" CornerRadius="4" Margin="1,0,0,0">
+                                    <controls:ShimmerControl IsLoading="{Binding IsLoadingExif, Mode=OneWay}">
+                                        <controls:ShimmerControl.Content>
+                                            <Border CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
+                                                <StackPanel Orientation="Vertical" Spacing="6">
+                                                    <TextBlock Text="相机" FontSize="14" Opacity="0.7" HorizontalAlignment="Center" />
+                                                    <ItemsControl ItemsSource="{Binding DeviceInfo, Mode=OneWay}" HorizontalAlignment="Center">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <StackPanel Orientation="Horizontal" Spacing="8"/>
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate x:DataType="x:String">
+                                                                    <TextBlock Text="{x:Bind}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </Border>
+                                        </controls:ShimmerControl.Content>
+                                    </controls:ShimmerControl>
                                 </Border>
-                                    <Border Grid.Row="0" Grid.Column="1" CornerRadius="4" Margin="1,0,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                    <StackPanel Orientation="Vertical" Spacing="6">
-                                        <TextBlock Text="镜头" FontSize="14" Opacity="0.7" HorizontalAlignment="Center" />
-                                            <TextBlock Text="{Binding LensModel, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" HorizontalAlignment="Center" />
-                                    </StackPanel>
+                                <Border Grid.Row="0" Grid.Column="1" CornerRadius="4" Margin="1,0,0,0">
+                                    <controls:ShimmerControl IsLoading="{Binding IsLoadingExif, Mode=OneWay}">
+                                        <controls:ShimmerControl.Content>
+                                            <Border CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
+                                                <StackPanel Orientation="Vertical" Spacing="6">
+                                                    <TextBlock Text="镜头" FontSize="14" Opacity="0.7" HorizontalAlignment="Center" />
+                                                        <TextBlock Text="{Binding LensModel, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" HorizontalAlignment="Center" />
+                                                </StackPanel>
+                                            </Border>
+                                        </controls:ShimmerControl.Content>
+                                    </controls:ShimmerControl>
                                 </Border>
-                                    <Border Grid.Row="0" Grid.Column="2" CornerRadius="4" Margin="1,0,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                    <StackPanel Orientation="Vertical" Spacing="6">
-                                        <TextBlock Text="焦距" FontSize="14" Opacity="0.7" HorizontalAlignment="Center" />
-                                            <TextBlock Text="{Binding FocalLength, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                    </StackPanel>
+                                <Border Grid.Row="0" Grid.Column="2" CornerRadius="4" Margin="1,0,0,0">
+                                    <controls:ShimmerControl IsLoading="{Binding IsLoadingExif, Mode=OneWay}">
+                                        <controls:ShimmerControl.Content>
+                                            <Border CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
+                                                <StackPanel Orientation="Vertical" Spacing="6">
+                                                    <TextBlock Text="焦距" FontSize="14" Opacity="0.7" HorizontalAlignment="Center" />
+                                                        <TextBlock Text="{Binding FocalLength, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                                </StackPanel>
+                                            </Border>
+                                        </controls:ShimmerControl.Content>
+                                    </controls:ShimmerControl>
                                 </Border>
-                                    <Border Grid.Row="1" Grid.Column="0" CornerRadius="4" Margin="1,1,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                    <StackPanel Orientation="Vertical" Spacing="6">
-                                        <TextBlock Text="快门" FontSize="14" Opacity="0.7" HorizontalAlignment="Center" />
-                                            <TextBlock Text="{Binding ExposureTime, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                    </StackPanel>
+                                <Border Grid.Row="1" Grid.Column="0" CornerRadius="4" Margin="1,1,0,0">
+                                    <controls:ShimmerControl IsLoading="{Binding IsLoadingExif, Mode=OneWay}">
+                                        <controls:ShimmerControl.Content>
+                                            <Border CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
+                                                <StackPanel Orientation="Vertical" Spacing="6">
+                                                    <TextBlock Text="快门" FontSize="14" Opacity="0.7" HorizontalAlignment="Center" />
+                                                        <TextBlock Text="{Binding ExposureTime, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                                </StackPanel>
+                                            </Border>
+                                        </controls:ShimmerControl.Content>
+                                    </controls:ShimmerControl>
                                 </Border>
-                                    <Border Grid.Row="1" Grid.Column="1" CornerRadius="4" Margin="1,1,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                    <StackPanel Orientation="Vertical" Spacing="6">
-                                        <TextBlock Text="光圈" FontSize="14" Opacity="0.7" HorizontalAlignment="Center" />
-                                            <TextBlock Text="{Binding FNumber, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                    </StackPanel>
+                                <Border Grid.Row="1" Grid.Column="1" CornerRadius="4" Margin="1,1,0,0">
+                                    <controls:ShimmerControl IsLoading="{Binding IsLoadingExif, Mode=OneWay}">
+                                        <controls:ShimmerControl.Content>
+                                            <Border CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
+                                                <StackPanel Orientation="Vertical" Spacing="6">
+                                                    <TextBlock Text="光圈" FontSize="14" Opacity="0.7" HorizontalAlignment="Center" />
+                                                        <TextBlock Text="{Binding FNumber, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                                </StackPanel>
+                                            </Border>
+                                        </controls:ShimmerControl.Content>
+                                    </controls:ShimmerControl>
                                 </Border>
-                                    <Border Grid.Row="1" Grid.Column="2" CornerRadius="4" Margin="1,1,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                    <StackPanel Orientation="Vertical" Spacing="6">
-                                        <TextBlock Text="ISO" FontSize="14" Opacity="0.7" HorizontalAlignment="Center" />
-                                            <TextBlock Text="{Binding Iso, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
-                                    </StackPanel>
+                                <Border Grid.Row="1" Grid.Column="2" CornerRadius="4" Margin="1,1,0,0">
+                                    <controls:ShimmerControl IsLoading="{Binding IsLoadingExif, Mode=OneWay}">
+                                        <controls:ShimmerControl.Content>
+                                            <Border CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
+                                                <StackPanel Orientation="Vertical" Spacing="6">
+                                                    <TextBlock Text="ISO" FontSize="14" Opacity="0.7" HorizontalAlignment="Center" />
+                                                        <TextBlock Text="{Binding Iso, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center" />
+                                                </StackPanel>
+                                            </Border>
+                                        </controls:ShimmerControl.Content>
+                                    </controls:ShimmerControl>
                                 </Border>
                             </Grid>
 
@@ -296,161 +352,7 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </StackPanel>
-                        </StackPanel>
-                        </controls:ShimmerControl.Content>
-                        <controls:ShimmerControl.ShimmerContent>
-                            <StackPanel Orientation="Vertical" Spacing="16" Padding="16,12,16,12">
-
-                            <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,0,0,8">
-                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE91B;" FontSize="16" VerticalAlignment="Center" Opacity="0.5"/>
-                                <Rectangle Width="200" Height="24"  Fill="{ThemeResource SubtleFillColorSecondaryBrush}"/>
-                            </StackPanel>
-
-                            <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,0,0,8">
-                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE728;" FontSize="16" VerticalAlignment="Center" Opacity="0.5"/>
-                                <Rectangle Width="140" Height="24"  Fill="{ThemeResource SubtleFillColorSecondaryBrush}"/>
-                            </StackPanel>
-
-                            <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,0,0,16">
-                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE787;" FontSize="16" VerticalAlignment="Center" Opacity="0.5"/>
-                                <Grid ColumnSpacing="0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="70"/>
-                                        <ColumnDefinition Width="70"/>
-                                        <ColumnDefinition Width="70"/>
-                                        <ColumnDefinition Width="80"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Border Grid.Column="0" CornerRadius="4,0,0,4" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                        <Rectangle Width="40" Height="20" HorizontalAlignment="Center"/>
-                                    </Border>
-                                    <Border Grid.Column="1" CornerRadius="0" Margin="1,0,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                        <Rectangle Width="40" Height="20" HorizontalAlignment="Center"/>
-                                    </Border>
-                                    <Border Grid.Column="2" CornerRadius="0" Margin="1,0,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                        <Rectangle Width="40" Height="20" HorizontalAlignment="Center"/>
-                                    </Border>
-                                    <Border Grid.Column="3" CornerRadius="0,4,4,0" Margin="1,0,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                        <Rectangle Width="50" Height="20" HorizontalAlignment="Center"/>
-                                    </Border>
-                                </Grid>
-                            </StackPanel>
-
-                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,0">
-                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE97C;" FontSize="16" VerticalAlignment="Center" Opacity="0.5"/>
-                                <TextBlock Text="文件信息" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" Opacity="0.5"/>
-                            </StackPanel>
-
-                            <Grid ColumnSpacing="0" RowSpacing="0" Margin="0,0,0,16">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-                                <Border Grid.Row="0" Grid.Column="0" CornerRadius="4" Margin="1,0,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                    <StackPanel Orientation="Vertical" Spacing="6">
-                                        <Rectangle Width="30" Height="14" HorizontalAlignment="Center"/>
-                                        <Rectangle Width="60" Height="18" HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Row="0" Grid.Column="1" CornerRadius="4" Margin="1,0,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                    <StackPanel Orientation="Vertical" Spacing="6">
-                                        <Rectangle Width="30" Height="14" HorizontalAlignment="Center"/>
-                                        <Rectangle Width="40" Height="18" HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Row="0" Grid.Column="2" CornerRadius="4" Margin="1,0,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                    <StackPanel Orientation="Vertical" Spacing="6">
-                                        <Rectangle Width="25" Height="14" HorizontalAlignment="Center"/>
-                                        <Rectangle Width="30" Height="18" HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Row="1" Grid.Column="0" CornerRadius="4" Margin="1,1,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                    <StackPanel Orientation="Vertical" Spacing="6">
-                                        <Rectangle Width="30" Height="14" HorizontalAlignment="Center"/>
-                                        <Rectangle Width="40" Height="18" HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Row="1" Grid.Column="1" CornerRadius="4" Margin="1,1,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                    <StackPanel Orientation="Vertical" Spacing="6">
-                                        <Rectangle Width="55" Height="14" HorizontalAlignment="Center"/>
-                                        <Rectangle Width="45" Height="18" HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Row="1" Grid.Column="2" CornerRadius="4" Margin="1,1,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                    <StackPanel Orientation="Vertical" Spacing="6">
-                                        <Rectangle Width="1" Height="14" HorizontalAlignment="Center"/>
-                                        <Rectangle Width="1" Height="18" HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
-
-                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,0">
-                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE722;" FontSize="16" VerticalAlignment="Center" Opacity="0.5"/>
-                                <TextBlock Text="设备信息" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" Opacity="0.5"/>
-                            </StackPanel>
-
-                            <Grid ColumnSpacing="0" RowSpacing="0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-                                <Border Grid.Row="0" Grid.Column="0" CornerRadius="4" Margin="1,0,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                    <StackPanel Orientation="Vertical" Spacing="6">
-                                        <Rectangle Width="35" Height="14" HorizontalAlignment="Center"/>
-                                        <Rectangle Width="70" Height="18" HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Row="0" Grid.Column="1" CornerRadius="4" Margin="1,0,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                    <StackPanel Orientation="Vertical" Spacing="6">
-                                        <Rectangle Width="30" Height="14" HorizontalAlignment="Center"/>
-                                        <Rectangle Width="70" Height="18" HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Row="0" Grid.Column="2" CornerRadius="4" Margin="1,0,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                    <StackPanel Orientation="Vertical" Spacing="6">
-                                        <Rectangle Width="30" Height="14" HorizontalAlignment="Center"/>
-                                        <Rectangle Width="50" Height="18" HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Row="1" Grid.Column="0" CornerRadius="4" Margin="1,1,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                    <StackPanel Orientation="Vertical" Spacing="6">
-                                        <Rectangle Width="30" Height="14" HorizontalAlignment="Center"/>
-                                        <Rectangle Width="45" Height="18" HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Row="1" Grid.Column="1" CornerRadius="4" Margin="1,1,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                    <StackPanel Orientation="Vertical" Spacing="6">
-                                        <Rectangle Width="30" Height="14" HorizontalAlignment="Center"/>
-                                        <Rectangle Width="40" Height="18" HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Row="1" Grid.Column="2" CornerRadius="4" Margin="1,1,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                                    <StackPanel Orientation="Vertical" Spacing="6">
-                                        <Rectangle Width="25" Height="14" HorizontalAlignment="Center"/>
-                                        <Rectangle Width="40" Height="18" HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
-
-                            <StackPanel Spacing="8">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE97C;" FontSize="16" VerticalAlignment="Center" Opacity="0.5"/>
-                                    <TextBlock Text="文件路径" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" Opacity="0.5"/>
-                                </StackPanel>
-                                <Rectangle Margin="24,0,0,0" Height="40" Fill="{ThemeResource SubtleFillColorSecondaryBrush}"/>
-                            </StackPanel>
-                        </StackPanel>
-                        </controls:ShimmerControl.ShimmerContent>
-                    </controls:ShimmerControl>
+                    </StackPanel>
                 </ScrollViewer>
             </Border>
         </Grid>

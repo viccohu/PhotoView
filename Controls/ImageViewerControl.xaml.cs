@@ -288,6 +288,10 @@ public sealed partial class ImageViewerControl : UserControl
 
         System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 动画完成");
 
+        // 获取焦点，确保键盘事件能够被正确处理
+        this.Focus(FocusState.Programmatic);
+        System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 已设置焦点");
+
         _hasShown = true;
         await SwitchToViewerLayerAsync();
     }
@@ -449,6 +453,43 @@ public sealed partial class ImageViewerControl : UserControl
 
         ConnectedAnimationService.GetForCurrentView().PrepareToAnimate("BackConnectedAnimation", AnimationImage);
         Closed?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void HandleRatingKey(Windows.System.VirtualKey key)
+    {
+        System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] HandleRatingKey: 处理数字键 {key}");
+        
+        if (key >= Windows.System.VirtualKey.Number1 && key <= Windows.System.VirtualKey.Number5)
+        {
+            // 处理数字键评级
+            uint rating = (uint)(key - Windows.System.VirtualKey.Number1 + 1);
+            System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] HandleRatingKey: 数字键评级, rating={rating}");
+            
+            if (ViewModel != null)
+            {
+                _ = ViewModel.SetRatingCommand.ExecuteAsync(rating);
+                System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] HandleRatingKey: 执行了评级命令");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] HandleRatingKey: ViewModel 为 null，无法执行评级");
+            }
+        }
+        else if (key == Windows.System.VirtualKey.Number0)
+        {
+            // 数字0清除评级
+            System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] HandleRatingKey: 数字键清除评级");
+            
+            if (ViewModel != null)
+            {
+                _ = ViewModel.SetRatingCommand.ExecuteAsync(0);
+                System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] HandleRatingKey: 执行了清除评级命令");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] HandleRatingKey: ViewModel 为 null，无法清除评级");
+            }
+        }
     }
 
     public async Task CompleteCloseAsync()

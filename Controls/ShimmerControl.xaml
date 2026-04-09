@@ -13,8 +13,8 @@
             <DoubleAnimation
                 Storyboard.TargetName="ShimmerTranslate"
                 Storyboard.TargetProperty="X"
-                From="-500"
-                To="500"
+                From="-300"
+                To="300"
                 Duration="0:0:1.5"/>
         </Storyboard>
     </UserControl.Resources>
@@ -24,25 +24,22 @@
             x:Name="ContentPresenter"
             Content="{x:Bind Content, Mode=OneWay}"/>
 
-        <Grid x:Name="ShimmerGrid" Visibility="Collapsed">
-            <ContentPresenter
-                x:Name="ShimmerContentPresenter"
-                Content="{x:Bind ShimmerContent, Mode=OneWay}"/>
-            <Grid>
-                <Rectangle Fill="Transparent"/>
-                <Rectangle>
-                    <Rectangle.Fill>
-                        <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
-                            <GradientStop Color="Transparent" Offset="0"/>
-                            <GradientStop Color="{ThemeResource SubtleFillColorTertiaryBrush}" Offset="0.4"/>
-                            <GradientStop Color="Transparent" Offset="0.8"/>
-                        </LinearGradientBrush>
-                    </Rectangle.Fill>
-                    <Rectangle.RenderTransform>
-                        <TranslateTransform x:Name="ShimmerTranslate" X="-500"/>
-                    </Rectangle.RenderTransform>
-                </Rectangle>
-            </Grid>
-        </Grid>
+        <Rectangle
+            x:Name="ShimmerOverlay"
+            Visibility="Collapsed"
+            IsHitTestVisible="False">
+            <Rectangle.Fill>
+                <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                    <GradientStop Color="Transparent" Offset="0"/>
+                    <GradientStop Color="#30FFFFFF" Offset="0.3"/>
+                    <GradientStop Color="#50FFFFFF" Offset="0.5"/>
+                    <GradientStop Color="#30FFFFFF" Offset="0.7"/>
+                    <GradientStop Color="Transparent" Offset="1"/>
+                </LinearGradientBrush>
+            </Rectangle.Fill>
+            <Rectangle.RenderTransform>
+                <TranslateTransform x:Name="ShimmerTranslate" X="-300"/>
+            </Rectangle.RenderTransform>
+        </Rectangle>
     </Grid>
 </UserControl>

@@ -34,19 +34,19 @@ public partial class ImageViewerViewModel : ObservableRecipient
     private TimeSpan? _captureTime;
 
     [ObservableProperty]
-    private string _formattedDateTime = "/";
+    private string _formattedDateTime = "None";
 
     [ObservableProperty]
-    private string _captureYear = "/";
+    private string _captureYear = "None";
 
     [ObservableProperty]
-    private string _captureMonth = "/";
+    private string _captureMonth = "None";
 
     [ObservableProperty]
-    private string _captureDay = "/";
+    private string _captureDay = "None";
 
     [ObservableProperty]
-    private string _captureTimeOfDay = "/";
+    private string _captureTimeOfDay = "None";
 
     [ObservableProperty]
     private bool _hasDeviceInfo;
@@ -178,7 +178,9 @@ public partial class ImageViewerViewModel : ObservableRecipient
 
         try
         {
+            Debug.WriteLine($"[ImageViewerViewModel] 开始读取EXIF: {file.Name}");
             var exifData = await _exifService.GetExifDataAsync(file);
+            Debug.WriteLine($"[ImageViewerViewModel] EXIF读取完成");
 
             if (exifData.DateTaken.HasValue)
             {
@@ -189,6 +191,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
                 CaptureMonth = $"{exifData.DateTaken.Value:M月}";
                 CaptureDay = $"{exifData.DateTaken.Value:d日}";
                 CaptureTimeOfDay = $"{exifData.DateTaken.Value:HH:mm}";
+                Debug.WriteLine($"[ImageViewerViewModel] 日期时间: {FormattedDateTime}");
             }
             else
             {
@@ -197,6 +200,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
                 CaptureMonth = "None";
                 CaptureDay = "None";
                 CaptureTimeOfDay = "None";
+                Debug.WriteLine($"[ImageViewerViewModel] 日期时间: 未找到");
             }
 
             if (exifData.DpiX.HasValue && exifData.DpiY.HasValue)
@@ -226,6 +230,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
         finally
         {
             IsLoadingExif = false;
+            Debug.WriteLine($"[ImageViewerViewModel] IsLoadingExif = false");
         }
     }
 
@@ -238,11 +243,13 @@ public partial class ImageViewerViewModel : ObservableRecipient
         if (!string.IsNullOrEmpty(exifData.CameraManufacturer))
         {
             deviceInfoList.Add(exifData.CameraManufacturer);
+            Debug.WriteLine($"[ImageViewerViewModel] CameraManufacturer: {exifData.CameraManufacturer}");
         }
 
         if (!string.IsNullOrEmpty(exifData.CameraModel))
         {
             deviceInfoList.Add(exifData.CameraModel);
+            Debug.WriteLine($"[ImageViewerViewModel] CameraModel: {exifData.CameraModel}");
         }
 
         foreach (var info in deviceInfoList)
@@ -255,10 +262,12 @@ public partial class ImageViewerViewModel : ObservableRecipient
         if (!string.IsNullOrEmpty(exifData.LensModel))
         {
             LensModel = exifData.LensModel;
+            Debug.WriteLine($"[ImageViewerViewModel] LensModel: {exifData.LensModel}");
         }
         else
         {
             LensModel = "None";
+            Debug.WriteLine($"[ImageViewerViewModel] LensModel: 未找到");
         }
 
         if (exifData.FocalLength.HasValue)
@@ -272,37 +281,45 @@ public partial class ImageViewerViewModel : ObservableRecipient
             {
                 FocalLength = focalLength;
             }
+            Debug.WriteLine($"[ImageViewerViewModel] FocalLength: {FocalLength}");
         }
         else
         {
             FocalLength = "None";
+            Debug.WriteLine($"[ImageViewerViewModel] FocalLength: 未找到");
         }
 
         if (exifData.ExposureTime.HasValue)
         {
             ExposureTime = exifData.GetFormattedExposureTime();
+            Debug.WriteLine($"[ImageViewerViewModel] ExposureTime: {ExposureTime}");
         }
         else
         {
             ExposureTime = "None";
+            Debug.WriteLine($"[ImageViewerViewModel] ExposureTime: 未找到");
         }
 
         if (exifData.FNumber.HasValue)
         {
             FNumber = exifData.GetFormattedFNumber();
+            Debug.WriteLine($"[ImageViewerViewModel] FNumber: {FNumber}");
         }
         else
         {
             FNumber = "None";
+            Debug.WriteLine($"[ImageViewerViewModel] FNumber: 未找到");
         }
 
         if (exifData.ISOSpeed.HasValue)
         {
             Iso = $"ISO {exifData.ISOSpeed.Value}";
+            Debug.WriteLine($"[ImageViewerViewModel] ISO: {Iso}");
         }
         else
         {
             Iso = "None";
+            Debug.WriteLine($"[ImageViewerViewModel] ISO: 未找到");
         }
 
         if (exifData.ExposureProgram.HasValue)
@@ -395,6 +412,9 @@ public partial class ImageViewerViewModel : ObservableRecipient
         }
     }
 
+    // 评级更新事件
+    public event EventHandler<(ImageFileInfo Image, uint Rating)>? RatingUpdated;
+
     [RelayCommand]
     private async Task SetRatingAsync(uint rating)
     {
@@ -427,6 +447,10 @@ public partial class ImageViewerViewModel : ObservableRecipient
         {
             System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: _currentImage.ImageFile 为 null，跳过 RatingService 调用");
         }
+        
+        // 触发评级更新事件，通知其他组件（如 MainViewModel）
+        RatingUpdated?.Invoke(this, (_currentImage, rating));
+        System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 已触发 RatingUpdated 事件");
         
         System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 执行完成");
     }

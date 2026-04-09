@@ -12,12 +12,6 @@ public sealed partial class ShimmerControl : UserControl
         typeof(ShimmerControl),
         new PropertyMetadata(null, OnContentChanged));
 
-    public static readonly DependencyProperty ShimmerContentProperty = DependencyProperty.Register(
-        nameof(ShimmerContent),
-        typeof(object),
-        typeof(ShimmerControl),
-        new PropertyMetadata(null, OnShimmerContentChanged));
-
     public static readonly DependencyProperty IsLoadingProperty = DependencyProperty.Register(
         nameof(IsLoading),
         typeof(bool),
@@ -28,12 +22,6 @@ public sealed partial class ShimmerControl : UserControl
     {
         get => GetValue(ContentProperty);
         set => SetValue(ContentProperty, value);
-    }
-
-    public object? ShimmerContent
-    {
-        get => GetValue(ShimmerContentProperty);
-        set => SetValue(ShimmerContentProperty, value);
     }
 
     public bool IsLoading
@@ -55,14 +43,6 @@ public sealed partial class ShimmerControl : UserControl
         }
     }
 
-    private static void OnShimmerContentChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        if (d is ShimmerControl control)
-        {
-            control.ShimmerContentPresenter.Content = e.NewValue;
-        }
-    }
-
     private static void OnIsLoadingChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is ShimmerControl control)
@@ -75,14 +55,12 @@ public sealed partial class ShimmerControl : UserControl
     {
         if (IsLoading)
         {
-            ContentPresenter.Visibility = Visibility.Collapsed;
-            ShimmerGrid.Visibility = Visibility.Visible;
+            ShimmerOverlay.Visibility = Visibility.Visible;
             ShimmerAnimation.Begin();
         }
         else
         {
-            ContentPresenter.Visibility = Visibility.Visible;
-            ShimmerGrid.Visibility = Visibility.Collapsed;
+            ShimmerOverlay.Visibility = Visibility.Collapsed;
             ShimmerAnimation.Stop();
         }
     }
