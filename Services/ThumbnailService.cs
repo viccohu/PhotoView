@@ -44,7 +44,7 @@ public class ThumbnailService : IThumbnailService
         await _decodeGate.WaitAsync(cancellationToken);
         try
         {
-            var result = await DecodeThumbnailAsync(file, (uint)size, false, cancellationToken);
+            var result = await DecodeThumbnailAsync(file, (uint)size, cancellationToken);
             return result?.ImageSource;
         }
         finally
@@ -58,7 +58,7 @@ public class ThumbnailService : IThumbnailService
         await _decodeGate.WaitAsync(cancellationToken);
         try
         {
-            var result = await DecodeThumbnailAsync(file, longSidePixels, false, cancellationToken);
+            var result = await DecodeThumbnailAsync(file, longSidePixels, cancellationToken);
             return result?.ImageSource;
         }
         finally
@@ -72,20 +72,7 @@ public class ThumbnailService : IThumbnailService
         await _decodeGate.WaitAsync(cancellationToken);
         try
         {
-            return await DecodeThumbnailAsync(file, longSidePixels, false, cancellationToken);
-        }
-        finally
-        {
-            _decodeGate.Release();
-        }
-    }
-
-    public async Task<DecodeResult?> GetThumbnailWithSizeAsync(StorageFile file, uint longSidePixels, bool forceFullDecode, CancellationToken cancellationToken)
-    {
-        await _decodeGate.WaitAsync(cancellationToken);
-        try
-        {
-            return await DecodeThumbnailAsync(file, longSidePixels, forceFullDecode, cancellationToken);
+            return await DecodeThumbnailAsync(file, longSidePixels, cancellationToken);
         }
         finally
         {
@@ -136,21 +123,8 @@ public class ThumbnailService : IThumbnailService
             
             cancellationToken.ThrowIfCancellationRequested();
             
-            var mainWindow = App.MainWindow;
-            if (mainWindow == null)
-            {
-                System.Diagnostics.Debug.WriteLine($"[ThumbnailService] App.MainWindow 为 null，无法获取 DispatcherQueue");
-                return null;
-            }
-            
-            var dispatcherQueue = mainWindow.DispatcherQueue;
-            if (dispatcherQueue == null)
-            {
-                System.Diagnostics.Debug.WriteLine($"[ThumbnailService] DispatcherQueue 为 null，无法创建 BitmapImage");
-                return null;
-            }
-            
-            if (dispatcherQueue.HasThreadAccess)
+            var dispatcherQueue = App.MainWindow.DispatcherQueue;
+            if (dispatcherQueue == null || dispatcherQueue.HasThreadAccess)
             {
                 var bitmap = new BitmapImage();
                 await bitmap.SetSourceAsync(thumbnail);
@@ -205,11 +179,11 @@ public class ThumbnailService : IThumbnailService
         }
     }
 
-    private async Task<DecodeResult?> DecodeThumbnailAsync(StorageFile file, uint longSidePixels, bool forceFullDecode, CancellationToken cancellationToken)
+    private async Task<DecodeResult?> DecodeThumbnailAsync(StorageFile file, uint longSidePixels, CancellationToken cancellationToken)
     {
         var extension = file.FileType.ToLowerInvariant();
         
-        if (!forceFullDecode && IsRawFile(extension) && !_settingsService.AlwaysDecodeRaw)
+        if (IsRawFile(extension) && !_settingsService.AlwaysDecodeRaw)
         {
             System.Diagnostics.Debug.WriteLine($"[ThumbnailService] 尝试获取 RAW 内嵌预览: {file.Name}");
             var previewResult = await TryGetRawEmbeddedPreviewAsync(file, longSidePixels, cancellationToken);
@@ -263,21 +237,8 @@ public class ThumbnailService : IThumbnailService
 
     private static async Task<ImageSource?> CreateSoftwareBitmapSourceAsync(SoftwareBitmap softwareBitmap, CancellationToken cancellationToken)
     {
-        var mainWindow = App.MainWindow;
-        if (mainWindow == null)
-        {
-            System.Diagnostics.Debug.WriteLine($"[ThumbnailService] App.MainWindow 为 null，无法获取 DispatcherQueue");
-            return null;
-        }
-        
-        var dispatcherQueue = mainWindow.DispatcherQueue;
-        if (dispatcherQueue == null)
-        {
-            System.Diagnostics.Debug.WriteLine($"[ThumbnailService] DispatcherQueue 为 null，无法创建 SoftwareBitmapSource");
-            return null;
-        }
-        
-        if (dispatcherQueue.HasThreadAccess)
+        var dispatcherQueue = App.MainWindow.DispatcherQueue;
+        if (dispatcherQueue == null || dispatcherQueue.HasThreadAccess)
         {
             var bitmapSource = new SoftwareBitmapSource();
             await bitmapSource.SetBitmapAsync(softwareBitmap).AsTask(cancellationToken);

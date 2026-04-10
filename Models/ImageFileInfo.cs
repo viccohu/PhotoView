@@ -10,7 +10,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Media.Imaging;
-using PhotoView.Contracts.Services;
 using PhotoView.Helpers;
 using PhotoView.Services;
 using Windows.Graphics.Display;
@@ -118,71 +117,20 @@ public class ImageFileInfo : INotifyPropertyChanged
         if (cancellationToken.IsCancellationRequested || AppLifetime.IsShuttingDown)
             return new BitmapImage();
 
-        var settingsService = App.GetService<ISettingsService>();
-        var extension = ImageFile.FileType.ToLowerInvariant();
-        var isRawFile = IsRawFile(extension);
-        
-        if (isRawFile && !settingsService.AlwaysDecodeRaw)
+        using var thumbnail = await ImageFile.GetThumbnailAsync(
+            ThumbnailMode.SingleItem,
+            optimalSize,
+            ThumbnailOptions.None);
+
+        if (thumbnail != null && thumbnail.Size > 0)
         {
-            System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] 尝试获取 RAW 内嵌预览: {ImageFile.Name}");
-            using var thumbnail = await ImageFile.GetThumbnailAsync(
-                ThumbnailMode.SingleItem,
-                optimalSize,
-                ThumbnailOptions.UseCurrentScale);
-            
-            if (thumbnail != null && thumbnail.Size > 0)
-            {
-                var bitmap = new BitmapImage();
-                bitmap.DecodePixelWidth = (int)optimalSize;
-                await bitmap.SetSourceAsync(thumbnail);
-                System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] 使用 RAW 内嵌预览: {ImageFile.Name}");
-                return bitmap;
-            }
-            
-            System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] RAW 内嵌预览不可用，使用完整解码: {ImageFile.Name}");
-        }
-        
-        try
-        {
-            var thumbnailService = App.GetService<IThumbnailService>();
-            var imageSource = await thumbnailService.GetThumbnailByLongSideAsync(ImageFile, optimalSize, cancellationToken);
-            
-            if (imageSource is BitmapImage bitmapImage)
-            {
-                return bitmapImage;
-            }
-            else if (imageSource != null)
-            {
-                var bitmap = new BitmapImage();
-                using var stream = new InMemoryRandomAccessStream();
-                await bitmap.SetSourceAsync(stream);
-                return bitmap;
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"GetThumbnailOnUIThreadAsync error: {ex}");
+            var bitmap = new BitmapImage();
+            bitmap.DecodePixelWidth = (int)optimalSize;
+            bitmap.SetSource(thumbnail);
+            return bitmap;
         }
 
         return new BitmapImage();
-    }
-
-    private static bool IsRawFile(string extension)
-    {
-        var rawExtensions = new[] {
-            ".cr2", ".cr3", ".crw",
-            ".nef", ".nrw",
-            ".arw", ".srf", ".sr2",
-            ".raf",
-            ".orf",
-            ".rw2",
-            ".pef",
-            ".dng",
-            ".3fr", ".iiq", ".eip",
-            ".srw",
-            ".raw"
-        };
-        return rawExtensions.Contains(extension.ToLowerInvariant());
     }
 
     public BitmapImage? Thumbnail
