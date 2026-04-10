@@ -2,6 +2,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using PhotoView.Contracts.Services;
+using PhotoView.Helpers;
 using PhotoView.Models;
 using System;
 using System.Threading;
@@ -152,6 +153,12 @@ public class ThumbnailService : IThumbnailService
                 {
                     try
                     {
+                        if (cancellationToken.IsCancellationRequested || AppLifetime.IsShuttingDown)
+                        {
+                            tcs.TrySetResult(null);
+                            return;
+                        }
+
                         var bitmap = new BitmapImage();
                         await bitmap.SetSourceAsync(thumbnail);
                         var previewLongSide = Math.Max(bitmap.PixelWidth, bitmap.PixelHeight);
@@ -167,7 +174,8 @@ public class ThumbnailService : IThumbnailService
                     }
                     catch (OperationCanceledException ex)
                     {
-                        tcs.TrySetCanceled(ex.CancellationToken);
+                        System.Diagnostics.Debug.WriteLine($"[ThumbnailService] RAW preview canceled for {file.Name}");
+                        tcs.TrySetResult(null);
                     }
                     catch (Exception ex)
                     {
@@ -175,7 +183,8 @@ public class ThumbnailService : IThumbnailService
                     }
                 }))
             {
-                throw new OperationCanceledException("Failed to enqueue RAW preview creation.", cancellationToken);
+                System.Diagnostics.Debug.WriteLine($"[ThumbnailService] Skip RAW preview enqueue for {file.Name}");
+                return null;
             }
             
             return await tcs.Task;
@@ -242,6 +251,9 @@ public class ThumbnailService : IThumbnailService
         var dispatcherQueue = App.MainWindow.DispatcherQueue;
         if (dispatcherQueue == null || dispatcherQueue.HasThreadAccess)
         {
+            if (cancellationToken.IsCancellationRequested || AppLifetime.IsShuttingDown)
+                return null;
+
             var bitmapSource = new SoftwareBitmapSource();
             await bitmapSource.SetBitmapAsync(softwareBitmap).AsTask(cancellationToken);
             return bitmapSource;
@@ -252,13 +264,20 @@ public class ThumbnailService : IThumbnailService
             {
                 try
                 {
+                    if (cancellationToken.IsCancellationRequested || AppLifetime.IsShuttingDown)
+                    {
+                        tcs.TrySetResult(null);
+                        return;
+                    }
+
                     var bitmapSource = new SoftwareBitmapSource();
                     await bitmapSource.SetBitmapAsync(softwareBitmap).AsTask(cancellationToken);
                     tcs.TrySetResult(bitmapSource);
                 }
                 catch (OperationCanceledException ex)
                 {
-                    tcs.TrySetCanceled(ex.CancellationToken);
+                    System.Diagnostics.Debug.WriteLine("[ThumbnailService] SoftwareBitmapSource creation canceled");
+                    tcs.TrySetResult(null);
                 }
                 catch (Exception ex)
                 {
@@ -266,7 +285,8 @@ public class ThumbnailService : IThumbnailService
                 }
             }))
         {
-            throw new OperationCanceledException("Failed to enqueue thumbnail creation.", cancellationToken);
+            System.Diagnostics.Debug.WriteLine("[ThumbnailService] Skip thumbnail creation enqueue");
+            return null;
         }
 
         return await tcs.Task;

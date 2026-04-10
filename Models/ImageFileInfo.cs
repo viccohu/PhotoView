@@ -83,24 +83,34 @@ public class ImageFileInfo : INotifyPropertyChanged
             }
             else
             {
-                var tcs = new TaskCompletionSource<BitmapImage>();
-                dispatcher.TryEnqueue(async () =>
+                var tcs = new TaskCompletionSource<BitmapImage>(TaskCreationOptions.RunContinuationsAsynchronously);
+                if (!dispatcher.TryEnqueue(async () =>
                 {
                     try
                     {
                         var bmp = await GetThumbnailOnUIThreadAsync(optimalSize, cancellationToken);
-                        tcs.SetResult(bmp);
+                        tcs.TrySetResult(bmp);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        tcs.TrySetResult(new BitmapImage());
                     }
                     catch (Exception ex)
                     {
-                        tcs.SetException(ex);
+                        tcs.TrySetException(ex);
                     }
-                });
+                }))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Skip thumbnail enqueue for {ImageName}");
+                    return new BitmapImage();
+                }
+
                 return await tcs.Task;
             }
         }
         catch (OperationCanceledException)
         {
+            System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Thumbnail request canceled for {ImageName}");
             throw;
         }
         catch (Exception ex)
@@ -233,13 +243,17 @@ public class ImageFileInfo : INotifyPropertyChanged
                     return;
 
                 var result = await GetThumbnailAsync(size, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
 
                 var dispatcher = App.MainWindow.DispatcherQueue;
                 if (dispatcher.HasThreadAccess)
                 {
                     lock (_thumbnailLoadLock)
                     {
-                        if (localVersion != _loadVersion || cancellationToken.IsCancellationRequested || AppLifetime.IsShuttingDown)
+                        if (localVersion != _loadVersion ||
+                            cancellationToken.IsCancellationRequested ||
+                            AppLifetime.IsShuttingDown ||
+                            _requestedThumbnailSize != size)
                             return;
 
                         Thumbnail = result;
@@ -255,7 +269,10 @@ public class ImageFileInfo : INotifyPropertyChanged
 
                         lock (_thumbnailLoadLock)
                         {
-                            if (localVersion != _loadVersion || cancellationToken.IsCancellationRequested)
+                            if (localVersion != _loadVersion ||
+                                cancellationToken.IsCancellationRequested ||
+                                _requestedThumbnailSize != size ||
+                                AppLifetime.IsShuttingDown)
                                 return;
 
                             Thumbnail = result;
@@ -263,6 +280,7 @@ public class ImageFileInfo : INotifyPropertyChanged
                         }
                     }))
                     {
+                        System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Skip thumbnail commit enqueue for {ImageName}");
                         return;
                     }
                 }
@@ -274,9 +292,11 @@ public class ImageFileInfo : INotifyPropertyChanged
         }
         catch (OperationCanceledException)
         {
+            System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] EnsureThumbnailAsync canceled for {ImageName}");
         }
         catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] EnsureThumbnailAsync failed for {ImageName}: {ex.Message}");
         }
     }
 
@@ -648,6 +668,7 @@ public class ImageFileInfo : INotifyPropertyChanged
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
             }))
             {
+                System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Skip PropertyChanged enqueue for {propertyName} on {ImageName}");
                 return;
             }
         }
