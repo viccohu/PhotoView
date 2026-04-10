@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -36,6 +38,7 @@ public class ImageFileInfo : INotifyPropertyChanged
     private uint _rating;
     private bool _isRatingLoading = true;
     private RatingSource _ratingSource = RatingSource.Unknown;
+    private ObservableCollection<FormatTag> _formatTags = new();
 
     private static readonly uint[] SystemThumbnailSizes = { 96, 160, 256, 512, 1024 };
 
@@ -57,6 +60,7 @@ public class ImageFileInfo : INotifyPropertyChanged
         ImageFileType = type;
         _isSelected = false;
         UpdateDisplaySize(ThumbnailSize.Medium);
+        UpdateFormatTags();
     }
 
     public int Width { get; }
@@ -483,6 +487,7 @@ public class ImageFileInfo : INotifyPropertyChanged
         OnPropertyChanged(nameof(AlternateFormats));
         OnPropertyChanged(nameof(HasAlternateFormats));
         OnPropertyChanged(nameof(AlternateFormatsText));
+        UpdateFormatTags();
     }
 
     public void RefreshGroupProperties()
@@ -493,6 +498,93 @@ public class ImageFileInfo : INotifyPropertyChanged
         OnPropertyChanged(nameof(HasAlternateFormats));
         OnPropertyChanged(nameof(AlternateFormatsText));
         OnPropertyChanged(nameof(IsPendingDelete));
+    }
+
+    public ObservableCollection<FormatTag> FormatTags
+    {
+        get => _formatTags;
+        private set => SetProperty(ref _formatTags, value);
+    }
+
+    public void UpdateFormatTags()
+    {
+        FormatTags.Clear();
+        
+        if (Group == null)
+        {
+            var ext = ImageFileType.ToLowerInvariant();
+            FormatTags.Add(new FormatTag
+            {
+                Format = GetFormatDisplayName(ext),
+                Color = GetFormatColor(ext),
+                IsLast = true
+            });
+        }
+        else
+        {
+            var formats = new HashSet<string>();
+            foreach (var image in Group.Images)
+            {
+                var ext = image.ImageFileType.ToLowerInvariant();
+                formats.Add(ext);
+            }
+            
+            var sortedFormats = formats
+                .OrderByDescending(f => IsRawFormat(f))
+                .ThenBy(f => f)
+                .ToList();
+            
+            for (int i = 0; i < sortedFormats.Count; i++)
+            {
+                var ext = sortedFormats[i];
+                FormatTags.Add(new FormatTag
+                {
+                    Format = GetFormatDisplayName(ext),
+                    Color = GetFormatColor(ext),
+                    IsLast = i == sortedFormats.Count - 1
+                });
+            }
+        }
+    }
+
+    private bool IsRawFormat(string ext)
+    {
+        return ext switch
+        {
+            ".cr2" or ".cr3" or ".crw" or ".nef" or ".nrw" or ".arw" or ".srf" or ".sr2" or ".dng" or ".orf" or ".pef" or ".raf" or ".rw2" or ".raw" or ".3fr" or ".fff" or ".mos" or ".erf" or ".dcr" or ".mrw" or ".rwl" or ".srw" => true,
+            _ => false
+        };
+    }
+
+    private string GetFormatDisplayName(string ext)
+    {
+        return ext switch
+        {
+            ".jpg" or ".jpeg" => "JPG",
+            ".png" => "PNG",
+            ".gif" => "GIF",
+            ".bmp" => "BMP",
+            ".tiff" or ".tif" => "TIF",
+            ".webp" => "WebP",
+            ".cr2" or ".cr3" or ".crw" or ".nef" or ".nrw" or ".arw" or ".srf" or ".sr2" or ".dng" or ".orf" or ".pef" or ".raf" or ".rw2" or ".raw" or ".3fr" or ".fff" or ".mos" or ".erf" or ".dcr" or ".mrw" or ".rwl" or ".srw" => "RAW",
+            _ => ext.ToUpper().TrimStart('.')
+        };
+    }
+
+    private string GetFormatColor(string ext)
+    {
+        var compressedFormats = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+        var rawFormats = new[] { ".cr2", ".cr3", ".crw", ".nef", ".nrw", ".arw", ".srf", ".sr2", ".dng", ".orf", ".pef", ".raf", ".rw2", ".raw", ".3fr", ".fff", ".mos", ".erf", ".dcr", ".mrw", ".rwl", ".srw" };
+        var losslessFormats = new[] { ".tiff", ".tif", ".bmp" };
+
+        if (compressedFormats.Contains(ext))
+            return "#00c8ff";
+        if (rawFormats.Contains(ext))
+            return "#ffb300";
+        if (losslessFormats.Contains(ext))
+            return "#2bff00";
+
+        return "#808080";
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
