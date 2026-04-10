@@ -22,7 +22,6 @@ public class ThumbnailService : IThumbnailService
         _settingsService.PerformanceModeChanged += OnPerformanceModeChanged;
         var concurrencyCount = GetConcurrencyCount();
         _decodeGate = new SemaphoreSlim(concurrencyCount, concurrencyCount);
-        System.Diagnostics.Debug.WriteLine($"[ThumbnailService] 初始化, 并发数={concurrencyCount}, PerformanceMode={_settingsService.PerformanceMode}");
     }
 
     private int GetConcurrencyCount()
@@ -36,7 +35,6 @@ public class ThumbnailService : IThumbnailService
     {
         var newCount = GetConcurrencyCount();
         _decodeGate = new SemaphoreSlim(newCount, newCount);
-        System.Diagnostics.Debug.WriteLine($"[ThumbnailService] PerformanceMode 变更, 新并发数={newCount}, mode={mode}");
     }
 
     public async Task<ImageSource?> GetThumbnailAsync(StorageFile file, ThumbnailSize size, CancellationToken cancellationToken)
@@ -143,8 +141,6 @@ public class ThumbnailService : IThumbnailService
                 await bitmap.SetSourceAsync(thumbnail);
                 var previewLongSide = Math.Max(bitmap.PixelWidth, bitmap.PixelHeight);
                 
-                System.Diagnostics.Debug.WriteLine($"[ThumbnailService] RAW 内嵌预览尺寸: {bitmap.PixelWidth}x{bitmap.PixelHeight}, 目标: {targetLongSide}");
-                
                 if (previewLongSide < targetLongSide)
                     return null;
                 
@@ -159,8 +155,6 @@ public class ThumbnailService : IThumbnailService
                         var bitmap = new BitmapImage();
                         await bitmap.SetSourceAsync(thumbnail);
                         var previewLongSide = Math.Max(bitmap.PixelWidth, bitmap.PixelHeight);
-                        
-                        System.Diagnostics.Debug.WriteLine($"[ThumbnailService] RAW 内嵌预览尺寸: {bitmap.PixelWidth}x{bitmap.PixelHeight}, 目标: {targetLongSide}");
                         
                         if (previewLongSide < targetLongSide)
                         {
@@ -198,14 +192,11 @@ public class ThumbnailService : IThumbnailService
         
         if (IsRawFile(extension) && !_settingsService.AlwaysDecodeRaw)
         {
-            System.Diagnostics.Debug.WriteLine($"[ThumbnailService] 尝试获取 RAW 内嵌预览: {file.Name}");
             var previewResult = await TryGetRawEmbeddedPreviewAsync(file, longSidePixels, cancellationToken);
             if (previewResult != null)
             {
-                System.Diagnostics.Debug.WriteLine($"[ThumbnailService] 使用 RAW 内嵌预览: {file.Name}");
                 return previewResult;
             }
-            System.Diagnostics.Debug.WriteLine($"[ThumbnailService] RAW 内嵌预览不可用或尺寸不足，使用完整解码: {file.Name}");
         }
         
         using var stream = await file.OpenReadAsync().AsTask(cancellationToken);
@@ -225,8 +216,6 @@ public class ThumbnailService : IThumbnailService
             var aspectRatio = decoder.PixelHeight == 0 ? 1d : (double)decoder.PixelWidth / decoder.PixelHeight;
             scaledWidth = Math.Max(1u, (uint)Math.Round(scaledHeight * aspectRatio));
         }
-
-        System.Diagnostics.Debug.WriteLine($"[ThumbnailService] DecodeThumbnailAsync: 文件={file.Name}, 解码尺寸={scaledWidth}x{scaledHeight}");
 
         var transform = new BitmapTransform
         {

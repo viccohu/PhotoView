@@ -105,7 +105,6 @@ public class ImageFileInfo : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"GetThumbnailAsync error: {ex}");
             return new BitmapImage();
         }
     }
@@ -135,7 +134,6 @@ public class ImageFileInfo : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] 系统缩略图获取失败: {ImageFile.Name}, 错误: {ex.Message}");
         }
 
         // 系统缩略图失败，回退到完整解码
@@ -158,7 +156,6 @@ public class ImageFileInfo : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] 完整解码失败: {ImageFile.Name}, 错误: {ex.Message}");
         }
 
         return new BitmapImage();
@@ -280,7 +277,6 @@ public class ImageFileInfo : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"EnsureThumbnailAsync error: {ex}");
         }
     }
 
@@ -328,29 +324,23 @@ public class ImageFileInfo : INotifyPropertyChanged
         
         double contentWidth, contentHeight;
         
-        System.Diagnostics.Debug.WriteLine($"[UpdateDisplaySize] 文件={ImageName}, Width={Width}, Height={Height}, AspectRatio={aspectRatio}");
-        
         // 根据图片方向决定是固定高度还是固定宽度
         if (Width >= Height)
         {
             // 横构图：固定高度，计算宽度
             contentHeight = designSize - borderPadding;
             contentWidth = contentHeight * aspectRatio;
-            System.Diagnostics.Debug.WriteLine($"[UpdateDisplaySize] 横构图: contentWidth={contentWidth}, contentHeight={contentHeight}");
         }
         else
         {
             // 竖构图：固定宽度，计算高度
             contentWidth = designSize - borderPadding;
             contentHeight = contentWidth / aspectRatio;
-            System.Diagnostics.Debug.WriteLine($"[UpdateDisplaySize] 竖构图: contentWidth={contentWidth}, contentHeight={contentHeight}");
         }
         
         // 外层尺寸 = 内容尺寸 + Padding
         DisplayWidth = Math.Max(1d, contentWidth + borderPadding);
         DisplayHeight = Math.Max(1d, contentHeight + borderPadding);
-        
-        System.Diagnostics.Debug.WriteLine($"[UpdateDisplaySize] 最终尺寸: DisplayWidth={DisplayWidth}, DisplayHeight={DisplayHeight}");
     }
 
     private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

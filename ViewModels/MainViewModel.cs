@@ -145,8 +145,6 @@ public partial class MainViewModel : ObservableRecipient
     {
         try
         {
-            System.Diagnostics.Debug.WriteLine($"[MainViewModel] LoadDrivesAsync 开始");
-            
             var thisPCNode = new FolderNode(null, NodeType.ThisPC)
             {
                 Name = "这台电脑",
@@ -162,13 +160,10 @@ public partial class MainViewModel : ObservableRecipient
             FolderTree.Add(thisPCNode);
             FolderTree.Add(externalDeviceNode);
 
-            System.Diagnostics.Debug.WriteLine($"[MainViewModel] FolderTree 已添加节点, Count={FolderTree.Count}, 准备触发 FolderTreeLoaded 事件");
             FolderTreeLoaded?.Invoke(this, EventArgs.Empty);
-            System.Diagnostics.Debug.WriteLine($"[MainViewModel] FolderTreeLoaded 事件已触发");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"LoadDrivesAsync error: {ex}");
         }
     }
 
@@ -210,7 +205,6 @@ public partial class MainViewModel : ObservableRecipient
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"LoadChildrenAsync drive error: {ex}");
                     }
                 }
             }
@@ -231,7 +225,6 @@ public partial class MainViewModel : ObservableRecipient
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"LoadChildrenAsync error: {ex}");
         }
         finally
         {
@@ -281,8 +274,6 @@ public partial class MainViewModel : ObservableRecipient
             
             var batchSize = (uint)_settingsService.BatchSize;
             uint index = 0;
-            
-            System.Diagnostics.Debug.WriteLine($"[LoadImagesAsync] 开始分批加载, 批次大小={batchSize}");
             
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -371,14 +362,13 @@ public partial class MainViewModel : ObservableRecipient
                         }
                     }
                     
-                    System.Diagnostics.Debug.WriteLine($"[LoadImagesAsync] 批次追加完成, 当前 Images.Count={Images.Count}");
                     ImagesChanged?.Invoke(this, EventArgs.Empty);
                 }
                 
                 index += (uint)batch.Count;
             }
             
-            System.Diagnostics.Debug.WriteLine($"[LoadImagesAsync] 全部加载完成, Images.Count={Images.Count}, 组数={processedGroups.Count}");
+
 
             _allImages.Clear();
             _allImages.AddRange(Images);
@@ -393,7 +383,6 @@ public partial class MainViewModel : ObservableRecipient
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"LoadImagesAsync error: {ex}");
         }
     }
 
@@ -485,7 +474,6 @@ public partial class MainViewModel : ObservableRecipient
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[LoadImageInfo] 文件无法访问，跳过: 文件={file.Path}, 错误={ex.Message}");
             return null;
         }
 
@@ -497,13 +485,10 @@ public partial class MainViewModel : ObservableRecipient
             var fileExtension = Path.GetExtension(file.Name);
             var isRaw = RawExtensions.Contains(fileExtension);
 
-            System.Diagnostics.Debug.WriteLine($"[LoadImageInfo] 开始处理: 文件={file.Name}, 扩展名={fileExtension}, isRaw={isRaw}");
-
             // 先尝试用 GetImagePropertiesAsync（包括 RAW 文件）
             try
             {
                 var properties = await file.Properties.GetImagePropertiesAsync().AsTask(cancellationToken);
-                System.Diagnostics.Debug.WriteLine($"[LoadImageInfo] GetImagePropertiesAsync: 文件={file.Name}, Width={properties.Width}, Height={properties.Height}, Orientation={properties.Orientation}");
                 
                 if (properties.Width > 0 && properties.Height > 0)
                 {
@@ -516,16 +501,13 @@ public partial class MainViewModel : ObservableRecipient
                         orientation == Windows.Storage.FileProperties.PhotoOrientation.Transpose ||
                         orientation == Windows.Storage.FileProperties.PhotoOrientation.Transverse)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[LoadImageInfo] 交换宽高: 文件={file.Name}, 原始={width}x{height}");
                         (width, height) = (height, width);
-                        System.Diagnostics.Debug.WriteLine($"[LoadImageInfo] 交换后: 文件={file.Name}, 新={width}x{height}");
                     }
                 }
                 title = properties.Title;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[LoadImageInfo] GetImagePropertiesAsync 失败: 文件={file.Name}, 错误={ex.Message}");
             }
 
             // 如果还是默认值，再尝试用 BitmapDecoder
@@ -533,12 +515,10 @@ public partial class MainViewModel : ObservableRecipient
             {
                 try
                 {
-                    System.Diagnostics.Debug.WriteLine($"[LoadImageInfo] 尝试 BitmapDecoder: 文件={file.Name}");
                     using var stream = await file.OpenReadAsync().AsTask(cancellationToken);
                     var decoder = await Windows.Graphics.Imaging.BitmapDecoder.CreateAsync(stream);
                     width = (int)decoder.PixelWidth;
                     height = (int)decoder.PixelHeight;
-                    System.Diagnostics.Debug.WriteLine($"[LoadImageInfo] BitmapDecoder: 文件={file.Name}, PixelWidth={decoder.PixelWidth}, PixelHeight={decoder.PixelHeight}");
                     
                     try
                     {
@@ -546,27 +526,20 @@ public partial class MainViewModel : ObservableRecipient
                         if (properties.TryGetValue("System.Photo.Orientation", out var orientationValue))
                         {
                             var exifOrientation = Convert.ToUInt16(orientationValue.Value);
-                            System.Diagnostics.Debug.WriteLine($"[LoadImageInfo] BitmapDecoder EXIF: 文件={file.Name}, Orientation={exifOrientation}");
                             if (exifOrientation == 6 || exifOrientation == 8 || exifOrientation == 5 || exifOrientation == 7)
                             {
-                                System.Diagnostics.Debug.WriteLine($"[LoadImageInfo] BitmapDecoder 交换宽高: 文件={file.Name}, 原始={width}x{height}");
                                 (width, height) = (height, width);
-                                System.Diagnostics.Debug.WriteLine($"[LoadImageInfo] BitmapDecoder 交换后: 文件={file.Name}, 新={width}x{height}");
                             }
                         }
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[LoadImageInfo] BitmapDecoder EXIF 读取失败: 文件={file.Name}, 错误={ex.Message}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[LoadImageInfo] BitmapDecoder 失败: 文件={file.Name}, 错误={ex.Message}");
                 }
             }
-            
-            System.Diagnostics.Debug.WriteLine($"[LoadImageInfo] 最终尺寸: 文件={file.Name}, 最终={width}x{height}");
 
             var imageInfo = new ImageFileInfo(
                 width,
@@ -582,7 +555,6 @@ public partial class MainViewModel : ObservableRecipient
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[LoadImageInfo] 最终失败: 文件={file.Name}, 错误={ex.Message}");
             return null;
         }
     }
@@ -670,8 +642,6 @@ public partial class MainViewModel : ObservableRecipient
             var batchSize = (uint)_settingsService.BatchSize;
             uint index = 0;
             
-            System.Diagnostics.Debug.WriteLine($"[LoadImagesWithoutHistoryAsync] 开始分批加载, 批次大小={batchSize}");
-            
             while (!cancellationToken.IsCancellationRequested)
             {
                 var batch = await result.GetFilesAsync(index, batchSize);
@@ -718,7 +688,7 @@ public partial class MainViewModel : ObservableRecipient
                 
                 if (newPrimaryFiles.Count > 0)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[LoadImagesWithoutHistoryAsync] 批次 {index/batchSize + 1}, 加载新主图片 {newPrimaryFiles.Count} 个");
+
                     
                     var newPrimaryInfos = await System.Threading.Tasks.Task.Run(async () =>
                     {
@@ -759,14 +729,13 @@ public partial class MainViewModel : ObservableRecipient
                         }
                     }
                     
-                    System.Diagnostics.Debug.WriteLine($"[LoadImagesWithoutHistoryAsync] 批次追加完成, 当前 Images.Count={Images.Count}");
                     ImagesChanged?.Invoke(this, EventArgs.Empty);
                 }
                 
                 index += (uint)batch.Count;
             }
             
-            System.Diagnostics.Debug.WriteLine($"[LoadImagesWithoutHistoryAsync] 全部加载完成, Images.Count={Images.Count}, 组数={processedGroups.Count}");
+
 
             _allImages.Clear();
             _allImages.AddRange(Images);
@@ -776,7 +745,6 @@ public partial class MainViewModel : ObservableRecipient
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"LoadImagesWithoutHistoryAsync error: {ex}");
         }
     }
 

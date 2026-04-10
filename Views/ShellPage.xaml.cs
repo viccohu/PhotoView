@@ -64,9 +64,8 @@ public sealed partial class ShellPage : Page
         _ = await _settingsService.LoadRememberLastFolderAsync();
         _ = await _settingsService.LoadLastFolderPathAsync();
         
-        System.Diagnostics.Debug.WriteLine($"[ShellPage] 设置加载完成, RememberLastFolder={_settingsService.RememberLastFolder}, LastFolderPath={_settingsService.LastFolderPath}");
         
-        // 在 UI 线程上更新
+        // �?UI 线程上更�?
         DispatcherQueue.TryEnqueue(() =>
         {
             NavigationViewControl.PaneDisplayMode = mode;
@@ -76,7 +75,7 @@ public sealed partial class ShellPage : Page
 
     private void OnNavigationViewModeChanged(object sender, NavigationViewPaneDisplayMode mode)
     {
-        // 在 UI 线程上更新
+        // �?UI 线程上更�?
         DispatcherQueue.TryEnqueue(() =>
         {
             var useLeftNavigation = mode == NavigationViewPaneDisplayMode.Left;
@@ -123,7 +122,7 @@ public sealed partial class ShellPage : Page
 
     private void UpdateTitleBarColor(bool isDeactivated = false)
     {
-        // 更新标题栏按钮颜色
+        // 更新标题栏按钮颜�?
         var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
         var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hWnd);
         var appWindow = AppWindow.GetFromWindowId(windowId);
@@ -142,7 +141,7 @@ public sealed partial class ShellPage : Page
 
             if (isDarkTheme)
             {
-                // 深色主题：白色按钮
+                // 深色主题：白色按�?
                 titleBar.ButtonForegroundColor = Colors.White;
                 titleBar.ButtonHoverForegroundColor = Colors.White;
                 titleBar.ButtonPressedForegroundColor = Colors.White;
@@ -157,7 +156,7 @@ public sealed partial class ShellPage : Page
             }
             else
             {
-                // 浅色主题：黑色按钮 - 直接硬编码为黑色！
+                // 浅色主题：黑色按�?- 直接硬编码为黑色�?
                 titleBar.ButtonForegroundColor = Colors.Black;
                 titleBar.ButtonHoverForegroundColor = Colors.Black;
                 titleBar.ButtonPressedForegroundColor = Colors.Black;
