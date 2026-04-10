@@ -329,11 +329,6 @@
                                     VerticalAlignment="Center"/>
                             </Grid>
                         </Border>
-                        <Border
-                            CornerRadius="8"
-                            BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                            BorderThickness="3"
-                            Opacity="0"/>
                         <ProgressRing
                             Width="24"
                             Height="24"
@@ -392,22 +387,33 @@
                             </StackPanel>
                         </Border>
                         
-                        <Border
-                            Width="120"
-                            Height="25"
-                            HorizontalAlignment="Center"
+                        <Grid
+                            HorizontalAlignment="Right"
                             VerticalAlignment="Top"
-                            Background="{ThemeResource SystemFillColorCriticalBrush}"
-                            Opacity="0.8"
-                            CornerRadius="0,0,4,4"
                             Visibility="{x:Bind IsPendingDelete, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <TextBlock
-                                Text="预删除"
-                                Foreground="White"
-                                FontSize="12"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"/>
-                        </Border>
+                            <Grid.Resources>
+                                <LinearGradientBrush x:Key="DeleteGradient" StartPoint="0.658,0.321" EndPoint="-0.359,1.315">
+                                    <GradientStop Offset="0" Color="#FFFFFF"/>
+                                    <GradientStop Offset="1" Color="#BFBFBF"/>
+                                </LinearGradientBrush>
+                            </Grid.Resources>
+                            
+                            <!-- 第一个 path：带圆角的三角形（渐变填充） -->
+                            <Path
+                                Width="50"
+                                Height="50"
+                                Stretch="Uniform"
+                                Fill="{StaticResource DeleteGradient}"
+                                Data="M50,50 L3.5,50 A3.5,3.5,0,0,1,0,46.5 L0,0 L50,50 Z"/>
+                            
+                            <!-- 第二个 path：红色三角形 -->
+                            <Path
+                                Width="50"
+                                Height="50"
+                                Stretch="Uniform"
+                                Fill="#f95656"
+                                Data="M50,0 L0,0 L50,50 Z"/>
+                        </Grid>
                         
                         <Border
                             Width="160"
@@ -445,13 +451,14 @@
                     <Setter Property="Padding" Value="0"/>
                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                     <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+                    <Setter Property="UseSystemFocusVisuals" Value="False"/>
                     <Setter Property="Template">
                         <Setter.Value>
                             <ControlTemplate TargetType="GridViewItem">
                                 <Grid x:Name="ContentBorder"
                                       Background="{TemplateBinding Background}"
-                                      BorderBrush="{TemplateBinding BorderBrush}"
-                                      BorderThickness="{TemplateBinding BorderThickness}"
+                                      BorderBrush="Transparent"
+                                      BorderThickness="0"
                                       CornerRadius="8">
                                     <VisualStateManager.VisualStateGroups>
                                         <VisualStateGroup x:Name="CommonStates">
