@@ -117,17 +117,48 @@ public class ImageFileInfo : INotifyPropertyChanged
         if (cancellationToken.IsCancellationRequested || AppLifetime.IsShuttingDown)
             return new BitmapImage();
 
-        using var thumbnail = await ImageFile.GetThumbnailAsync(
-            ThumbnailMode.SingleItem,
-            optimalSize,
-            ThumbnailOptions.None);
-
-        if (thumbnail != null && thumbnail.Size > 0)
+        // 优先尝试获取系统缩略图（最快）
+        try
         {
-            var bitmap = new BitmapImage();
-            bitmap.DecodePixelWidth = (int)optimalSize;
-            bitmap.SetSource(thumbnail);
-            return bitmap;
+            using var thumbnail = await ImageFile.GetThumbnailAsync(
+                ThumbnailMode.SingleItem,
+                optimalSize,
+                ThumbnailOptions.None);
+
+            if (thumbnail != null && thumbnail.Size > 0)
+            {
+                var bitmap = new BitmapImage();
+                bitmap.DecodePixelWidth = (int)optimalSize;
+                await bitmap.SetSourceAsync(thumbnail);
+                return bitmap;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] 系统缩略图获取失败: {ImageFile.Name}, 错误: {ex.Message}");
+        }
+
+        // 系统缩略图失败，回退到完整解码
+        try
+        {
+            var thumbnailService = App.GetService<Contracts.Services.IThumbnailService>();
+            var imageSource = await thumbnailService.GetThumbnailByLongSideAsync(ImageFile, optimalSize, cancellationToken);
+            
+            if (imageSource is BitmapImage bitmapImage)
+            {
+                return bitmapImage;
+            }
+            else if (imageSource != null)
+            {
+                var bitmap = new BitmapImage();
+                using var stream = new InMemoryRandomAccessStream();
+                await bitmap.SetSourceAsync(stream);
+                return bitmap;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] 完整解码失败: {ImageFile.Name}, 错误: {ex.Message}");
         }
 
         return new BitmapImage();
