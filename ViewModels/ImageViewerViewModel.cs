@@ -104,6 +104,9 @@ public partial class ImageViewerViewModel : ObservableRecipient
     [ObservableProperty]
     private bool _isLoadingExif = false;
 
+    [ObservableProperty]
+    private ObservableCollection<FormatTag> _formatTags = new();
+
     public ImageViewerViewModel(IExifService exifService, RatingService ratingService)
     {
         _exifService = exifService;
@@ -146,6 +149,13 @@ public partial class ImageViewerViewModel : ObservableRecipient
         Resolution = $"{imageFileInfo.Width} x {imageFileInfo.Height}";
         Rating = RatingToStars(imageFileInfo.Rating);
         RatingSource = imageFileInfo.RatingSource.ToString();
+
+        // 复制 FormatTags
+        FormatTags.Clear();
+        foreach (var tag in imageFileInfo.FormatTags)
+        {
+            FormatTags.Add(tag);
+        }
 
         SetFileFormatInfo(imageFileInfo.ImageName);
         LoadFilePaths(imageFileInfo);

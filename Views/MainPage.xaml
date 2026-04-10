@@ -340,12 +340,12 @@
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             IsActive="{x:Bind Thumbnail, Converter={StaticResource NullToBoolConverter}, Mode=OneWay}"/>
-                        <!-- 格式标签显示 -->
+                        <!-- 格式标签显示  Background="#CC000000"-->
                         <Border
                             Margin="8,8,0,0"
                             HorizontalAlignment="Left"
                             VerticalAlignment="Top"
-                            Background="#CC000000"
+                            Background="{ThemeResource SmokeFillColorDefaultBrush}"
                             CornerRadius="4"
                             Padding="6,3"
                             Visibility="{x:Bind FormatTags.Count, Mode=OneWay, Converter={StaticResource IntToVisibilityConverter}}">
@@ -369,7 +369,7 @@
                                         <DataTemplate x:DataType="models:FormatTag">
                                             <StackPanel Orientation="Horizontal">
                                                 <Border
-                                                    Background="{Binding Color, Converter={StaticResource StringToBrushConverter}}"
+                                                    Background="{Binding Format, Converter={StaticResource StringToBrushConverter}}"
                                                     CornerRadius="4"
                                                     Padding="6,2"
                                                     Margin="2,0,2,0">
@@ -383,7 +383,7 @@
                                                     Width="1"
                                                     Background="White"
                                                     Opacity="0.3"
-                                                    Margin="2,0,2,0"
+                                                    Margin="3,0,2,0"
                                                     Visibility="{x:Bind IsLast, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
                                             </StackPanel>
                                         </DataTemplate>

@@ -353,7 +353,7 @@ public partial class MainViewModel : ObservableRecipient
                             
                             foreach (var file in allFilesInGroup.Where(f => f != primaryInfo.ImageFile))
                             {
-                                var dummyInfo = new ImageFileInfo(0, 0, string.Empty, file, file.DisplayName, file.DisplayType);
+                                var dummyInfo = new ImageFileInfo(0, 0, string.Empty, file, file.DisplayName, file.FileType);
                                 imageInfos.Add(dummyInfo);
                             }
                             
@@ -473,7 +473,7 @@ public partial class MainViewModel : ObservableRecipient
             properties.Title,
             file,
             file.DisplayName,
-            file.DisplayType);
+            file.FileType);
     }
 
     private async Task<ImageFileInfo?> LoadImageInfoSafeAsync(StorageFile file, CancellationToken cancellationToken)
@@ -561,7 +561,7 @@ public partial class MainViewModel : ObservableRecipient
                 title,
                 file,
                 file.DisplayName,
-                file.DisplayType);
+                file.FileType);
 
             _ = imageInfo.LoadRatingAsync(_ratingService);
 
@@ -728,7 +728,7 @@ public partial class MainViewModel : ObservableRecipient
                             
                             foreach (var file in allFilesInGroup.Where(f => f != primaryInfo.ImageFile))
                             {
-                                var dummyInfo = new ImageFileInfo(0, 0, string.Empty, file, file.DisplayName, file.DisplayType);
+                                var dummyInfo = new ImageFileInfo(0, 0, string.Empty, file, file.DisplayName, file.FileType);
                                 imageInfos.Add(dummyInfo);
                             }
                             
