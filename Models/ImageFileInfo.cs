@@ -277,7 +277,7 @@ public class ImageFileInfo : INotifyPropertyChanged
 
     public void UpdateDisplaySize(ThumbnailSize size)
     {
-        var designHeight = size switch
+        var designSize = size switch
         {
             ThumbnailSize.Small => 120d,
             ThumbnailSize.Medium => 256d,
@@ -295,13 +295,31 @@ public class ImageFileInfo : INotifyPropertyChanged
         // 缩略图准确计算宽高
         const double borderPadding = 0d;
         
-        // 内容区域高度 = 外层高度 - Padding
-        var contentHeight = designHeight - borderPadding;
-        // 内容区域宽度 = 内容高度 * 宽高比
-        var contentWidth = contentHeight * aspectRatio;
-        // 外层宽度 = 内容宽度 + Padding
+        double contentWidth, contentHeight;
+        
+        System.Diagnostics.Debug.WriteLine($"[UpdateDisplaySize] 文件={ImageName}, Width={Width}, Height={Height}, AspectRatio={aspectRatio}");
+        
+        // 根据图片方向决定是固定高度还是固定宽度
+        if (Width >= Height)
+        {
+            // 横构图：固定高度，计算宽度
+            contentHeight = designSize - borderPadding;
+            contentWidth = contentHeight * aspectRatio;
+            System.Diagnostics.Debug.WriteLine($"[UpdateDisplaySize] 横构图: contentWidth={contentWidth}, contentHeight={contentHeight}");
+        }
+        else
+        {
+            // 竖构图：固定宽度，计算高度
+            contentWidth = designSize - borderPadding;
+            contentHeight = contentWidth / aspectRatio;
+            System.Diagnostics.Debug.WriteLine($"[UpdateDisplaySize] 竖构图: contentWidth={contentWidth}, contentHeight={contentHeight}");
+        }
+        
+        // 外层尺寸 = 内容尺寸 + Padding
         DisplayWidth = Math.Max(1d, contentWidth + borderPadding);
-        DisplayHeight = designHeight;
+        DisplayHeight = Math.Max(1d, contentHeight + borderPadding);
+        
+        System.Diagnostics.Debug.WriteLine($"[UpdateDisplaySize] 最终尺寸: DisplayWidth={DisplayWidth}, DisplayHeight={DisplayHeight}");
     }
 
     private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

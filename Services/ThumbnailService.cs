@@ -80,6 +80,19 @@ public class ThumbnailService : IThumbnailService
         }
     }
 
+    public async Task<DecodeResult?> GetThumbnailWithSizeAsync(StorageFile file, uint longSidePixels, bool forceFullDecode, CancellationToken cancellationToken)
+    {
+        await _decodeGate.WaitAsync(cancellationToken);
+        try
+        {
+            return await DecodeThumbnailAsync(file, longSidePixels, cancellationToken);
+        }
+        finally
+        {
+            _decodeGate.Release();
+        }
+    }
+
     public void Invalidate(StorageFile file)
     {
     }
