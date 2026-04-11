@@ -30,8 +30,11 @@ public sealed partial class MainPage : Page
     private readonly DispatcherTimer _visibleThumbnailLoadTimer;
     private readonly ISettingsService _settingsService;
     private readonly HashSet<ImageFileInfo> _pendingVisibleThumbnailLoads = new();
+    private const double GridViewItemMargin = 4d;
+    private const double GridViewItemGap = GridViewItemMargin * 2d;
     private FolderNode? _pendingLoadNode;
     private ScrollViewer? _imageGridScrollViewer;
+    private ItemsWrapGrid? _imageItemsWrapGrid;
     private bool _isUnloaded;
     private bool _isUpdatingSelectionState;
     private bool _isProgrammaticSelectionChange;
@@ -102,6 +105,7 @@ public sealed partial class MainPage : Page
         ViewModel.Filter.FilterChanged += Filter_FilterChanged;
         ImageGridView.DoubleTapped += ImageGridView_DoubleTapped;
         AttachImageGridScrollViewer();
+        UpdateImageGridTileSize();
         QueueVisibleThumbnailLoad("page-loaded");
         UpdateFilterButtonState();
     }
@@ -357,6 +361,7 @@ public sealed partial class MainPage : Page
         _pendingRatingUpdate = null;
         _pendingVisibleThumbnailLoads.Clear();
         DetachImageGridScrollViewer();
+        _imageItemsWrapGrid = null;
         
         foreach (var ratingControl in _ratingControlEventMap.Keys)
         {
@@ -393,7 +398,98 @@ public sealed partial class MainPage : Page
             return;
         }
 
+        UpdateImageGridTileSize();
         TriggerVisibleItemsThumbnailLoad();
+    }
+
+    private void ImageGridView_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        UpdateImageGridTileSize();
+    }
+
+    private void UpdateImageGridTileSize()
+    {
+        if (_isUnloaded || AppLifetime.IsShuttingDown)
+            return;
+
+        AttachImageItemsWrapGrid();
+        if (_imageItemsWrapGrid == null)
+            return;
+
+        var availableWidth = ImageGridView.ActualWidth - ImageGridView.Padding.Left - ImageGridView.Padding.Right;
+        if (availableWidth <= 0)
+            return;
+
+        var targetTileSize = GetTargetTileSize(ViewModel.ThumbnailSize);
+        var minimumTileSize = GetMinimumTileSize(ViewModel.ThumbnailSize);
+        var maximumTileSize = GetMaximumTileSize(ViewModel.ThumbnailSize);
+
+        var columnCount = Math.Max(1, (int)Math.Floor((availableWidth + GridViewItemGap) / (targetTileSize + GridViewItemGap)));
+        var tileSize = CalculateTileSize(availableWidth, columnCount);
+
+        while (columnCount > 1 && tileSize < minimumTileSize)
+        {
+            columnCount--;
+            tileSize = CalculateTileSize(availableWidth, columnCount);
+        }
+
+        while (tileSize > maximumTileSize)
+        {
+            columnCount++;
+            tileSize = CalculateTileSize(availableWidth, columnCount);
+        }
+
+        tileSize = Math.Clamp(tileSize, minimumTileSize, maximumTileSize);
+
+        if (Math.Abs(_imageItemsWrapGrid.ItemWidth - tileSize) < 0.5 &&
+            Math.Abs(_imageItemsWrapGrid.ItemHeight - tileSize) < 0.5)
+        {
+            return;
+        }
+
+        _imageItemsWrapGrid.ItemWidth = tileSize;
+        _imageItemsWrapGrid.ItemHeight = tileSize;
+        System.Diagnostics.Debug.WriteLine($"[MainPage] Tile size updated: size={tileSize:F0}, columns={columnCount}, width={availableWidth:F0}");
+
+        QueueVisibleThumbnailLoad("tile-size-changed");
+    }
+
+    private static double CalculateTileSize(double availableWidth, int columnCount)
+    {
+        return Math.Max(1d, (availableWidth - (GridViewItemGap * Math.Max(0, columnCount - 1))) / columnCount);
+    }
+
+    private static double GetTargetTileSize(ThumbnailSize size)
+    {
+        return size switch
+        {
+            ThumbnailSize.Small => 160d,
+            ThumbnailSize.Medium => 256d,
+            ThumbnailSize.Large => 512d,
+            _ => 256d
+        };
+    }
+
+    private static double GetMinimumTileSize(ThumbnailSize size)
+    {
+        return size switch
+        {
+            ThumbnailSize.Small => 140d,
+            ThumbnailSize.Medium => 208d,
+            ThumbnailSize.Large => 360d,
+            _ => 208d
+        };
+    }
+
+    private static double GetMaximumTileSize(ThumbnailSize size)
+    {
+        return size switch
+        {
+            ThumbnailSize.Small => 200d,
+            ThumbnailSize.Medium => 320d,
+            ThumbnailSize.Large => 640d,
+            _ => 320d
+        };
     }
 
     private void TriggerVisibleItemsThumbnailLoad()
@@ -1406,6 +1502,30 @@ public sealed partial class MainPage : Page
         }
 
         return null;
+    }
+
+    private static ItemsWrapGrid? FindItemsWrapGrid(DependencyObject parent)
+    {
+        if (parent is ItemsWrapGrid itemsWrapGrid)
+            return itemsWrapGrid;
+
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            var result = FindItemsWrapGrid(child);
+            if (result != null)
+                return result;
+        }
+
+        return null;
+    }
+
+    private void AttachImageItemsWrapGrid()
+    {
+        if (_imageItemsWrapGrid != null)
+            return;
+
+        _imageItemsWrapGrid = FindItemsWrapGrid(ImageGridView);
     }
 
     private void AttachImageGridScrollViewer()

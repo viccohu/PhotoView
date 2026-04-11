@@ -326,41 +326,14 @@ public class ImageFileInfo : INotifyPropertyChanged
     {
         var designSize = size switch
         {
-            ThumbnailSize.Small => 120d,
+            ThumbnailSize.Small => 160d,
             ThumbnailSize.Medium => 256d,
             ThumbnailSize.Large => 512d,
             _ => 256d
         };
 
-        var aspectRatio = AspectRatio;
-        if (double.IsNaN(aspectRatio) || double.IsInfinity(aspectRatio) || aspectRatio <= 0)
-        {
-            aspectRatio = 1d;
-        }
-
-        // Border Padding = 6 (左右各6，上下各6)
-        // 缩略图准确计算宽高
-        const double borderPadding = 0d;
-        
-        double contentWidth, contentHeight;
-        
-        // 根据图片方向决定是固定高度还是固定宽度
-        if (Width >= Height)
-        {
-            // 横构图：固定高度，计算宽度
-            contentHeight = designSize - borderPadding;
-            contentWidth = contentHeight * aspectRatio;
-        }
-        else
-        {
-            // 竖构图：固定宽度，计算高度
-            contentWidth = designSize - borderPadding;
-            contentHeight = contentWidth / aspectRatio;
-        }
-        
-        // 外层尺寸 = 内容尺寸 + Padding
-        DisplayWidth = Math.Max(1d, contentWidth + borderPadding);
-        DisplayHeight = Math.Max(1d, contentHeight + borderPadding);
+        DisplayWidth = designSize;
+        DisplayHeight = designSize;
     }
 
     private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
@@ -571,7 +544,7 @@ public class ImageFileInfo : INotifyPropertyChanged
         
         if (Group == null)
         {
-            var ext = ImageFileType.ToLowerInvariant();
+            var ext = NormalizeFormatExtension(ImageFileType);
             FormatTags.Add(new FormatTag
             {
                 Format = GetFormatDisplayName(ext),
@@ -584,7 +557,7 @@ public class ImageFileInfo : INotifyPropertyChanged
             var formats = new HashSet<string>();
             foreach (var image in Group.Images)
             {
-                var ext = image.ImageFileType.ToLowerInvariant();
+                var ext = NormalizeFormatExtension(image.ImageFileType);
                 formats.Add(ext);
             }
             
@@ -606,8 +579,18 @@ public class ImageFileInfo : INotifyPropertyChanged
         }
     }
 
+    private static string NormalizeFormatExtension(string ext)
+    {
+        if (string.IsNullOrWhiteSpace(ext))
+            return string.Empty;
+
+        ext = ext.Trim().ToLowerInvariant();
+        return ext.StartsWith('.') ? ext : $".{ext}";
+    }
+
     private bool IsRawFormat(string ext)
     {
+        ext = NormalizeFormatExtension(ext);
         return ext switch
         {
             ".cr2" or ".cr3" or ".crw" or ".nef" or ".nrw" or ".arw" or ".srf" or ".sr2" or ".dng" or ".orf" or ".pef" or ".raf" or ".rw2" or ".raw" or ".3fr" or ".fff" or ".mos" or ".erf" or ".dcr" or ".mrw" or ".rwl" or ".srw" => true,
@@ -617,6 +600,7 @@ public class ImageFileInfo : INotifyPropertyChanged
 
     private string GetFormatDisplayName(string ext)
     {
+        ext = NormalizeFormatExtension(ext);
         return ext switch
         {
             ".jpg" or ".jpeg" => "JPG",
@@ -632,6 +616,7 @@ public class ImageFileInfo : INotifyPropertyChanged
 
     private string GetFormatColor(string ext)
     {
+        ext = NormalizeFormatExtension(ext);
         var compressedFormats = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
         var rawFormats = new[] { ".cr2", ".cr3", ".crw", ".nef", ".nrw", ".arw", ".srf", ".sr2", ".dng", ".orf", ".pef", ".raf", ".rw2", ".raw", ".3fr", ".fff", ".mos", ".erf", ".dcr", ".mrw", ".rwl", ".srw" };
         var losslessFormats = new[] { ".tiff", ".tif", ".bmp" };
