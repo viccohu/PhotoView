@@ -31,12 +31,14 @@ public sealed partial class ImageViewerControl : UserControl
     private double _fitScale = 1.0;
     private uint _targetDecodeLongSide = 1920;
     private Task<DecodeResult?>? _highResLoadTask;
+    private CancellationTokenSource? _highResLoadCts;
+    private int _highResLoadVersion;
     private bool _hasPrepared = false;
     private bool _hasShown = false;
 
     private static readonly HashSet<string> RawFileExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".arw", ".srf", ".sr2", ".crw", ".cr2", ".cr3", ".nef", ".nrw", ".orf", ".pef", ".raf", ".rw2", ".dng", ".erf", ".3fr", ".kdc", ".mrw", ".mef", ".mos", ".rwl", ".srw", ".x3f", ".iiq", ".fff"
+        ".arw", ".srf", ".sr2", ".crw", ".cr2", ".cr3", ".nef", ".nrw", ".orf", ".pef", ".raf", ".rw2", ".dng", ".erf", ".3fr", ".kdc", ".mrw", ".mef", ".mos", ".rwl", ".srw", ".x3f", ".iiq", ".fff", ".raw"
     };
 
     #region 物理状态
@@ -62,6 +64,7 @@ public sealed partial class ImageViewerControl : UserControl
 
     private bool _isClosing = false;
     private bool _isRunning = false;
+    private bool _isLoaded = false;
     private bool _isLoadingHighRes = false;
     private bool _isViewerLayerReady = false;
     private bool _isLoadingExif = false;
@@ -160,28 +163,54 @@ public sealed partial class ImageViewerControl : UserControl
     private void StartPhysics()
     {
         if (_isRunning) return;
+        if (!_isLoaded || _isClosing) return;
 
-        CompositionTarget.Rendering += OnPhysicsRendering;
-        _isRunning = true;
+        try
+        {
+            CompositionTarget.Rendering += OnPhysicsRendering;
+            _isRunning = true;
+        }
+        catch (Exception ex)
+        {
+            _isRunning = false;
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] StartPhysics error: {ex}");
+        }
     }
 
     private void StopPhysics()
     {
         if (!_isRunning) return;
 
-        CompositionTarget.Rendering -= OnPhysicsRendering;
-        _isRunning = false;
+        try
+        {
+            CompositionTarget.Rendering -= OnPhysicsRendering;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] StopPhysics error: {ex}");
+        }
+        finally
+        {
+            _isRunning = false;
+        }
     }
 
     private void ImageViewerControl_Loaded(object sender, RoutedEventArgs e)
     {
+        _isLoaded = true;
         _cachedScaleTransform = ImageScaleTransform;
         _cachedTranslateTransform = ImageTranslateTransform;
-        StartPhysics();
+        if (!_isClosing)
+        {
+            StartPhysics();
+        }
     }
 
     private void ImageViewerControl_Unloaded(object sender, RoutedEventArgs e)
     {
+        _isLoaded = false;
+        _isClosing = true;
+        CancelHighResLoad();
         StopPhysics();
     }
 
@@ -259,88 +288,133 @@ public sealed partial class ImageViewerControl : UserControl
             return;
         }
 
-        Visibility = Visibility.Visible;
-
-        var storyboard = new Storyboard();
-
-        var fadeInBackground = new DoubleAnimation
+        if (_isClosing)
         {
-            To = 1,
-            Duration = TimeSpan.FromMilliseconds(300)
-        };
-        Storyboard.SetTarget(fadeInBackground, BackgroundOverlay);
-        Storyboard.SetTargetProperty(fadeInBackground, "Opacity");
-        storyboard.Children.Add(fadeInBackground);
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 控件正在关闭，跳过");
+            return;
+        }
 
-        var fadeInContainer = new DoubleAnimation
+        try
         {
-            To = 1,
-            Duration = TimeSpan.FromMilliseconds(300)
-        };
-        Storyboard.SetTarget(fadeInContainer, AnimationContainer);
-        Storyboard.SetTargetProperty(fadeInContainer, "Opacity");
-        storyboard.Children.Add(fadeInContainer);
+            Visibility = Visibility.Visible;
 
-        var tcs = new TaskCompletionSource<bool>();
-        storyboard.Completed += (s, e) => tcs.SetResult(true);
-        storyboard.Begin();
-        await tcs.Task;
+            var storyboard = new Storyboard();
 
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 动画完成");
+            var fadeInBackground = new DoubleAnimation
+            {
+                To = 1,
+                Duration = TimeSpan.FromMilliseconds(300)
+            };
+            Storyboard.SetTarget(fadeInBackground, BackgroundOverlay);
+            Storyboard.SetTargetProperty(fadeInBackground, "Opacity");
+            storyboard.Children.Add(fadeInBackground);
 
-        // 获取焦点，确保键盘事件能够被正确处理
-        this.Focus(FocusState.Programmatic);
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 已设置焦点");
+            var fadeInContainer = new DoubleAnimation
+            {
+                To = 1,
+                Duration = TimeSpan.FromMilliseconds(300)
+            };
+            Storyboard.SetTarget(fadeInContainer, AnimationContainer);
+            Storyboard.SetTargetProperty(fadeInContainer, "Opacity");
+            storyboard.Children.Add(fadeInContainer);
 
-        _hasShown = true;
-        await SwitchToViewerLayerAsync();
+            var tcs = new TaskCompletionSource<bool>();
+            storyboard.Completed += (s, e) => tcs.TrySetResult(true);
+            storyboard.Begin();
+            await tcs.Task;
+
+            if (!_isLoaded || _isClosing)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 动画后控件已关闭，停止切换查看层");
+                return;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 动画完成");
+
+            // 获取焦点，确保键盘事件能够被正确处理
+            this.Focus(FocusState.Programmatic);
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 已设置焦点");
+
+            _hasShown = true;
+            await SwitchToViewerLayerAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync error: {ex}");
+        }
     }
 
     private async Task SwitchToViewerLayerAsync()
     {
-        if (_isViewerLayerReady)
+        if (_isViewerLayerReady || _isClosing)
         {
             System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 已切换过，跳过");
             return;
         }
 
-        int retryCount = 0;
-        while ((ImageContainer.ActualWidth <= 0 || ImageContainer.ActualHeight <= 0) && retryCount < 50)
+        try
         {
-            await Task.Delay(10);
-            retryCount++;
-            ImageContainer.UpdateLayout();
-        }
+            int retryCount = 0;
+            while ((ImageContainer.ActualWidth <= 0 || ImageContainer.ActualHeight <= 0) && retryCount < 50)
+            {
+                await Task.Delay(10);
 
-        if (ImageContainer.ActualWidth <= 0 || ImageContainer.ActualHeight <= 0)
+                if (!_isLoaded || _isClosing)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 等待布局时控件已关闭，停止");
+                    return;
+                }
+
+                retryCount++;
+                ImageContainer.UpdateLayout();
+            }
+
+            if (ImageContainer.ActualWidth <= 0 || ImageContainer.ActualHeight <= 0)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 布局未完成，使用兜底尺寸继续");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 布局完成, ContainerWidth={ImageContainer.ActualWidth}, ContainerHeight={ImageContainer.ActualHeight}");
+            }
+
+            _isViewerLayerReady = true;
+
+            _targetDecodeLongSide = GetTargetDecodeLongSide();
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 解码最长边={_targetDecodeLongSide}");
+
+            StopPhysics();
+            MainImage.Source = _imageFileInfo?.Thumbnail;
+            MainImage.Stretch = Stretch.Uniform;
+            if (!_isClosing)
+            {
+                StartPhysics();
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 使用缩略图");
+
+            AnimationImage.Opacity = 0;
+            ImageContainer.Opacity = 1;
+
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 已切换到查看层");
+
+            ResetViewer();
+
+            _highResLoadCts?.Cancel();
+            _highResLoadCts = new CancellationTokenSource();
+            _highResLoadCts.CancelAfter(TimeSpan.FromSeconds(5));
+
+            var loadVersion = ++_highResLoadVersion;
+            _highResLoadTask = LoadHighResolutionImageAsync(loadVersion, _highResLoadCts.Token);
+            _ = WaitForHighResAndReplaceAsync(loadVersion);
+        }
+        catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 布局未完成，跳过");
-            return;
+            _isViewerLayerReady = false;
+            CancelHighResLoad();
+            StopPhysics();
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync error: {ex}");
         }
-
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 布局完成, ContainerWidth={ImageContainer.ActualWidth}, ContainerHeight={ImageContainer.ActualHeight}");
-
-        _isViewerLayerReady = true;
-
-        _targetDecodeLongSide = GetTargetDecodeLongSide();
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 解码最长边={_targetDecodeLongSide}");
-
-        StopPhysics();
-        MainImage.Source = _imageFileInfo?.Thumbnail;
-        MainImage.Stretch = Stretch.Uniform;
-        StartPhysics();
-
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 使用缩略图");
-
-        AnimationImage.Opacity = 0;
-        ImageContainer.Opacity = 1;
-
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 已切换到查看层");
-
-        ResetViewer();
-
-        _highResLoadTask = LoadHighResolutionImageAsync();
-        _ = WaitForHighResAndReplaceAsync();
     }
 
     private void ResetViewer()
@@ -359,14 +433,21 @@ public sealed partial class ImageViewerControl : UserControl
         ApplyTransform();
     }
 
-    private async Task WaitForHighResAndReplaceAsync()
+    private async Task WaitForHighResAndReplaceAsync(int loadVersion)
     {
         try
         {
             _isLoadingHighRes = true;
-            var highResResult = await _highResLoadTask;
+            var highResLoadTask = _highResLoadTask;
+            if (highResLoadTask == null)
+            {
+                _isLoadingHighRes = false;
+                return;
+            }
+
+            var highResResult = await highResLoadTask;
             
-            if (_isClosing || !_isRunning)
+            if (!_isLoaded || _isClosing || !_isRunning || loadVersion != _highResLoadVersion)
             {
                 _isLoadingHighRes = false;
                 return;
@@ -374,25 +455,43 @@ public sealed partial class ImageViewerControl : UserControl
 
             if (highResResult?.ImageSource != null)
             {
-                DispatcherQueue.TryEnqueue(async () =>
+                var enqueued = DispatcherQueue.TryEnqueue(() =>
                 {
-                    if (_isClosing || !_isRunning)
+                    if (!_isLoaded || _isClosing || !_isRunning || loadVersion != _highResLoadVersion)
                     {
                         _isLoadingHighRes = false;
                         return;
                     }
 
-                    StopPhysics();
-                    MainImage.Source = highResResult.ImageSource;
-                    System.Diagnostics.Debug.WriteLine($"[ImageViewer] WaitForHighResAndReplaceAsync: 高清图渐进式替换完成");
-                    _isLoadingHighRes = false;
-                    StartPhysics();
-
-                    if (_imageFileInfo?.ImageFile != null)
+                    try
                     {
-                        _ = LoadExifAfterImageAsync(_imageFileInfo.ImageFile);
+                        StopPhysics();
+                        MainImage.Source = highResResult.ImageSource;
+                        System.Diagnostics.Debug.WriteLine($"[ImageViewer] WaitForHighResAndReplaceAsync: 高清图渐进式替换完成");
+                        _isLoadingHighRes = false;
+                        if (!_isClosing)
+                        {
+                            StartPhysics();
+                        }
+
+                        if (_imageFileInfo?.ImageFile != null)
+                        {
+                            _ = LoadExifAfterImageAsync(_imageFileInfo.ImageFile);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _isLoadingHighRes = false;
+                        StopPhysics();
+                        System.Diagnostics.Debug.WriteLine($"[ImageViewer] WaitForHighResAndReplaceAsync UI update error: {ex}");
                     }
                 });
+
+                if (!enqueued)
+                {
+                    _isLoadingHighRes = false;
+                    System.Diagnostics.Debug.WriteLine($"[ImageViewer] WaitForHighResAndReplaceAsync: DispatcherQueue 已关闭，丢弃高清结果");
+                }
             }
             else
             {
@@ -406,22 +505,22 @@ public sealed partial class ImageViewerControl : UserControl
         }
     }
 
-    private async Task<DecodeResult?> LoadHighResolutionImageAsync()
+    private async Task<DecodeResult?> LoadHighResolutionImageAsync(int loadVersion, CancellationToken cancellationToken)
     {
         try
         {
             if (_imageFileInfo?.ImageFile == null)
                 return null;
 
-            System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 开始加载高清图, 解码最长边={_targetDecodeLongSide}");
-
-            using var cts = new CancellationTokenSource();
-            cts.CancelAfter(5000);
+            var imageFile = _imageFileInfo.ImageFile;
+            var targetDecodeLongSide = _targetDecodeLongSide;
+            var forceFullDecodeRaw = IsRawFile(imageFile.FileType) && App.GetService<ISettingsService>().AlwaysDecodeRaw;
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 开始加载高清图, 解码最长边={targetDecodeLongSide}, forceFullDecodeRaw={forceFullDecodeRaw}, version={loadVersion}");
 
             var thumbnailService = App.GetService<IThumbnailService>();
-            var decodeResult = await thumbnailService.GetThumbnailWithSizeAsync(_imageFileInfo.ImageFile, _targetDecodeLongSide, cts.Token);
+            var decodeResult = await thumbnailService.GetThumbnailWithSizeAsync(imageFile, targetDecodeLongSide, forceFullDecodeRaw, cancellationToken);
 
-            if (decodeResult?.ImageSource != null)
+            if (decodeResult?.ImageSource != null && loadVersion == _highResLoadVersion && !cancellationToken.IsCancellationRequested)
             {
                 System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 高清图加载完成, 实际解码尺寸={decodeResult.Width}x{decodeResult.Height}");
                 return decodeResult;
@@ -432,11 +531,35 @@ public sealed partial class ImageViewerControl : UserControl
                 return null;
             }
         }
+        catch (OperationCanceledException)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync canceled, version={loadVersion}");
+            return null;
+        }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"LoadHighResolutionImageAsync error: {ex}");
             return null;
         }
+    }
+
+    private static bool IsRawFile(string extension)
+    {
+        if (string.IsNullOrWhiteSpace(extension))
+            return false;
+
+        extension = extension.Trim();
+        if (!extension.StartsWith('.'))
+            extension = $".{extension}";
+
+        return RawFileExtensions.Contains(extension);
+    }
+
+    private void CancelHighResLoad()
+    {
+        _highResLoadVersion++;
+        _highResLoadCts?.Cancel();
+        _isLoadingHighRes = false;
     }
 
     public void PrepareCloseAnimation()
@@ -445,14 +568,28 @@ public sealed partial class ImageViewerControl : UserControl
             return;
 
         _isClosing = true;
+        CancelHighResLoad();
         StopPhysics();
 
-        AnimationImage.Source = MainImage.Source;
-        AnimationImage.Opacity = 1;
-        ImageContainer.Opacity = 0;
+        try
+        {
+            if (_isLoaded)
+            {
+                AnimationImage.Source = MainImage.Source ?? AnimationImage.Source ?? _imageFileInfo?.Thumbnail;
+                AnimationImage.Opacity = 1;
+                ImageContainer.Opacity = 0;
 
-        ConnectedAnimationService.GetForCurrentView().PrepareToAnimate("BackConnectedAnimation", AnimationImage);
-        Closed?.Invoke(this, EventArgs.Empty);
+                ConnectedAnimationService.GetForCurrentView().PrepareToAnimate("BackConnectedAnimation", AnimationImage);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareCloseAnimation error: {ex}");
+        }
+        finally
+        {
+            Closed?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     public void HandleRatingKey(Windows.System.VirtualKey key)
@@ -494,32 +631,54 @@ public sealed partial class ImageViewerControl : UserControl
 
     public async Task CompleteCloseAsync()
     {
-        var storyboard = new Storyboard();
-
-        var fadeOutBackground = new DoubleAnimation
+        try
         {
-            To = 0,
-            Duration = TimeSpan.FromMilliseconds(300)
-        };
-        Storyboard.SetTarget(fadeOutBackground, BackgroundOverlay);
-        Storyboard.SetTargetProperty(fadeOutBackground, "Opacity");
-        storyboard.Children.Add(fadeOutBackground);
+            if (!_isLoaded)
+            {
+                return;
+            }
 
-        var fadeOutContainer = new DoubleAnimation
+            var storyboard = new Storyboard();
+
+            var fadeOutBackground = new DoubleAnimation
+            {
+                To = 0,
+                Duration = TimeSpan.FromMilliseconds(300)
+            };
+            Storyboard.SetTarget(fadeOutBackground, BackgroundOverlay);
+            Storyboard.SetTargetProperty(fadeOutBackground, "Opacity");
+            storyboard.Children.Add(fadeOutBackground);
+
+            var fadeOutContainer = new DoubleAnimation
+            {
+                To = 0,
+                Duration = TimeSpan.FromMilliseconds(300)
+            };
+            Storyboard.SetTarget(fadeOutContainer, AnimationContainer);
+            Storyboard.SetTargetProperty(fadeOutContainer, "Opacity");
+            storyboard.Children.Add(fadeOutContainer);
+
+            var tcs = new TaskCompletionSource<bool>();
+            storyboard.Completed += (s, e) => tcs.TrySetResult(true);
+            storyboard.Begin();
+            await tcs.Task;
+
+            if (_isLoaded)
+            {
+                Visibility = Visibility.Collapsed;
+            }
+        }
+        catch (Exception ex)
         {
-            To = 0,
-            Duration = TimeSpan.FromMilliseconds(300)
-        };
-        Storyboard.SetTarget(fadeOutContainer, AnimationContainer);
-        Storyboard.SetTargetProperty(fadeOutContainer, "Opacity");
-        storyboard.Children.Add(fadeOutContainer);
-
-        var tcs = new TaskCompletionSource<bool>();
-        storyboard.Completed += (s, e) => tcs.SetResult(true);
-        storyboard.Begin();
-        await tcs.Task;
-
-        Visibility = Visibility.Collapsed;
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] CompleteCloseAsync error: {ex}");
+            try
+            {
+                Visibility = Visibility.Collapsed;
+            }
+            catch
+            {
+            }
+        }
     }
 
     public FrameworkElement GetMainImage() => AnimationImage;
@@ -656,56 +815,65 @@ public sealed partial class ImageViewerControl : UserControl
 
     private void OnPhysicsRendering(object sender, object e)
     {
-        if (!_isRunning) return;
-        if (_isLoadingHighRes) return;
-        if (MainImage?.Source == null || ImageContainer == null) return;
-
-        bool needsUpdate = false;
-        bool isZooming = Math.Abs(_zoomScale - _targetZoomScale) > 0.0001;
-
-        if (isZooming)
+        try
         {
-            var oldScale = _zoomScale;
-            _zoomScale += (_targetZoomScale - _zoomScale) * ZoomEasingFactor;
+            if (!_isLoaded || _isClosing) return;
+            if (!_isRunning) return;
+            if (_isLoadingHighRes) return;
+            if (MainImage?.Source == null || ImageContainer == null) return;
 
-            if (_hasZoomAnchor)
+            bool needsUpdate = false;
+            bool isZooming = Math.Abs(_zoomScale - _targetZoomScale) > 0.0001;
+
+            if (isZooming)
             {
-                _translateX = _zoomAnchorScreenX - _zoomAnchorImgX * _zoomScale;
-                _translateY = _zoomAnchorScreenY - _zoomAnchorImgY * _zoomScale;
+                var oldScale = _zoomScale;
+                _zoomScale += (_targetZoomScale - _zoomScale) * ZoomEasingFactor;
+
+                if (_hasZoomAnchor)
+                {
+                    _translateX = _zoomAnchorScreenX - _zoomAnchorImgX * _zoomScale;
+                    _translateY = _zoomAnchorScreenY - _zoomAnchorImgY * _zoomScale;
+                }
+                else
+                {
+                    var scaleRatio = _zoomScale / oldScale;
+                    _translateX *= scaleRatio;
+                    _translateY *= scaleRatio;
+                }
+
+                ClampTranslation();
+                needsUpdate = true;
             }
-            else
+            else if (_hasZoomAnchor)
             {
-                var scaleRatio = _zoomScale / oldScale;
-                _translateX *= scaleRatio;
-                _translateY *= scaleRatio;
+                _hasZoomAnchor = false;
             }
 
-            ClampTranslation();
-            needsUpdate = true;
-        }
-        else if (_hasZoomAnchor)
-        {
-            _hasZoomAnchor = false;
-        }
+            if (!_isDragging &&
+                (Math.Abs(_velocityX) > VelocityThreshold || Math.Abs(_velocityY) > VelocityThreshold))
+            {
+                _translateX += _velocityX;
+                _translateY += _velocityY;
+                _velocityX *= InertiaDamping;
+                _velocityY *= InertiaDamping;
+                needsUpdate = true;
+            }
 
-        if (!_isDragging &&
-            (Math.Abs(_velocityX) > VelocityThreshold || Math.Abs(_velocityY) > VelocityThreshold))
-        {
-            _translateX += _velocityX;
-            _translateY += _velocityY;
-            _velocityX *= InertiaDamping;
-            _velocityY *= InertiaDamping;
-            needsUpdate = true;
-        }
+            if (!_isDragging)
+            {
+                needsUpdate |= ApplyBoundsWithSpring();
+            }
 
-        if (!_isDragging)
-        {
-            needsUpdate |= ApplyBoundsWithSpring();
+            if (needsUpdate)
+            {
+                ApplyTransform();
+            }
         }
-
-        if (needsUpdate)
+        catch (Exception ex)
         {
-            ApplyTransform();
+            StopPhysics();
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] OnPhysicsRendering error: {ex}");
         }
     }
 
@@ -843,7 +1011,19 @@ public sealed partial class ImageViewerControl : UserControl
 
     private void ImageContainer_SizeChanged(object sender, SizeChangedEventArgs e)
     {
-        ImageClip.Rect = new Windows.Foundation.Rect(0, 0, ImageContainer.ActualWidth, ImageContainer.ActualHeight);
+        try
+        {
+            if (_isClosing)
+            {
+                return;
+            }
+
+            ImageClip.Rect = new Windows.Foundation.Rect(0, 0, ImageContainer.ActualWidth, ImageContainer.ActualHeight);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] ImageContainer_SizeChanged error: {ex}");
+        }
     }
 
     #endregion

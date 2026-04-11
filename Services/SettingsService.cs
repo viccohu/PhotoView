@@ -23,6 +23,8 @@ public class SettingsService : ISettingsService
     private string _exportRawFolderName = "RAW";
     private double _decodeScaleFactor = 2.0;
     private bool _alwaysDecodeRaw = false;
+    private int _alwaysDecodeRawPersistenceSuspendCount;
+    private bool? _pendingAlwaysDecodeRawPersistenceValue;
 
     public event EventHandler<NavigationViewPaneDisplayMode>? NavigationViewModeChanged;
     public event EventHandler<int>? BatchSizeChanged;
@@ -478,6 +480,13 @@ public class SettingsService : ISettingsService
 
     public async Task SaveAlwaysDecodeRawAsync(bool alwaysDecode)
     {
+        if (_alwaysDecodeRawPersistenceSuspendCount > 0)
+        {
+            _pendingAlwaysDecodeRawPersistenceValue = alwaysDecode;
+            System.Diagnostics.Debug.WriteLine($"[SettingsService] SaveAlwaysDecodeRawAsync deferred, value={alwaysDecode}, suspendCount={_alwaysDecodeRawPersistenceSuspendCount}");
+            return;
+        }
+
         await _localSettingsService.SaveSettingAsync("AlwaysDecodeRaw", alwaysDecode);
     }
 
@@ -490,6 +499,41 @@ public class SettingsService : ISettingsService
             return alwaysDecode.Value;
         }
         return _alwaysDecodeRaw;
+    }
+
+    public void SuspendAlwaysDecodeRawPersistence(string reason)
+    {
+        _alwaysDecodeRawPersistenceSuspendCount++;
+        System.Diagnostics.Debug.WriteLine($"[SettingsService] SuspendAlwaysDecodeRawPersistence reason={reason}, suspendCount={_alwaysDecodeRawPersistenceSuspendCount}");
+    }
+
+    public async Task ResumeAlwaysDecodeRawPersistenceAsync(string reason)
+    {
+        if (_alwaysDecodeRawPersistenceSuspendCount > 0)
+        {
+            _alwaysDecodeRawPersistenceSuspendCount--;
+        }
+
+        System.Diagnostics.Debug.WriteLine($"[SettingsService] ResumeAlwaysDecodeRawPersistence reason={reason}, suspendCount={_alwaysDecodeRawPersistenceSuspendCount}");
+
+        if (_alwaysDecodeRawPersistenceSuspendCount > 0 || !_pendingAlwaysDecodeRawPersistenceValue.HasValue)
+        {
+            return;
+        }
+
+        var valueToSave = _pendingAlwaysDecodeRawPersistenceValue.Value;
+        _pendingAlwaysDecodeRawPersistenceValue = null;
+
+        try
+        {
+            await _localSettingsService.SaveSettingAsync("AlwaysDecodeRaw", valueToSave);
+            System.Diagnostics.Debug.WriteLine($"[SettingsService] ResumeAlwaysDecodeRawPersistence persisted deferred value={valueToSave}");
+        }
+        catch (Exception ex)
+        {
+            _pendingAlwaysDecodeRawPersistenceValue = valueToSave;
+            System.Diagnostics.Debug.WriteLine($"[SettingsService] ResumeAlwaysDecodeRawPersistence failed: {ex.Message}");
+        }
     }
 
     public async Task InitializeAsync()

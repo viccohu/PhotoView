@@ -112,23 +112,43 @@ public sealed partial class MainPage : Page
 
     private async void ImageViewer_Closed(object? sender, EventArgs e)
     {
-        if (_currentViewer != null && _storedImageFileInfo != null)
+        var viewer = _currentViewer;
+        if (viewer == null)
         {
-            await ScrollItemIntoViewAsync(_storedImageFileInfo, "viewer-close", ScrollIntoViewAlignment.Default);
+            return;
+        }
 
-            var animation = ConnectedAnimationService.GetForCurrentView().GetAnimation("BackConnectedAnimation");
-            if (animation != null)
+        try
+        {
+            if (_storedImageFileInfo != null)
             {
-                await ImageGridView.TryStartConnectedAnimationAsync(animation, _storedImageFileInfo, "thumbnailImage");
+                await ScrollItemIntoViewAsync(_storedImageFileInfo, "viewer-close", ScrollIntoViewAlignment.Default);
+
+                var animation = ConnectedAnimationService.GetForCurrentView().GetAnimation("BackConnectedAnimation");
+                if (animation != null)
+                {
+                    await ImageGridView.TryStartConnectedAnimationAsync(animation, _storedImageFileInfo, "thumbnailImage");
+                }
             }
 
-            await _currentViewer.CompleteCloseAsync();
-
+            await viewer.CompleteCloseAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainPage] ImageViewer_Closed error: {ex}");
+        }
+        finally
+        {
             // 清理资源
-            _currentViewer.Closed -= ImageViewer_Closed;
-            _currentViewer.ViewModel.RatingUpdated -= ViewModel_RatingUpdated;
-            ViewerContainer.Content = null;
-            _currentViewer = null;
+            viewer.Closed -= ImageViewer_Closed;
+            viewer.ViewModel.RatingUpdated -= ViewModel_RatingUpdated;
+            if (ReferenceEquals(_currentViewer, viewer))
+            {
+                ViewerContainer.Content = null;
+                _currentViewer = null;
+            }
+
+            await _settingsService.ResumeAlwaysDecodeRawPersistenceAsync("viewer-close");
         }
     }
 
@@ -147,6 +167,7 @@ public sealed partial class MainPage : Page
             var newViewer = new Controls.ImageViewerControl();
             ViewerContainer.Content = newViewer;
             _currentViewer = newViewer;
+            _settingsService.SuspendAlwaysDecodeRawPersistence("viewer-open");
 
             // 订阅关闭事件
             newViewer.Closed += ImageViewer_Closed;
@@ -355,6 +376,14 @@ public sealed partial class MainPage : Page
     private void MainPage_Unloaded(object sender, RoutedEventArgs e)
     {
         _isUnloaded = true;
+        if (_currentViewer != null)
+        {
+            _currentViewer.Closed -= ImageViewer_Closed;
+            _currentViewer.ViewModel.RatingUpdated -= ViewModel_RatingUpdated;
+            _currentViewer = null;
+            _ = _settingsService.ResumeAlwaysDecodeRawPersistenceAsync("main-page-unloaded");
+        }
+
         _loadImagesThrottleTimer.Stop();
         _ratingDebounceTimer.Stop();
         _visibleThumbnailLoadTimer.Stop();

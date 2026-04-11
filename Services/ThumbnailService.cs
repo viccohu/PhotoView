@@ -43,7 +43,7 @@ public class ThumbnailService : IThumbnailService
         await _decodeGate.WaitAsync(cancellationToken);
         try
         {
-            var result = await DecodeThumbnailAsync(file, (uint)size, cancellationToken);
+            var result = await DecodeThumbnailAsync(file, (uint)size, forceFullDecodeRaw: false, cancellationToken);
             return result?.ImageSource;
         }
         finally
@@ -57,7 +57,7 @@ public class ThumbnailService : IThumbnailService
         await _decodeGate.WaitAsync(cancellationToken);
         try
         {
-            var result = await DecodeThumbnailAsync(file, longSidePixels, cancellationToken);
+            var result = await DecodeThumbnailAsync(file, longSidePixels, forceFullDecodeRaw: false, cancellationToken);
             return result?.ImageSource;
         }
         finally
@@ -71,7 +71,7 @@ public class ThumbnailService : IThumbnailService
         await _decodeGate.WaitAsync(cancellationToken);
         try
         {
-            return await DecodeThumbnailAsync(file, longSidePixels, cancellationToken);
+            return await DecodeThumbnailAsync(file, longSidePixels, forceFullDecodeRaw: false, cancellationToken);
         }
         finally
         {
@@ -84,7 +84,7 @@ public class ThumbnailService : IThumbnailService
         await _decodeGate.WaitAsync(cancellationToken);
         try
         {
-            return await DecodeThumbnailAsync(file, longSidePixels, cancellationToken);
+            return await DecodeThumbnailAsync(file, longSidePixels, forceFullDecode, cancellationToken);
         }
         finally
         {
@@ -195,11 +195,15 @@ public class ThumbnailService : IThumbnailService
         }
     }
 
-    private async Task<DecodeResult?> DecodeThumbnailAsync(StorageFile file, uint longSidePixels, CancellationToken cancellationToken)
+    private async Task<DecodeResult?> DecodeThumbnailAsync(
+        StorageFile file,
+        uint longSidePixels,
+        bool forceFullDecodeRaw,
+        CancellationToken cancellationToken)
     {
         var extension = file.FileType.ToLowerInvariant();
         
-        if (IsRawFile(extension) && !_settingsService.AlwaysDecodeRaw)
+        if (IsRawFile(extension) && !forceFullDecodeRaw)
         {
             var previewResult = await TryGetRawEmbeddedPreviewAsync(file, longSidePixels, cancellationToken);
             if (previewResult != null)

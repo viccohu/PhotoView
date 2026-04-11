@@ -11,8 +11,6 @@ using PhotoView.Contracts.Services;
 using PhotoView.Helpers;
 using PhotoView.Models;
 
-using Windows.ApplicationModel;
-
 namespace PhotoView.ViewModels;
 
 public class SettingsViewModel : ObservableRecipient
@@ -247,26 +245,24 @@ public class SettingsViewModel : ObservableRecipient
             {
                 if (AlwaysDecodeRaw != param)
                 {
-                    AlwaysDecodeRaw = param;
-                    await _settingsService.SaveAlwaysDecodeRawAsync(param);
+                    var previousValue = AlwaysDecodeRaw;
+                    try
+                    {
+                        AlwaysDecodeRaw = param;
+                        await _settingsService.SaveAlwaysDecodeRawAsync(param);
+                    }
+                    catch (Exception ex)
+                    {
+                        AlwaysDecodeRaw = previousValue;
+                        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] SaveAlwaysDecodeRaw failed: {ex.Message}");
+                    }
                 }
             });
     }
 
     private static string GetVersionDescription()
     {
-        Version version;
-
-        if (RuntimeHelper.IsMSIX)
-        {
-            var packageVersion = Package.Current.Id.Version;
-
-            version = new(packageVersion.Major, packageVersion.Minor, packageVersion.Build, packageVersion.Revision);
-        }
-        else
-        {
-            version = Assembly.GetExecutingAssembly().GetName().Version!;
-        }
+        var version = Assembly.GetExecutingAssembly().GetName().Version!;
 
         return $"{"AppDisplayName".GetLocalized()} - {version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
     }
