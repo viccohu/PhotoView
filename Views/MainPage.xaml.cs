@@ -650,9 +650,9 @@ public sealed partial class MainPage : Page
 
         AttachImageGridScrollViewer();
 
-        if (_isProgrammaticScrollActive || _isUserScrollInProgress)
+        if (_isProgrammaticScrollActive)
         {
-            QueueVisibleThumbnailLoad("scroll-active");
+            QueueVisibleThumbnailLoad("programmatic-scroll");
             return;
         }
 
@@ -1440,6 +1440,7 @@ public sealed partial class MainPage : Page
             System.Diagnostics.Debug.WriteLine("[MainPage] User scroll started");
 
         _isUserScrollInProgress = true;
+        QueueVisibleThumbnailLoad("user-scroll");
     }
 
     private void ImageGridScrollViewer_ViewChanged(object sender, ScrollViewerViewChangedEventArgs e)
