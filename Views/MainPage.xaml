@@ -362,9 +362,13 @@
                     SelectionMode="Single"
                     DoubleTapped="SubFolderGridView_DoubleTapped"
                     Visibility="Collapsed"
-                    MaxHeight="150"
+                    MaxHeight="0"
+                    Opacity="0"
                     Padding="0"
                     Margin="0">
+                    <GridView.ItemContainerTransitions>
+                        <TransitionCollection/>
+                    </GridView.ItemContainerTransitions>
                     <GridView.ItemTemplate>
                         <DataTemplate x:DataType="models:FolderNode">
                             <Grid

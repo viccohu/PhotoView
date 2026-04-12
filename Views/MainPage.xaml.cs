@@ -33,6 +33,8 @@ public sealed partial class MainPage : Page
     private readonly HashSet<ImageFileInfo> _pendingVisibleThumbnailLoads = new();
     private const double GridViewItemMargin = 4d;
     private const double GridViewItemGap = GridViewItemMargin * 2d;
+    private const double FolderDrawerExpandedMaxHeight = 150d;
+    private const int FolderDrawerAnimationDurationMs = 160;
     private FolderNode? _pendingLoadNode;
     private ScrollViewer? _imageGridScrollViewer;
     private ItemsWrapGrid? _imageItemsWrapGrid;
@@ -45,6 +47,8 @@ public sealed partial class MainPage : Page
     private FolderNode? _lastClickedNode;
     private bool _hasAttemptedRestoreLastFolder;
     private bool _isFolderDrawerExpanded = true;
+    private bool _isFolderDrawerContentVisible;
+    private int _folderDrawerAnimationVersion;
     private (ImageFileInfo Image, uint Rating)? _pendingRatingUpdate;
     private ImageFileInfo? _storedImageFileInfo;
     private Controls.ImageViewerControl? _currentViewer;
@@ -111,7 +115,7 @@ public sealed partial class MainPage : Page
         UpdateImageGridTileSize();
         QueueVisibleThumbnailLoad("page-loaded");
         UpdateFilterButtonState();
-        UpdateFolderDrawerState();
+        UpdateFolderDrawerState(animate: false);
     }
 
     private async void ImageViewer_Closed(object? sender, EventArgs e)
@@ -655,13 +659,77 @@ public sealed partial class MainPage : Page
         ThrottleLoadImages(node);
     }
 
-    private void UpdateFolderDrawerState()
+    private void UpdateFolderDrawerState(bool animate = true)
     {
         var hasFolders = ViewModel.HasSubFoldersInCurrentFolder;
+        var shouldShowContent = hasFolders && _isFolderDrawerExpanded;
         FolderDrawerRoot.Visibility = Visibility.Visible;
-        SubFolderGridView.Visibility = hasFolders && _isFolderDrawerExpanded ? Visibility.Visible : Visibility.Collapsed;
-        FolderDrawerChevron.Glyph = hasFolders && _isFolderDrawerExpanded ? "\xE70D" : "\xE70E";
+        FolderDrawerChevron.Glyph = shouldShowContent ? "\xE70D" : "\xE70E";
         FolderDrawerToggleButton.IsEnabled = hasFolders;
+
+        if (!animate)
+        {
+            _folderDrawerAnimationVersion++;
+            _isFolderDrawerContentVisible = shouldShowContent;
+            SubFolderGridView.Visibility = shouldShowContent ? Visibility.Visible : Visibility.Collapsed;
+            SubFolderGridView.Opacity = shouldShowContent ? 1d : 0d;
+            SubFolderGridView.MaxHeight = shouldShowContent ? FolderDrawerExpandedMaxHeight : 0d;
+            return;
+        }
+
+        if (_isFolderDrawerContentVisible == shouldShowContent)
+        {
+            return;
+        }
+
+        AnimateFolderDrawerContent(shouldShowContent);
+    }
+
+    private void AnimateFolderDrawerContent(bool showContent)
+    {
+        var animationVersion = ++_folderDrawerAnimationVersion;
+        _isFolderDrawerContentVisible = showContent;
+
+        if (showContent)
+        {
+            SubFolderGridView.Visibility = Visibility.Visible;
+        }
+
+        var heightAnimation = new DoubleAnimation
+        {
+            From = SubFolderGridView.MaxHeight,
+            To = showContent ? FolderDrawerExpandedMaxHeight : 0d,
+            Duration = new Duration(TimeSpan.FromMilliseconds(FolderDrawerAnimationDurationMs)),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        Storyboard.SetTarget(heightAnimation, SubFolderGridView);
+        Storyboard.SetTargetProperty(heightAnimation, "MaxHeight");
+
+        var opacityAnimation = new DoubleAnimation
+        {
+            From = SubFolderGridView.Opacity,
+            To = showContent ? 1d : 0d,
+            Duration = new Duration(TimeSpan.FromMilliseconds(FolderDrawerAnimationDurationMs)),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        Storyboard.SetTarget(opacityAnimation, SubFolderGridView);
+        Storyboard.SetTargetProperty(opacityAnimation, "Opacity");
+
+        var storyboard = new Storyboard();
+        storyboard.Children.Add(heightAnimation);
+        storyboard.Children.Add(opacityAnimation);
+        storyboard.Completed += (_, _) =>
+        {
+            if (animationVersion != _folderDrawerAnimationVersion)
+            {
+                return;
+            }
+
+            SubFolderGridView.MaxHeight = showContent ? FolderDrawerExpandedMaxHeight : 0d;
+            SubFolderGridView.Opacity = showContent ? 1d : 0d;
+            SubFolderGridView.Visibility = showContent ? Visibility.Visible : Visibility.Collapsed;
+        };
+        storyboard.Begin();
     }
 
     private void FolderDrawerToggleButton_Click(object sender, RoutedEventArgs e)

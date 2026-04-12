@@ -447,12 +447,13 @@ public partial class MainViewModel : ObservableRecipient
 
     private async Task SyncCurrentSubFoldersAsync(FolderNode? folderNode, CancellationToken cancellationToken)
     {
-        CurrentSubFolders.Clear();
-        OnPropertyChanged(nameof(SubFolderCount));
-        OnPropertyChanged(nameof(HasSubFoldersInCurrentFolder));
-
         if (folderNode?.Folder == null)
+        {
+            CurrentSubFolders.Clear();
+            OnPropertyChanged(nameof(SubFolderCount));
+            OnPropertyChanged(nameof(HasSubFoldersInCurrentFolder));
             return;
+        }
 
         if (!folderNode.IsLoaded)
         {
@@ -461,9 +462,13 @@ public partial class MainViewModel : ObservableRecipient
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        foreach (var child in folderNode.Children
+        var subFolders = folderNode.Children
             .Where(child => child.Folder != null)
-            .OrderBy(child => child.Name, StringComparer.CurrentCultureIgnoreCase))
+            .OrderBy(child => child.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+        CurrentSubFolders.Clear();
+        foreach (var child in subFolders)
         {
             CurrentSubFolders.Add(child);
         }
