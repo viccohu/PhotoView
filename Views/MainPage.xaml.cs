@@ -13,6 +13,7 @@ using PhotoView.Models;
 using PhotoView.Services;
 using PhotoView.ViewModels;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -43,6 +44,7 @@ public sealed partial class MainPage : Page
     private DateTime _lastClickTime;
     private FolderNode? _lastClickedNode;
     private bool _hasAttemptedRestoreLastFolder;
+    private bool _isFolderDrawerExpanded = true;
     private (ImageFileInfo Image, uint Rating)? _pendingRatingUpdate;
     private ImageFileInfo? _storedImageFileInfo;
     private Controls.ImageViewerControl? _currentViewer;
@@ -81,6 +83,7 @@ public sealed partial class MainPage : Page
         ViewModel.ThumbnailSizeChanged += ViewModel_ThumbnailSizeChanged;
         ViewModel.FolderTreeLoaded += ViewModel_FolderTreeLoaded;
         ViewModel.SelectedFolderChanged += ViewModel_SelectedFolderChanged;
+        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         Loaded += MainPage_Loaded;
         KeyDown += MainPage_KeyDown;
         PreviewKeyDown += MainPage_PreviewKeyDown;
@@ -108,6 +111,7 @@ public sealed partial class MainPage : Page
         UpdateImageGridTileSize();
         QueueVisibleThumbnailLoad("page-loaded");
         UpdateFilterButtonState();
+        UpdateFolderDrawerState();
     }
 
     private async void ImageViewer_Closed(object? sender, EventArgs e)
@@ -155,6 +159,18 @@ public sealed partial class MainPage : Page
     private void ViewModel_RatingUpdated(object? sender, (ImageFileInfo Image, uint Rating) e)
     {
         System.Diagnostics.Debug.WriteLine($"[MainPage] ViewModel_RatingUpdated: 图片 {e.Image.ImageName} 评级已更新为 {e.Rating}");
+    }
+
+    private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(MainViewModel.SubFolderCount) ||
+            e.PropertyName == nameof(MainViewModel.HasSubFoldersInCurrentFolder) ||
+            e.PropertyName == nameof(MainViewModel.CurrentSubFolders))
+        {
+            _isFolderDrawerExpanded = ViewModel.HasSubFoldersInCurrentFolder;
+
+            UpdateFolderDrawerState();
+        }
     }
 
     private async void ImageGridView_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
@@ -624,14 +640,76 @@ public sealed partial class MainPage : Page
     {
         if (args.Item is FolderNode node)
         {
-            await ExpandTreeViewPathAsync(node);
-            if (_isUnloaded || AppLifetime.IsShuttingDown)
+            await NavigateToFolderNodeAsync(node);
+        }
+    }
+
+    private async Task NavigateToFolderNodeAsync(FolderNode node)
+    {
+        await ExpandTreeViewPathAsync(node);
+        if (_isUnloaded || AppLifetime.IsShuttingDown)
+        {
+            return;
+        }
+
+        ThrottleLoadImages(node);
+    }
+
+    private void UpdateFolderDrawerState()
+    {
+        var hasFolders = ViewModel.HasSubFoldersInCurrentFolder;
+        FolderDrawerRoot.Visibility = Visibility.Visible;
+        SubFolderGridView.Visibility = hasFolders && _isFolderDrawerExpanded ? Visibility.Visible : Visibility.Collapsed;
+        FolderDrawerChevron.Glyph = hasFolders && _isFolderDrawerExpanded ? "\xE70D" : "\xE70E";
+        FolderDrawerToggleButton.IsEnabled = hasFolders;
+    }
+
+    private void FolderDrawerToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ViewModel.HasSubFoldersInCurrentFolder)
+        {
+            return;
+        }
+
+        _isFolderDrawerExpanded = !_isFolderDrawerExpanded;
+        UpdateFolderDrawerState();
+    }
+
+    private async void SubFolderGridView_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        if (TryGetFolderNodeFromElement(e.OriginalSource, out var folderNode) && folderNode.Folder != null)
+        {
+            SubFolderGridView.SelectedItem = folderNode;
+            await NavigateToFolderNodeAsync(folderNode);
+            e.Handled = true;
+        }
+    }
+
+    private static bool TryGetFolderNodeFromElement(object originalSource, out FolderNode folderNode)
+    {
+        var current = originalSource as DependencyObject;
+        while (current != null)
+        {
+            if (current is FrameworkElement element)
             {
-                return;
+                if (element.Tag is FolderNode tagNode)
+                {
+                    folderNode = tagNode;
+                    return true;
+                }
+
+                if (element.DataContext is FolderNode contextNode)
+                {
+                    folderNode = contextNode;
+                    return true;
+                }
             }
 
-            ThrottleLoadImages(node);
+            current = VisualTreeHelper.GetParent(current);
         }
+
+        folderNode = null!;
+        return false;
     }
 
     private async System.Threading.Tasks.Task ExpandTreeViewPathAsync(FolderNode targetNode)
@@ -978,7 +1056,22 @@ public sealed partial class MainPage : Page
         e.Handled = true;
     }
 
+    private void SubFolderItem_RightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement element)
+            return;
+
+        if (element.Tag is FolderNode node)
+        {
+            _rightClickedSubFolderNode = node;
+            SubFolderGridView.SelectedItem = node;
+            FlyoutBase.ShowAttachedFlyout(element);
+            e.Handled = true;
+        }
+    }
+
     private FolderNode? _rightClickedFolderNode;
+    private FolderNode? _rightClickedSubFolderNode;
 
     private void OpenFolderInExplorer_Click(object sender, RoutedEventArgs e)
     {
@@ -1000,6 +1093,29 @@ public sealed partial class MainPage : Page
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"OpenFolderInExplorer_Click error: {ex}");
+        }
+    }
+
+    private void OpenSubFolderInExplorer_Click(object sender, RoutedEventArgs e)
+    {
+        if (_rightClickedSubFolderNode == null || string.IsNullOrEmpty(_rightClickedSubFolderNode.FullPath))
+        {
+            return;
+        }
+
+        try
+        {
+            var processInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = _rightClickedSubFolderNode.FullPath,
+                UseShellExecute = true
+            };
+            System.Diagnostics.Process.Start(processInfo);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"OpenSubFolderInExplorer_Click error: {ex}");
         }
     }
 

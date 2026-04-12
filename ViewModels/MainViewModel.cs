@@ -97,6 +97,8 @@ public partial class MainViewModel : ObservableRecipient
     
     public bool CanGoUp => SelectedFolder?.Parent != null;
 
+    public ObservableCollection<FolderNode> CurrentSubFolders { get; }
+
     public int PendingDeleteCount
     {
         get => _pendingDeleteCount;
@@ -134,12 +136,17 @@ public partial class MainViewModel : ObservableRecipient
         _thumbnailSize = _settingsService.ThumbnailSize;
         _folderTree = new ObservableCollection<FolderNode>();
         _breadcrumbPath = new ObservableCollection<FolderNode>();
+        CurrentSubFolders = new ObservableCollection<FolderNode>();
         _images = new ObservableCollection<ImageFileInfo>();
         Filter = new FilterViewModel();
         Filter.FilterChanged += OnFilterChanged;
         _ = _ratingService.InitializeAsync();
         _ = LoadDrivesAsync();
     }
+
+    public int SubFolderCount => CurrentSubFolders.Count;
+
+    public bool HasSubFoldersInCurrentFolder => CurrentSubFolders.Count > 0;
 
     private async System.Threading.Tasks.Task LoadDrivesAsync()
     {
@@ -254,6 +261,8 @@ public partial class MainViewModel : ObservableRecipient
 
         Images.Clear();
         ImagesChanged?.Invoke(this, EventArgs.Empty);
+
+        await SyncCurrentSubFoldersAsync(folderNode, cancellationToken);
 
         if (folderNode?.Folder == null)
             return;
@@ -436,6 +445,33 @@ public partial class MainViewModel : ObservableRecipient
         }
     }
 
+    private async Task SyncCurrentSubFoldersAsync(FolderNode? folderNode, CancellationToken cancellationToken)
+    {
+        CurrentSubFolders.Clear();
+        OnPropertyChanged(nameof(SubFolderCount));
+        OnPropertyChanged(nameof(HasSubFoldersInCurrentFolder));
+
+        if (folderNode?.Folder == null)
+            return;
+
+        if (!folderNode.IsLoaded)
+        {
+            await LoadChildrenAsync(folderNode);
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        foreach (var child in folderNode.Children
+            .Where(child => child.Folder != null)
+            .OrderBy(child => child.Name, StringComparer.CurrentCultureIgnoreCase))
+        {
+            CurrentSubFolders.Add(child);
+        }
+
+        OnPropertyChanged(nameof(SubFolderCount));
+        OnPropertyChanged(nameof(HasSubFoldersInCurrentFolder));
+    }
+
     private static bool IsImageFile(StorageFile file)
     {
         return ImageExtensions.Contains(file.FileType);
@@ -600,6 +636,7 @@ public partial class MainViewModel : ObservableRecipient
         var currentFolder = SelectedFolder;
         
         SelectedFolder = null;
+        currentFolder.IsLoaded = false;
         Images.Clear();
         ImagesChanged?.Invoke(this, EventArgs.Empty);
         
@@ -621,6 +658,8 @@ public partial class MainViewModel : ObservableRecipient
 
         Images.Clear();
         ImagesChanged?.Invoke(this, EventArgs.Empty);
+
+        await SyncCurrentSubFoldersAsync(folderNode, cancellationToken);
 
         if (folderNode?.Folder == null)
             return;

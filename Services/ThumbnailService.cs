@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Windows.Graphics.Imaging;
 using Windows.Storage;
+using Windows.Storage.FileProperties;
 
 namespace PhotoView.Services;
 
@@ -132,6 +133,12 @@ public class ThumbnailService : IThumbnailService
             
             if (thumbnail == null || thumbnail.Size == 0)
                 return null;
+
+            if (thumbnail.Type != ThumbnailType.Image)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ThumbnailService] Ignore system thumbnail {thumbnail.Type} for {file.Name}, continue decode fallback");
+                return null;
+            }
             
             cancellationToken.ThrowIfCancellationRequested();
             
