@@ -84,7 +84,7 @@
                         </ComboBox>
                     </toolkit:SettingsCard>
                     
-                    <toolkit:SettingsCard Description="Number of images to load per batch" Header="Batch size">
+                    <toolkit:SettingsCard Description="Number of files to enumerate per batch" Header="Batch size">
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE8FD;" />
                         </toolkit:SettingsCard.HeaderIcon>

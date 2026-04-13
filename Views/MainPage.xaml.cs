@@ -39,6 +39,8 @@ public sealed partial class MainPage : Page
     private const double FolderDrawerCollapsedOffsetY = -8d;
     private const double ImageGridTopScrollTolerance = 1d;
     private const int FolderDrawerAnimationDurationMs = 220;
+    private const int VisibleThumbnailStartBudgetPerTick = 16;
+    private const int VisibleThumbnailPrefetchItemCount = 12;
     private readonly PointerEventHandler _imageGridPointerWheelHandler;
     private FolderNode? _pendingLoadNode;
     private ScrollViewer? _imageGridScrollViewer;
@@ -997,7 +999,7 @@ public sealed partial class MainPage : Page
         else if (args.Phase == 1)
         {
             _realizedImageItems.Add(imageInfo);
-            QueueVisibleThumbnailLoad(imageInfo, "container-phase1");
+            QueueVisibleThumbnailLoad("container-phase1");
         }
     }
 
@@ -1017,15 +1019,37 @@ public sealed partial class MainPage : Page
         }
 
         var size = ViewModel.ThumbnailSize;
-        var candidates = _pendingVisibleThumbnailLoads.ToArray();
+        var candidates = _pendingVisibleThumbnailLoads
+            .Select(imageInfo => new
+            {
+                ImageInfo = imageInfo,
+                Index = ViewModel.Images.IndexOf(imageInfo)
+            })
+            .Where(candidate => candidate.Index >= 0)
+            .OrderBy(candidate => candidate.Index)
+            .Select(candidate => candidate.ImageInfo)
+            .ToArray();
         _pendingVisibleThumbnailLoads.Clear();
 
+        var startedCount = 0;
         foreach (var imageInfo in candidates)
         {
             if (!IsItemContainerRealized(imageInfo))
                 continue;
 
+            if (startedCount >= VisibleThumbnailStartBudgetPerTick)
+            {
+                _pendingVisibleThumbnailLoads.Add(imageInfo);
+                continue;
+            }
+
             _ = imageInfo.EnsureThumbnailAsync(size);
+            startedCount++;
+        }
+
+        if (_pendingVisibleThumbnailLoads.Count > 0)
+        {
+            _visibleThumbnailLoadTimer.Start();
         }
     }
 
@@ -1963,8 +1987,14 @@ public sealed partial class MainPage : Page
             _imageItemsWrapGrid.FirstVisibleIndex >= 0 &&
             _imageItemsWrapGrid.LastVisibleIndex >= _imageItemsWrapGrid.FirstVisibleIndex)
         {
-            var firstIndex = Math.Max(0, _imageItemsWrapGrid.FirstVisibleIndex);
-            var lastIndex = Math.Min(ImageGridView.Items.Count - 1, _imageItemsWrapGrid.LastVisibleIndex);
+            var firstIndex = Math.Max(0, _imageItemsWrapGrid.FirstVisibleIndex - VisibleThumbnailPrefetchItemCount);
+            var lastIndex = Math.Min(ImageGridView.Items.Count - 1, _imageItemsWrapGrid.LastVisibleIndex + VisibleThumbnailPrefetchItemCount);
+            _pendingVisibleThumbnailLoads.RemoveWhere(imageInfo =>
+            {
+                var index = ViewModel.Images.IndexOf(imageInfo);
+                return index < firstIndex || index > lastIndex;
+            });
+
             for (int i = firstIndex; i <= lastIndex; i++)
             {
                 if (ImageGridView.Items[i] is ImageFileInfo imageInfo)
@@ -1975,7 +2005,17 @@ public sealed partial class MainPage : Page
         }
         else
         {
-            foreach (var imageInfo in _realizedImageItems)
+            var realizedFallbackLimit = VisibleThumbnailStartBudgetPerTick + VisibleThumbnailPrefetchItemCount;
+            foreach (var imageInfo in _realizedImageItems
+                .Select(imageInfo => new
+                {
+                    ImageInfo = imageInfo,
+                    Index = ViewModel.Images.IndexOf(imageInfo)
+                })
+                .Where(candidate => candidate.Index >= 0)
+                .OrderBy(candidate => candidate.Index)
+                .Take(realizedFallbackLimit)
+                .Select(candidate => candidate.ImageInfo))
             {
                 _pendingVisibleThumbnailLoads.Add(imageInfo);
             }
