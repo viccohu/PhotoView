@@ -6,6 +6,7 @@ using PhotoView.ViewModels;
 
 namespace PhotoView.Controls;
 
+// Legacy unconnected path. MainPage currently uses its inline GridView item template.
 public sealed partial class ThumbnailItemControl : UserControl
 {
     public static readonly DependencyProperty ThumbnailItemProperty =

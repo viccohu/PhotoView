@@ -9,6 +9,7 @@ using System.Linq;
 
 namespace PhotoView.Services;
 
+// Legacy unconnected selection model. MainPage currently uses GridView selection deltas directly.
 public class ImageSelectionService
 {
     private readonly ObservableCollection<ImageFileInfo> _selectedImages = new();

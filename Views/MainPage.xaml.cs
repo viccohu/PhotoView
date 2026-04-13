@@ -31,6 +31,8 @@ public sealed partial class MainPage : Page
     private readonly DispatcherTimer _visibleThumbnailLoadTimer;
     private readonly ISettingsService _settingsService;
     private readonly HashSet<ImageFileInfo> _pendingVisibleThumbnailLoads = new();
+    private readonly HashSet<ImageFileInfo> _realizedImageItems = new();
+    private readonly HashSet<ImageFileInfo> _selectedImageState = new();
     private const double GridViewItemMargin = 4d;
     private const double GridViewItemGap = GridViewItemMargin * 2d;
     private const double FolderDrawerExpandedMaxHeight = 150d;
@@ -39,8 +41,6 @@ public sealed partial class MainPage : Page
     private ScrollViewer? _imageGridScrollViewer;
     private ItemsWrapGrid? _imageItemsWrapGrid;
     private bool _isUnloaded;
-    private bool _isUpdatingSelectionState;
-    private bool _isProgrammaticSelectionChange;
     private bool _isProgrammaticScrollActive;
     private bool _isUserScrollInProgress;
     private DateTime _lastClickTime;
@@ -409,6 +409,8 @@ public sealed partial class MainPage : Page
         _visibleThumbnailLoadTimer.Stop();
         _pendingRatingUpdate = null;
         _pendingVisibleThumbnailLoads.Clear();
+        _realizedImageItems.Clear();
+        _selectedImageState.Clear();
         DetachImageGridScrollViewer();
         _imageItemsWrapGrid = null;
         
@@ -884,6 +886,8 @@ public sealed partial class MainPage : Page
                 System.Diagnostics.Debug.WriteLine("[MainPage] ImagesChanged -> clearing transient grid state for empty collection");
                 ClearGridViewSelection();
                 _pendingVisibleThumbnailLoads.Clear();
+                _realizedImageItems.Clear();
+                ClearSelectedImageState();
             }
 
             QueueVisibleThumbnailLoad("images-changed");
@@ -899,6 +903,7 @@ public sealed partial class MainPage : Page
         {
             imageInfo.CancelThumbnailLoad();
             _pendingVisibleThumbnailLoads.Remove(imageInfo);
+            _realizedImageItems.Remove(imageInfo);
             return;
         }
 
@@ -908,6 +913,7 @@ public sealed partial class MainPage : Page
         }
         else if (args.Phase == 1)
         {
+            _realizedImageItems.Add(imageInfo);
             QueueVisibleThumbnailLoad(imageInfo, "container-phase1");
         }
     }
@@ -1051,38 +1057,42 @@ public sealed partial class MainPage : Page
 
     private void ImageGridView_SelectionChanged(object sender, Microsoft.UI.Xaml.Controls.SelectionChangedEventArgs e)
     {
-        if (_isProgrammaticSelectionChange)
-            return;
-
-        SyncSelectedStateFromGridView();
+        SyncSelectedStateFromGridView(e);
     }
 
-    private void SyncSelectedStateFromGridView()
+    private void SyncSelectedStateFromGridView(Microsoft.UI.Xaml.Controls.SelectionChangedEventArgs e)
     {
-        if (_isUpdatingSelectionState)
-            return;
-
-        _isUpdatingSelectionState = true;
-        try
+        foreach (var removedItem in e.RemovedItems)
         {
-            foreach (var image in ViewModel.Images)
+            if (removedItem is ImageFileInfo imageInfo && _selectedImageState.Remove(imageInfo))
             {
-                image.IsSelected = false;
-            }
-
-            foreach (var selectedItem in ImageGridView.SelectedItems)
-            {
-                if (selectedItem is ImageFileInfo imageInfo)
-                {
-                    imageInfo.IsSelected = true;
-                    System.Diagnostics.Debug.WriteLine($"[Selected] {imageInfo.ImageName}, Rating: {imageInfo.Rating}, Source: {imageInfo.RatingSource}, Dimensions: {imageInfo.Width}x{imageInfo.Height}, DisplaySize: {imageInfo.DisplayWidth:F0}x{imageInfo.DisplayHeight:F0}");
-                }
+                imageInfo.IsSelected = false;
             }
         }
-        finally
+
+        foreach (var addedItem in e.AddedItems)
         {
-            _isUpdatingSelectionState = false;
+            if (addedItem is ImageFileInfo imageInfo && _selectedImageState.Add(imageInfo))
+            {
+                imageInfo.IsSelected = true;
+                System.Diagnostics.Debug.WriteLine($"[Selected] {imageInfo.ImageName}, Rating: {imageInfo.Rating}, Source: {imageInfo.RatingSource}, Dimensions: {imageInfo.Width}x{imageInfo.Height}, DisplaySize: {imageInfo.DisplayWidth:F0}x{imageInfo.DisplayHeight:F0}");
+            }
         }
+
+        if (ImageGridView.SelectedItems.Count == 0 && _selectedImageState.Count > 0)
+        {
+            ClearSelectedImageState();
+        }
+    }
+
+    private void ClearSelectedImageState()
+    {
+        foreach (var imageInfo in _selectedImageState.ToArray())
+        {
+            imageInfo.IsSelected = false;
+        }
+
+        _selectedImageState.Clear();
     }
 
     private void ClearGridViewSelection()
@@ -1671,26 +1681,21 @@ public sealed partial class MainPage : Page
     {
         try
         {
-            var scrollViewer = FindScrollViewer(ImageGridView);
-            if (scrollViewer == null)
-                return 0;
-
-            var horizontalOffset = scrollViewer.HorizontalOffset;
-            var verticalOffset = scrollViewer.VerticalOffset;
-
-            for (int i = 0; i < ImageGridView.Items.Count; i++)
+            AttachImageItemsWrapGrid();
+            if (_imageItemsWrapGrid != null &&
+                _imageItemsWrapGrid.FirstVisibleIndex >= 0 &&
+                _imageItemsWrapGrid.FirstVisibleIndex < ViewModel.Images.Count)
             {
-                var container = ImageGridView.ContainerFromIndex(i) as GridViewItem;
-                if (container != null)
-                {
-                    var transform = container.TransformToVisual(ImageGridView);
-                    var point = transform.TransformPoint(new Windows.Foundation.Point(0, 0));
-                    
-                    if (point.Y >= 0 && point.Y < ImageGridView.ActualHeight)
-                    {
-                        return i;
-                    }
-                }
+                return _imageItemsWrapGrid.FirstVisibleIndex;
+            }
+
+            if (_realizedImageItems.Count > 0)
+            {
+                return _realizedImageItems
+                    .Select(image => ViewModel.Images.IndexOf(image))
+                    .Where(index => index >= 0)
+                    .DefaultIfEmpty(0)
+                    .Min();
             }
 
             return 0;
@@ -1799,13 +1804,28 @@ public sealed partial class MainPage : Page
         if (_isUnloaded || AppLifetime.IsShuttingDown)
             return;
 
-        for (int i = 0; i < ImageGridView.Items.Count; i++)
-        {
-            if (ImageGridView.Items[i] is not ImageFileInfo imageInfo)
-                continue;
+        AttachImageItemsWrapGrid();
 
-            if (ImageGridView.ContainerFromIndex(i) is GridViewItem)
+        if (_imageItemsWrapGrid != null &&
+            _imageItemsWrapGrid.FirstVisibleIndex >= 0 &&
+            _imageItemsWrapGrid.LastVisibleIndex >= _imageItemsWrapGrid.FirstVisibleIndex)
+        {
+            var firstIndex = Math.Max(0, _imageItemsWrapGrid.FirstVisibleIndex);
+            var lastIndex = Math.Min(ImageGridView.Items.Count - 1, _imageItemsWrapGrid.LastVisibleIndex);
+            for (int i = firstIndex; i <= lastIndex; i++)
+            {
+                if (ImageGridView.Items[i] is ImageFileInfo imageInfo)
+                {
+                    _pendingVisibleThumbnailLoads.Add(imageInfo);
+                }
+            }
+        }
+        else
+        {
+            foreach (var imageInfo in _realizedImageItems)
+            {
                 _pendingVisibleThumbnailLoads.Add(imageInfo);
+            }
         }
 
         if (_pendingVisibleThumbnailLoads.Count == 0)
@@ -1829,20 +1849,12 @@ public sealed partial class MainPage : Page
 
     private bool IsItemContainerRealized(ImageFileInfo imageInfo)
     {
-        return ImageGridView.ContainerFromItem(imageInfo) is GridViewItem;
+        return _realizedImageItems.Contains(imageInfo);
     }
 
     private void ExecuteProgrammaticSelectionChange(Action action)
     {
-        _isProgrammaticSelectionChange = true;
-        try
-        {
-            action();
-        }
-        finally
-        {
-            _isProgrammaticSelectionChange = false;
-        }
+        action();
     }
 
     private async Task ScrollItemIntoViewAsync(ImageFileInfo imageInfo, string reason, ScrollIntoViewAlignment alignment)

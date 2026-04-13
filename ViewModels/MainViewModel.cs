@@ -259,8 +259,10 @@ public partial class MainViewModel : ObservableRecipient
         // 加载目录前确认当前设置的缩略图尺寸
         ThumbnailSize = _settingsService.ThumbnailSize;
 
+        _allImages.Clear();
         Images.Clear();
         ImagesChanged?.Invoke(this, EventArgs.Empty);
+        await Task.Yield();
 
         await SyncCurrentSubFoldersAsync(folderNode, cancellationToken);
 
@@ -332,46 +334,7 @@ public partial class MainViewModel : ObservableRecipient
                 {
                     System.Diagnostics.Debug.WriteLine($"[LoadImagesAsync] 批次 {index/batchSize + 1}, 加载新主图片 {newPrimaryFiles.Count} 个");
                     
-                    var newPrimaryInfos = await System.Threading.Tasks.Task.Run(async () =>
-                    {
-                        var tasks = newPrimaryFiles.Select(f => LoadImageInfoSafeAsync(f, cancellationToken));
-                        var results = await Task.WhenAll(tasks);
-                        return results.Where(r => r != null).ToList();
-                    }, cancellationToken);
-                    
-                    var newFinalGroups = new List<ImageGroup>();
-                    
-                    foreach (var primaryInfo in newPrimaryInfos)
-                    {
-                        if (cancellationToken.IsCancellationRequested)
-                            break;
-                        
-                        var groupName = ImageGroup.GetGroupName(primaryInfo.ImageFile.Name);
-                        if (newGroupMap.TryGetValue(groupName, out var allFilesInGroup))
-                        {
-                            var imageInfos = new List<ImageFileInfo> { primaryInfo };
-                            
-                            foreach (var file in allFilesInGroup.Where(f => f != primaryInfo.ImageFile))
-                            {
-                                var dummyInfo = new ImageFileInfo(0, 0, string.Empty, file, file.DisplayName, file.FileType);
-                                imageInfos.Add(dummyInfo);
-                            }
-                            
-                            var finalGroup = new ImageGroup(groupName, imageInfos);
-                            newFinalGroups.Add(finalGroup);
-                        }
-                    }
-                    
-                    foreach (var group in newFinalGroups)
-                    {
-                        if (!cancellationToken.IsCancellationRequested)
-                        {
-                            group.PrimaryImage.UpdateDisplaySize(ThumbnailSize);
-                            Images.Add(group.PrimaryImage);
-                        }
-                    }
-                    
-                    ImagesChanged?.Invoke(this, EventArgs.Empty);
+                    AddPlaceholderGroups(newGroupMap, cancellationToken);
                 }
                 
                 index += (uint)batch.Count;
@@ -482,6 +445,75 @@ public partial class MainViewModel : ObservableRecipient
         return ImageExtensions.Contains(file.FileType);
     }
 
+    private void AddPlaceholderGroups(
+        IReadOnlyDictionary<string, List<StorageFile>> newGroupMap,
+        CancellationToken cancellationToken)
+    {
+        var addedAny = false;
+
+        foreach (var (groupName, allFilesInGroup) in newGroupMap)
+        {
+            if (cancellationToken.IsCancellationRequested || allFilesInGroup.Count == 0)
+            {
+                break;
+            }
+
+            var imageInfos = allFilesInGroup
+                .Select(file => CreatePlaceholderImageInfo(file))
+                .ToList();
+
+            var group = new ImageGroup(groupName, imageInfos);
+            group.PrimaryImage.UpdateDisplaySize(ThumbnailSize);
+
+            Images.Add(group.PrimaryImage);
+            _allImages.Add(group.PrimaryImage);
+            StartDeferredImageInfoLoad(group.PrimaryImage, cancellationToken);
+            addedAny = true;
+        }
+
+        if (addedAny)
+        {
+            ImagesChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private static ImageFileInfo CreatePlaceholderImageInfo(StorageFile file)
+    {
+        return new ImageFileInfo(
+            200,
+            200,
+            string.Empty,
+            file,
+            file.DisplayName,
+            file.FileType);
+    }
+
+    private void StartDeferredImageInfoLoad(ImageFileInfo imageInfo, CancellationToken cancellationToken)
+    {
+        _ = HydrateImageMetadataAsync(imageInfo, cancellationToken);
+        _ = imageInfo.LoadRatingAsync(_ratingService);
+    }
+
+    private async Task HydrateImageMetadataAsync(ImageFileInfo imageInfo, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var metadata = await LoadImageMetadataAsync(imageInfo.ImageFile, cancellationToken);
+            if (metadata.HasValue && !cancellationToken.IsCancellationRequested)
+            {
+                var (width, height, title) = metadata.Value;
+                imageInfo.UpdateMetadata(width, height, title);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[LoadImageMetadataAsync] failed for {imageInfo.ImageName}: {ex.Message}");
+        }
+    }
+
     public static async System.Threading.Tasks.Task<ImageFileInfo> LoadImageInfo(StorageFile file)
     {
         var properties = await file.Properties.GetImagePropertiesAsync();
@@ -504,6 +536,87 @@ public partial class MainViewModel : ObservableRecipient
             file,
             file.DisplayName,
             file.FileType);
+    }
+
+    private async Task<(int Width, int Height, string Title)?> LoadImageMetadataAsync(
+        StorageFile file,
+        CancellationToken cancellationToken)
+    {
+        int width = 200;
+        int height = 200;
+        string title = string.Empty;
+
+        try
+        {
+            var properties = await file.Properties.GetImagePropertiesAsync().AsTask(cancellationToken);
+
+            if (properties.Width > 0 && properties.Height > 0)
+            {
+                width = (int)properties.Width;
+                height = (int)properties.Height;
+
+                var orientation = properties.Orientation;
+                if (orientation == Windows.Storage.FileProperties.PhotoOrientation.Rotate90 ||
+                    orientation == Windows.Storage.FileProperties.PhotoOrientation.Rotate270 ||
+                    orientation == Windows.Storage.FileProperties.PhotoOrientation.Transpose ||
+                    orientation == Windows.Storage.FileProperties.PhotoOrientation.Transverse)
+                {
+                    (width, height) = (height, width);
+                }
+            }
+
+            title = properties.Title;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[LoadImageMetadataAsync] Properties failed for {file.Name}: {ex.Message}");
+        }
+
+        if (width == 200 && height == 200)
+        {
+            try
+            {
+                using var stream = await file.OpenReadAsync().AsTask(cancellationToken);
+                var decoder = await Windows.Graphics.Imaging.BitmapDecoder.CreateAsync(stream).AsTask(cancellationToken);
+                width = (int)decoder.PixelWidth;
+                height = (int)decoder.PixelHeight;
+
+                try
+                {
+                    var properties = await decoder.BitmapProperties.GetPropertiesAsync(new[] { "System.Photo.Orientation" }).AsTask(cancellationToken);
+                    if (properties.TryGetValue("System.Photo.Orientation", out var orientationValue))
+                    {
+                        var exifOrientation = Convert.ToUInt16(orientationValue.Value);
+                        if (exifOrientation == 6 || exifOrientation == 8 || exifOrientation == 5 || exifOrientation == 7)
+                        {
+                            (width, height) = (height, width);
+                        }
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[LoadImageMetadataAsync] Orientation failed for {file.Name}: {ex.Message}");
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[LoadImageMetadataAsync] Decoder failed for {file.Name}: {ex.Message}");
+            }
+        }
+
+        return (width, height, title);
     }
 
     private async Task<ImageFileInfo?> LoadImageInfoSafeAsync(StorageFile file, CancellationToken cancellationToken)
@@ -661,8 +774,10 @@ public partial class MainViewModel : ObservableRecipient
         // 加载目录前确认当前设置的缩略图尺寸
         ThumbnailSize = _settingsService.ThumbnailSize;
 
+        _allImages.Clear();
         Images.Clear();
         ImagesChanged?.Invoke(this, EventArgs.Empty);
+        await Task.Yield();
 
         await SyncCurrentSubFoldersAsync(folderNode, cancellationToken);
 
@@ -733,47 +848,7 @@ public partial class MainViewModel : ObservableRecipient
                 if (newPrimaryFiles.Count > 0)
                 {
 
-                    
-                    var newPrimaryInfos = await System.Threading.Tasks.Task.Run(async () =>
-                    {
-                        var tasks = newPrimaryFiles.Select(f => LoadImageInfoSafeAsync(f, cancellationToken));
-                        var results = await Task.WhenAll(tasks);
-                        return results.Where(r => r != null).ToList();
-                    }, cancellationToken);
-                    
-                    var newFinalGroups = new List<ImageGroup>();
-                    
-                    foreach (var primaryInfo in newPrimaryInfos)
-                    {
-                        if (cancellationToken.IsCancellationRequested)
-                            break;
-                        
-                        var groupName = ImageGroup.GetGroupName(primaryInfo.ImageFile.Name);
-                        if (newGroupMap.TryGetValue(groupName, out var allFilesInGroup))
-                        {
-                            var imageInfos = new List<ImageFileInfo> { primaryInfo };
-                            
-                            foreach (var file in allFilesInGroup.Where(f => f != primaryInfo.ImageFile))
-                            {
-                                var dummyInfo = new ImageFileInfo(0, 0, string.Empty, file, file.DisplayName, file.FileType);
-                                imageInfos.Add(dummyInfo);
-                            }
-                            
-                            var finalGroup = new ImageGroup(groupName, imageInfos);
-                            newFinalGroups.Add(finalGroup);
-                        }
-                    }
-                    
-                    foreach (var group in newFinalGroups)
-                    {
-                        if (!cancellationToken.IsCancellationRequested)
-                        {
-                            group.PrimaryImage.UpdateDisplaySize(ThumbnailSize);
-                            Images.Add(group.PrimaryImage);
-                        }
-                    }
-                    
-                    ImagesChanged?.Invoke(this, EventArgs.Empty);
+                    AddPlaceholderGroups(newGroupMap, cancellationToken);
                 }
                 
                 index += (uint)batch.Count;

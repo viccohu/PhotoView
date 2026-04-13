@@ -13,7 +13,9 @@ public interface IThumbnailService
     Task<DecodeResult?> GetThumbnailWithSizeAsync(StorageFile file, uint longSidePixels, CancellationToken cancellationToken);
     Task<DecodeResult?> GetThumbnailWithSizeAsync(StorageFile file, uint longSidePixels, bool forceFullDecode, CancellationToken cancellationToken);
 
+    // Cache hooks are intentionally no-op for now; size changes reload visible items.
     void Invalidate(StorageFile file);
 
+    // Cache hooks are intentionally no-op for now; size changes reload visible items.
     void Clear();
 }

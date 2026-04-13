@@ -11,7 +11,7 @@
     mc:Ignorable="d">
     <Page.Resources>
         <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
-        <converters:ThumbnailConverter x:Key="ThumbnailConverter"/>
+        <!-- ThumbnailConverter is a legacy path; MainPage uses ImageFileInfo.Thumbnail directly. -->
         <converters:NullToBoolConverter x:Key="NullToBoolConverter"/>
         <converters:NodeTypeToIconConverter x:Key="NodeTypeToIconConverter"/>
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
@@ -466,12 +466,14 @@
                                     VerticalAlignment="Center"/>
                             </Grid>
                         </Border>
-                        <ProgressRing
-                            Width="24"
-                            Height="24"
+                        <FontIcon
+                            Glyph="&#xEB90;"
+                            FontFamily="{StaticResource SymbolThemeFontFamily}"
+                            FontSize="28"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
-                            IsActive="{x:Bind Thumbnail, Converter={StaticResource NullToBoolConverter}, Mode=OneWay}"/>
+                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                            Visibility="{x:Bind IsThumbnailFailed, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                         <!-- 格式标签显示  Background="#CC000000"-->
                         <Border
                             Margin="8,8,0,0"

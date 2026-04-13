@@ -29,7 +29,7 @@ public class ThumbnailService : IThumbnailService
     private int GetConcurrencyCount()
     {
         return _settingsService.PerformanceMode == PerformanceMode.Smart
-            ? Math.Max(4, Environment.ProcessorCount / 2)
+            ? Math.Clamp(Environment.ProcessorCount / 2, 4, 8)
             : 4;
     }
 
@@ -41,7 +41,8 @@ public class ThumbnailService : IThumbnailService
 
     public async Task<ImageSource?> GetThumbnailAsync(StorageFile file, ThumbnailSize size, CancellationToken cancellationToken)
     {
-        await _decodeGate.WaitAsync(cancellationToken);
+        var gate = _decodeGate;
+        await gate.WaitAsync(cancellationToken);
         try
         {
             var result = await DecodeThumbnailAsync(file, (uint)size, forceFullDecodeRaw: false, cancellationToken);
@@ -49,13 +50,14 @@ public class ThumbnailService : IThumbnailService
         }
         finally
         {
-            _decodeGate.Release();
+            gate.Release();
         }
     }
 
     public async Task<ImageSource?> GetThumbnailByLongSideAsync(StorageFile file, uint longSidePixels, CancellationToken cancellationToken)
     {
-        await _decodeGate.WaitAsync(cancellationToken);
+        var gate = _decodeGate;
+        await gate.WaitAsync(cancellationToken);
         try
         {
             var result = await DecodeThumbnailAsync(file, longSidePixels, forceFullDecodeRaw: false, cancellationToken);
@@ -63,42 +65,46 @@ public class ThumbnailService : IThumbnailService
         }
         finally
         {
-            _decodeGate.Release();
+            gate.Release();
         }
     }
 
     public async Task<DecodeResult?> GetThumbnailWithSizeAsync(StorageFile file, uint longSidePixels, CancellationToken cancellationToken)
     {
-        await _decodeGate.WaitAsync(cancellationToken);
+        var gate = _decodeGate;
+        await gate.WaitAsync(cancellationToken);
         try
         {
             return await DecodeThumbnailAsync(file, longSidePixels, forceFullDecodeRaw: false, cancellationToken);
         }
         finally
         {
-            _decodeGate.Release();
+            gate.Release();
         }
     }
 
     public async Task<DecodeResult?> GetThumbnailWithSizeAsync(StorageFile file, uint longSidePixels, bool forceFullDecode, CancellationToken cancellationToken)
     {
-        await _decodeGate.WaitAsync(cancellationToken);
+        var gate = _decodeGate;
+        await gate.WaitAsync(cancellationToken);
         try
         {
             return await DecodeThumbnailAsync(file, longSidePixels, forceFullDecode, cancellationToken);
         }
         finally
         {
-            _decodeGate.Release();
+            gate.Release();
         }
     }
 
     public void Invalidate(StorageFile file)
     {
+        // Thumbnail caching is intentionally disabled; size changes reload visible items.
     }
 
     public void Clear()
     {
+        // Thumbnail caching is intentionally disabled; size changes reload visible items.
     }
 
     private static bool IsRawFile(string extension)

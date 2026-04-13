@@ -6,6 +6,7 @@ using Windows.Storage;
 
 namespace PhotoView.Converters;
 
+// Legacy unconnected path. MainPage binds ImageFileInfo.Thumbnail directly.
 public class ThumbnailConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language)

@@ -6,6 +6,7 @@ using System.Threading;
 
 namespace PhotoView.ViewModels;
 
+// Legacy unconnected path. MainPage currently binds ImageFileInfo directly.
 public partial class ThumbnailItemViewModel : ObservableObject
 {
     private const double MinWidth = 96d;
