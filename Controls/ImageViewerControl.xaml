@@ -19,37 +19,67 @@
         <converters:StringToBrushConverter x:Key="StringToBrushConverter"/>
         
         <Style x:Key="CloseButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="Black"/>
-            <Setter Property="BorderBrush" Value="{ThemeResource SubtleFillColorSecondaryBrush}"/>
+            <Setter Property="Background" Value="#33000000"/>
+            <Setter Property="BorderBrush" Value="#40FFFFFF"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="25"/>
+            <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="Padding" Value="0"/>
-            <Setter Property="Opacity" Value="0.3"/>
+            <Setter Property="Foreground" Value="#E6FFFFFF"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Grid 
-                            Background="{TemplateBinding Background}"
-                            CornerRadius="{TemplateBinding CornerRadius}" 
-                            BorderBrush="{TemplateBinding BorderBrush}" 
-                            BorderThickness="{TemplateBinding BorderThickness}" 
-                            Padding="{TemplateBinding Padding}">
-
-                            <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE70D;" FontSize="16" Opacity="0.7"/>
+                        <Grid>
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CommonStates">
+                                    <VisualState x:Name="Normal"/>
+                                    <VisualState x:Name="PointerOver">
+                                        <VisualState.Setters>
+                                            <Setter Target="ButtonSurface.Background" Value="#66000000"/>
+                                            <Setter Target="ButtonSurface.BorderBrush" Value="#99FFFFFF"/>
+                                            <Setter Target="BackIcon.Opacity" Value="1"/>
+                                            <Setter Target="ButtonScale.ScaleX" Value="1.06"/>
+                                            <Setter Target="ButtonScale.ScaleY" Value="1.06"/>
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                    <VisualState x:Name="Pressed">
+                                        <VisualState.Setters>
+                                            <Setter Target="ButtonSurface.Background" Value="#80000000"/>
+                                            <Setter Target="ButtonSurface.BorderBrush" Value="#CCFFFFFF"/>
+                                            <Setter Target="BackIcon.Opacity" Value="1"/>
+                                            <Setter Target="ButtonScale.ScaleX" Value="0.96"/>
+                                            <Setter Target="ButtonScale.ScaleY" Value="0.96"/>
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                    <VisualState x:Name="Disabled">
+                                        <VisualState.Setters>
+                                            <Setter Target="ButtonSurface.Opacity" Value="0.35"/>
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+                            <Border
+                                x:Name="ButtonSurface"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{TemplateBinding CornerRadius}"
+                                Padding="{TemplateBinding Padding}"
+                                RenderTransformOrigin="0.5,0.5">
+                                <Border.RenderTransform>
+                                    <ScaleTransform x:Name="ButtonScale" ScaleX="1" ScaleY="1"/>
+                                </Border.RenderTransform>
+                                <FontIcon
+                                    x:Name="BackIcon"
+                                    FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                    Glyph="&#xE72B;"
+                                    FontSize="18"
+                                    Foreground="{TemplateBinding Foreground}"
+                                    Opacity="0.78"/>
+                            </Border>
                         </Grid>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-        </Style>
-        
-        <Style x:Key="CloseButtonPointerOverStyle" TargetType="Button" BasedOn="{StaticResource CloseButtonStyle}">
-            <Setter Property="Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}"/>
-            <Setter Property="Opacity" Value="0.6"/>
-        </Style>
-        
-        <Style x:Key="CloseButtonPressedStyle" TargetType="Button" BasedOn="{StaticResource CloseButtonStyle}">
-            <Setter Property="Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}"/>
-            <Setter Property="Opacity" Value="0.8"/>
         </Style>
     </UserControl.Resources>
 
@@ -115,15 +145,13 @@
                 <!-- 关闭按钮 -->
                 <Button
                     x:Name="CloseButton"
-                    Width="360"
-                    Height="50"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Bottom"
+                    Width="44"
+                    Height="44"
+                    Margin="20"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
                     Style="{StaticResource CloseButtonStyle}"
-                    Click="CloseButton_Click"
-                    PointerEntered="CloseButton_PointerEntered"
-                    PointerPressed="CloseButton_PointerPressed"
-                    PointerExited="CloseButton_PointerExited">
+                    Click="CloseButton_Click">
                 </Button>
             </Grid>
 

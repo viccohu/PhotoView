@@ -356,14 +356,26 @@
                     </Button>
                 </Grid>
 
-                <GridView
+                <Grid
+                    x:Name="FolderDrawerContentHost"
+                    Visibility="Collapsed"
+                    MaxHeight="0"
+                    Opacity="0"
+                    SizeChanged="FolderDrawerContentHost_SizeChanged">
+                    <Grid.Clip>
+                        <RectangleGeometry x:Name="FolderDrawerContentClip"/>
+                    </Grid.Clip>
+                    <Grid.RenderTransform>
+                        <TranslateTransform x:Name="FolderDrawerContentTransform" Y="-8"/>
+                    </Grid.RenderTransform>
+                    <GridView
                     x:Name="SubFolderGridView"
                     ItemsSource="{x:Bind ViewModel.CurrentSubFolders}"
                     SelectionMode="Single"
                     DoubleTapped="SubFolderGridView_DoubleTapped"
-                    Visibility="Collapsed"
-                    MaxHeight="0"
-                    Opacity="0"
+                    Visibility="Visible"
+                    MaxHeight="150"
+                    Opacity="1"
                     Padding="0"
                     Margin="0">
                     <GridView.ItemContainerTransitions>
@@ -422,7 +434,8 @@
                             <ItemsWrapGrid Orientation="Horizontal"/>
                         </ItemsPanelTemplate>
                     </GridView.ItemsPanel>
-                </GridView>
+                    </GridView>
+                </Grid>
             </StackPanel>
         </Border>
 
@@ -445,6 +458,7 @@
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Stretch"
                         Tag="{x:Bind}"
+                        Tapped="ImageItem_Tapped"
                         RightTapped="ImageItem_RightTapped">
                         <FlyoutBase.AttachedFlyout>
                             <MenuFlyout Placement="Bottom">

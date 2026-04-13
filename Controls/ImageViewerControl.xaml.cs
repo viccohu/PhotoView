@@ -712,30 +712,6 @@ public sealed partial class ImageViewerControl : UserControl
         PrepareCloseAnimation();
     }
 
-    private void CloseButton_PointerEntered(object sender, PointerRoutedEventArgs e)
-    {
-        if (sender is Button button)
-        {
-            button.Style = (Style)Resources["CloseButtonPointerOverStyle"];
-        }
-    }
-
-    private void CloseButton_PointerPressed(object sender, PointerRoutedEventArgs e)
-    {
-        if (sender is Button button)
-        {
-            button.Style = (Style)Resources["CloseButtonPressedStyle"];
-        }
-    }
-
-    private void CloseButton_PointerExited(object sender, PointerRoutedEventArgs e)
-    {
-        if (sender is Button button)
-        {
-            button.Style = (Style)Resources["CloseButtonStyle"];
-        }
-    }
-
     private void ImageTransformContainer_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
         if (_is1To1Scale)

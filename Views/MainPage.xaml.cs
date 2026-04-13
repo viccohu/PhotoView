@@ -36,7 +36,10 @@ public sealed partial class MainPage : Page
     private const double GridViewItemMargin = 4d;
     private const double GridViewItemGap = GridViewItemMargin * 2d;
     private const double FolderDrawerExpandedMaxHeight = 150d;
-    private const int FolderDrawerAnimationDurationMs = 160;
+    private const double FolderDrawerCollapsedOffsetY = -8d;
+    private const double ImageGridTopScrollTolerance = 1d;
+    private const int FolderDrawerAnimationDurationMs = 220;
+    private readonly PointerEventHandler _imageGridPointerWheelHandler;
     private FolderNode? _pendingLoadNode;
     private ScrollViewer? _imageGridScrollViewer;
     private ItemsWrapGrid? _imageItemsWrapGrid;
@@ -48,7 +51,10 @@ public sealed partial class MainPage : Page
     private bool _hasAttemptedRestoreLastFolder;
     private bool _isFolderDrawerExpanded = true;
     private bool _isFolderDrawerContentVisible;
+    private bool _isImageGridPointerWheelHandlerAttached;
+    private double _lastImageGridVerticalOffset;
     private int _folderDrawerAnimationVersion;
+    private Storyboard? _folderDrawerStoryboard;
     private (ImageFileInfo Image, uint Rating)? _pendingRatingUpdate;
     private ImageFileInfo? _storedImageFileInfo;
     private Controls.ImageViewerControl? _currentViewer;
@@ -63,6 +69,7 @@ public sealed partial class MainPage : Page
         
         NavigationCacheMode = NavigationCacheMode.Enabled;
         InitializeComponent();
+        _imageGridPointerWheelHandler = ImageGridView_PointerWheelChanged;
         FolderTreeView.DataContext = ViewModel;
 
         _loadImagesThrottleTimer = new DispatcherTimer
@@ -112,6 +119,7 @@ public sealed partial class MainPage : Page
         ViewModel.Filter.FilterChanged += Filter_FilterChanged;
         ImageGridView.DoubleTapped += ImageGridView_DoubleTapped;
         AttachImageGridScrollViewer();
+        AttachImageGridPointerWheel();
         UpdateImageGridTileSize();
         QueueVisibleThumbnailLoad("page-loaded");
         UpdateFilterButtonState();
@@ -171,9 +179,7 @@ public sealed partial class MainPage : Page
             e.PropertyName == nameof(MainViewModel.HasSubFoldersInCurrentFolder) ||
             e.PropertyName == nameof(MainViewModel.CurrentSubFolders))
         {
-            _isFolderDrawerExpanded = ViewModel.HasSubFoldersInCurrentFolder;
-
-            UpdateFolderDrawerState();
+            SetFolderDrawerExpanded(ViewModel.HasSubFoldersInCurrentFolder, "subfolders-changed");
         }
     }
 
@@ -411,6 +417,7 @@ public sealed partial class MainPage : Page
         _pendingVisibleThumbnailLoads.Clear();
         _realizedImageItems.Clear();
         _selectedImageState.Clear();
+        DetachImageGridPointerWheel();
         DetachImageGridScrollViewer();
         _imageItemsWrapGrid = null;
         
@@ -672,10 +679,15 @@ public sealed partial class MainPage : Page
         if (!animate)
         {
             _folderDrawerAnimationVersion++;
+            _folderDrawerStoryboard?.Stop();
+            _folderDrawerStoryboard = null;
             _isFolderDrawerContentVisible = shouldShowContent;
+            FolderDrawerContentHost.Visibility = shouldShowContent ? Visibility.Visible : Visibility.Collapsed;
+            FolderDrawerContentHost.Opacity = shouldShowContent ? 1d : 0d;
+            FolderDrawerContentHost.MaxHeight = shouldShowContent ? FolderDrawerExpandedMaxHeight : 0d;
+            FolderDrawerContentTransform.Y = shouldShowContent ? 0d : FolderDrawerCollapsedOffsetY;
             SubFolderGridView.Visibility = shouldShowContent ? Visibility.Visible : Visibility.Collapsed;
-            SubFolderGridView.Opacity = shouldShowContent ? 1d : 0d;
-            SubFolderGridView.MaxHeight = shouldShowContent ? FolderDrawerExpandedMaxHeight : 0d;
+            UpdateFolderDrawerContentClip(FolderDrawerContentHost.ActualWidth, FolderDrawerContentHost.ActualHeight);
             return;
         }
 
@@ -687,39 +699,96 @@ public sealed partial class MainPage : Page
         AnimateFolderDrawerContent(shouldShowContent);
     }
 
+    private void SetFolderDrawerExpanded(bool expanded, string reason, bool animate = true)
+    {
+        if (!ViewModel.HasSubFoldersInCurrentFolder)
+        {
+            expanded = false;
+        }
+
+        var changed = _isFolderDrawerExpanded != expanded;
+        _isFolderDrawerExpanded = expanded;
+        if (changed)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainPage] Folder drawer {(expanded ? "expanded" : "collapsed")}, reason={reason}");
+        }
+
+        UpdateFolderDrawerState(animate);
+    }
+
+    private bool CanAutoToggleFolderDrawer()
+    {
+        return ViewModel.Images.Count > 0 && ViewModel.HasSubFoldersInCurrentFolder;
+    }
+
+    private void AutoCollapseFolderDrawer(string reason)
+    {
+        if (!CanAutoToggleFolderDrawer())
+            return;
+
+        SetFolderDrawerExpanded(false, reason);
+    }
+
+    private void AutoExpandFolderDrawer(string reason)
+    {
+        if (!CanAutoToggleFolderDrawer())
+            return;
+
+        SetFolderDrawerExpanded(true, reason);
+    }
+
     private void AnimateFolderDrawerContent(bool showContent)
     {
         var animationVersion = ++_folderDrawerAnimationVersion;
         _isFolderDrawerContentVisible = showContent;
+        _folderDrawerStoryboard?.Stop();
+        _folderDrawerStoryboard = null;
 
         if (showContent)
         {
+            FolderDrawerContentHost.Visibility = Visibility.Visible;
             SubFolderGridView.Visibility = Visibility.Visible;
         }
 
+        var easing = new CubicEase
+        {
+            EasingMode = showContent ? EasingMode.EaseOut : EasingMode.EaseInOut
+        };
+
         var heightAnimation = new DoubleAnimation
         {
-            From = SubFolderGridView.MaxHeight,
+            From = FolderDrawerContentHost.MaxHeight,
             To = showContent ? FolderDrawerExpandedMaxHeight : 0d,
             Duration = new Duration(TimeSpan.FromMilliseconds(FolderDrawerAnimationDurationMs)),
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            EasingFunction = easing
         };
-        Storyboard.SetTarget(heightAnimation, SubFolderGridView);
+        Storyboard.SetTarget(heightAnimation, FolderDrawerContentHost);
         Storyboard.SetTargetProperty(heightAnimation, "MaxHeight");
 
         var opacityAnimation = new DoubleAnimation
         {
-            From = SubFolderGridView.Opacity,
+            From = FolderDrawerContentHost.Opacity,
             To = showContent ? 1d : 0d,
             Duration = new Duration(TimeSpan.FromMilliseconds(FolderDrawerAnimationDurationMs)),
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            EasingFunction = easing
         };
-        Storyboard.SetTarget(opacityAnimation, SubFolderGridView);
+        Storyboard.SetTarget(opacityAnimation, FolderDrawerContentHost);
         Storyboard.SetTargetProperty(opacityAnimation, "Opacity");
+
+        var translateAnimation = new DoubleAnimation
+        {
+            From = FolderDrawerContentTransform.Y,
+            To = showContent ? 0d : FolderDrawerCollapsedOffsetY,
+            Duration = new Duration(TimeSpan.FromMilliseconds(FolderDrawerAnimationDurationMs)),
+            EasingFunction = easing
+        };
+        Storyboard.SetTarget(translateAnimation, FolderDrawerContentTransform);
+        Storyboard.SetTargetProperty(translateAnimation, "Y");
 
         var storyboard = new Storyboard();
         storyboard.Children.Add(heightAnimation);
         storyboard.Children.Add(opacityAnimation);
+        storyboard.Children.Add(translateAnimation);
         storyboard.Completed += (_, _) =>
         {
             if (animationVersion != _folderDrawerAnimationVersion)
@@ -727,11 +796,26 @@ public sealed partial class MainPage : Page
                 return;
             }
 
-            SubFolderGridView.MaxHeight = showContent ? FolderDrawerExpandedMaxHeight : 0d;
-            SubFolderGridView.Opacity = showContent ? 1d : 0d;
+            FolderDrawerContentHost.MaxHeight = showContent ? FolderDrawerExpandedMaxHeight : 0d;
+            FolderDrawerContentHost.Opacity = showContent ? 1d : 0d;
+            FolderDrawerContentHost.Visibility = showContent ? Visibility.Visible : Visibility.Collapsed;
+            FolderDrawerContentTransform.Y = showContent ? 0d : FolderDrawerCollapsedOffsetY;
             SubFolderGridView.Visibility = showContent ? Visibility.Visible : Visibility.Collapsed;
+            _folderDrawerStoryboard = null;
+            UpdateFolderDrawerContentClip(FolderDrawerContentHost.ActualWidth, FolderDrawerContentHost.ActualHeight);
         };
+        _folderDrawerStoryboard = storyboard;
         storyboard.Begin();
+    }
+
+    private void FolderDrawerContentHost_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        UpdateFolderDrawerContentClip(e.NewSize.Width, e.NewSize.Height);
+    }
+
+    private void UpdateFolderDrawerContentClip(double width, double height)
+    {
+        FolderDrawerContentClip.Rect = new Windows.Foundation.Rect(0, 0, Math.Max(0, width), Math.Max(0, height));
     }
 
     private void FolderDrawerToggleButton_Click(object sender, RoutedEventArgs e)
@@ -741,8 +825,7 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        _isFolderDrawerExpanded = !_isFolderDrawerExpanded;
-        UpdateFolderDrawerState();
+        SetFolderDrawerExpanded(!_isFolderDrawerExpanded, "manual-toggle");
     }
 
     private async void SubFolderGridView_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
@@ -1101,6 +1184,14 @@ public sealed partial class MainPage : Page
             return;
 
         ExecuteProgrammaticSelectionChange(() => ImageGridView.SelectedItem = null);
+    }
+
+    private void ImageItem_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: ImageFileInfo })
+        {
+            AutoCollapseFolderDrawer("image-tapped");
+        }
     }
 
     private void ImageItem_RightTapped(object sender, RightTappedRoutedEventArgs e)
@@ -1755,6 +1846,7 @@ public sealed partial class MainPage : Page
         if (_imageGridScrollViewer == null)
             return;
 
+        _lastImageGridVerticalOffset = _imageGridScrollViewer.VerticalOffset;
         _imageGridScrollViewer.ViewChanging += ImageGridScrollViewer_ViewChanging;
         _imageGridScrollViewer.ViewChanged += ImageGridScrollViewer_ViewChanged;
     }
@@ -1769,6 +1861,24 @@ public sealed partial class MainPage : Page
         _imageGridScrollViewer = null;
     }
 
+    private void AttachImageGridPointerWheel()
+    {
+        if (_isImageGridPointerWheelHandlerAttached)
+            return;
+
+        ImageGridView.AddHandler(UIElement.PointerWheelChangedEvent, _imageGridPointerWheelHandler, true);
+        _isImageGridPointerWheelHandlerAttached = true;
+    }
+
+    private void DetachImageGridPointerWheel()
+    {
+        if (!_isImageGridPointerWheelHandlerAttached)
+            return;
+
+        ImageGridView.RemoveHandler(UIElement.PointerWheelChangedEvent, _imageGridPointerWheelHandler);
+        _isImageGridPointerWheelHandlerAttached = false;
+    }
+
     private void ImageGridScrollViewer_ViewChanging(object? sender, ScrollViewerViewChangingEventArgs e)
     {
         if (_isProgrammaticScrollActive)
@@ -1778,7 +1888,49 @@ public sealed partial class MainPage : Page
             System.Diagnostics.Debug.WriteLine("[MainPage] User scroll started");
 
         _isUserScrollInProgress = true;
+        HandleFolderDrawerScrollIntent(e.NextView.VerticalOffset, "view-changing");
         QueueVisibleThumbnailLoad("user-scroll");
+    }
+
+    private void ImageGridView_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
+    {
+        if (_isProgrammaticScrollActive)
+            return;
+
+        var delta = e.GetCurrentPoint(ImageGridView).Properties.MouseWheelDelta;
+        if (delta == 0)
+            return;
+
+        AttachImageGridScrollViewer();
+        var verticalOffset = _imageGridScrollViewer?.VerticalOffset ?? _lastImageGridVerticalOffset;
+        _lastImageGridVerticalOffset = verticalOffset;
+
+        if (delta < 0)
+        {
+            AutoCollapseFolderDrawer("wheel-down");
+        }
+        else if (verticalOffset <= ImageGridTopScrollTolerance)
+        {
+            AutoExpandFolderDrawer("wheel-up-at-top");
+        }
+    }
+
+    private void HandleFolderDrawerScrollIntent(double nextVerticalOffset, string reason)
+    {
+        var previousOffset = _lastImageGridVerticalOffset;
+        var delta = nextVerticalOffset - previousOffset;
+        _lastImageGridVerticalOffset = nextVerticalOffset;
+
+        if (delta > ImageGridTopScrollTolerance)
+        {
+            AutoCollapseFolderDrawer(reason);
+        }
+        else if (delta < -ImageGridTopScrollTolerance &&
+                 previousOffset <= ImageGridTopScrollTolerance &&
+                 nextVerticalOffset <= ImageGridTopScrollTolerance)
+        {
+            AutoExpandFolderDrawer($"{reason}-top");
+        }
     }
 
     private void ImageGridScrollViewer_ViewChanged(object sender, ScrollViewerViewChangedEventArgs e)
@@ -1796,6 +1948,7 @@ public sealed partial class MainPage : Page
         }
 
         _isUserScrollInProgress = false;
+        _lastImageGridVerticalOffset = _imageGridScrollViewer?.VerticalOffset ?? _lastImageGridVerticalOffset;
         QueueVisibleThumbnailLoad("view-changed");
     }
 

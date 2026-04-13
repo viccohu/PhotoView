@@ -125,6 +125,8 @@ public interface ISettingsService
     Task<double> LoadDecodeScaleFactorAsync();
     Task SaveAlwaysDecodeRawAsync(bool alwaysDecode);
     Task<bool> LoadAlwaysDecodeRawAsync();
+    void SuspendAlwaysDecodeRawPersistence(string reason);
+    Task ResumeAlwaysDecodeRawPersistenceAsync(string reason);
 
     Task InitializeAsync();
 }

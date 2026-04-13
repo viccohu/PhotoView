@@ -492,6 +492,16 @@ public class SettingsService : ISettingsService
         return _alwaysDecodeRaw;
     }
 
+    public void SuspendAlwaysDecodeRawPersistence(string reason)
+    {
+        // Reserved hook for viewer lifetime; the setting is only persisted by explicit save calls.
+    }
+
+    public Task ResumeAlwaysDecodeRawPersistenceAsync(string reason)
+    {
+        return Task.CompletedTask;
+    }
+
     public async Task InitializeAsync()
     {
         await LoadNavigationViewModeAsync();
