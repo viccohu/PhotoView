@@ -675,7 +675,7 @@ public sealed partial class MainPage : Page
         var hasFolders = ViewModel.HasSubFoldersInCurrentFolder;
         var shouldShowContent = hasFolders && _isFolderDrawerExpanded;
         FolderDrawerRoot.Visibility = Visibility.Visible;
-        FolderDrawerChevron.Glyph = shouldShowContent ? "\xE70D" : "\xE70E";
+        FolderDrawerChevronTransform.Angle = shouldShowContent ? 180d : 0d;
         FolderDrawerToggleButton.IsEnabled = hasFolders;
 
         if (!animate)
@@ -1349,6 +1349,7 @@ public sealed partial class MainPage : Page
 
     private async void RefreshButton_Click(object sender, RoutedEventArgs e)
     {
+        App.GetService<IThumbnailService>().Clear();
         await ViewModel.RefreshAsync();
     }
 
@@ -1598,6 +1599,7 @@ public sealed partial class MainPage : Page
             dialog.StartProgress();
             
             var deletedImages = new List<ImageFileInfo>();
+            var thumbnailService = App.GetService<IThumbnailService>();
             var failedCount = 0;
 
             for (int i = 0; i < filesToDelete.Count; i++)
@@ -1606,6 +1608,7 @@ public sealed partial class MainPage : Page
                 try
                 {
                     await DeleteFileToRecycleBinAsync(file);
+                    thumbnailService.Invalidate(file);
                     
                     var imageToDelete = pendingImages.FirstOrDefault(img => img.ImageFile?.Path == file.Path);
                     if (imageToDelete != null && !deletedImages.Contains(imageToDelete))
@@ -1710,6 +1713,12 @@ public sealed partial class MainPage : Page
     {
         if (deletedImages.Count == 0)
             return;
+
+        var thumbnailService = App.GetService<IThumbnailService>();
+        foreach (var deletedImage in deletedImages)
+        {
+            thumbnailService.Invalidate(deletedImage.ImageFile);
+        }
 
         var firstVisibleIndex = GetFirstVisibleItemIndex();
         var selectedItem = ImageGridView.SelectedItem as ImageFileInfo;
@@ -1918,11 +1927,21 @@ public sealed partial class MainPage : Page
 
     private void ImageGridView_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
     {
-        if (_isProgrammaticScrollActive)
+        if (_currentViewer != null)
             return;
 
         var delta = e.GetCurrentPoint(ImageGridView).Properties.MouseWheelDelta;
         if (delta == 0)
+            return;
+
+        if (IsCtrlPressed())
+        {
+            ChangeThumbnailSizeByWheel(delta);
+            e.Handled = true;
+            return;
+        }
+
+        if (_isProgrammaticScrollActive)
             return;
 
         AttachImageGridScrollViewer();
@@ -1937,6 +1956,44 @@ public sealed partial class MainPage : Page
         {
             AutoExpandFolderDrawer("wheel-up-at-top");
         }
+    }
+
+    private static bool IsCtrlPressed()
+    {
+        return InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+    }
+
+    private void ChangeThumbnailSizeByWheel(int delta)
+    {
+        var nextSize = delta > 0
+            ? GetLargerThumbnailSize(ViewModel.ThumbnailSize)
+            : GetSmallerThumbnailSize(ViewModel.ThumbnailSize);
+
+        if (nextSize == ViewModel.ThumbnailSize)
+            return;
+
+        ViewModel.ThumbnailSize = nextSize;
+    }
+
+    private static ThumbnailSize GetLargerThumbnailSize(ThumbnailSize size)
+    {
+        return size switch
+        {
+            ThumbnailSize.Small => ThumbnailSize.Medium,
+            ThumbnailSize.Medium => ThumbnailSize.Large,
+            _ => ThumbnailSize.Large
+        };
+    }
+
+    private static ThumbnailSize GetSmallerThumbnailSize(ThumbnailSize size)
+    {
+        return size switch
+        {
+            ThumbnailSize.Large => ThumbnailSize.Medium,
+            ThumbnailSize.Medium => ThumbnailSize.Small,
+            _ => ThumbnailSize.Small
+        };
     }
 
     private void HandleFolderDrawerScrollIntent(double nextVerticalOffset, string reason)

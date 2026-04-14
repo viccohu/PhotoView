@@ -5,6 +5,8 @@ using PhotoView.Contracts.Services;
 using PhotoView.Helpers;
 using PhotoView.Models;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Windows.Graphics.Imaging;
@@ -15,7 +17,15 @@ namespace PhotoView.Services;
 
 public class ThumbnailService : IThumbnailService
 {
+    private const int MaxCachedThumbnails = 400;
+    private const uint MaxCachedThumbnailLongSidePixels = 1024;
+    private const long MaxCachedThumbnailPixels = 64_000_000;
+
     private readonly ISettingsService _settingsService;
+    private readonly object _thumbnailCacheLock = new();
+    private readonly Dictionary<ThumbnailCacheKey, LinkedListNode<ThumbnailCacheEntry>> _thumbnailCache = new();
+    private readonly LinkedList<ThumbnailCacheEntry> _thumbnailCacheLru = new();
+    private long _cachedThumbnailPixels;
     private SemaphoreSlim _decodeGate;
 
     public ThumbnailService(ISettingsService settingsService)
@@ -41,11 +51,25 @@ public class ThumbnailService : IThumbnailService
 
     public async Task<ImageSource?> GetThumbnailAsync(StorageFile file, ThumbnailSize size, CancellationToken cancellationToken)
     {
+        var longSidePixels = (uint)size;
+        var key = IsCacheEligible(longSidePixels)
+            ? await CreateCacheKeyAsync(file, longSidePixels, forceFullDecodeRaw: false, cancellationToken)
+            : (ThumbnailCacheKey?)null;
+        if (key.HasValue && TryGetCachedThumbnail(key.Value, out var cachedResult))
+            return cachedResult.ImageSource;
+
         var gate = _decodeGate;
         await gate.WaitAsync(cancellationToken);
         try
         {
-            var result = await DecodeThumbnailAsync(file, (uint)size, forceFullDecodeRaw: false, cancellationToken);
+            if (key.HasValue && TryGetCachedThumbnail(key.Value, out cachedResult))
+                return cachedResult.ImageSource;
+
+            var result = await DecodeThumbnailAsync(file, longSidePixels, forceFullDecodeRaw: false, cancellationToken);
+            if (key.HasValue)
+            {
+                StoreCachedThumbnail(key.Value, result);
+            }
             return result?.ImageSource;
         }
         finally
@@ -56,11 +80,24 @@ public class ThumbnailService : IThumbnailService
 
     public async Task<ImageSource?> GetThumbnailByLongSideAsync(StorageFile file, uint longSidePixels, CancellationToken cancellationToken)
     {
+        var key = IsCacheEligible(longSidePixels)
+            ? await CreateCacheKeyAsync(file, longSidePixels, forceFullDecodeRaw: false, cancellationToken)
+            : (ThumbnailCacheKey?)null;
+        if (key.HasValue && TryGetCachedThumbnail(key.Value, out var cachedResult))
+            return cachedResult.ImageSource;
+
         var gate = _decodeGate;
         await gate.WaitAsync(cancellationToken);
         try
         {
+            if (key.HasValue && TryGetCachedThumbnail(key.Value, out cachedResult))
+                return cachedResult.ImageSource;
+
             var result = await DecodeThumbnailAsync(file, longSidePixels, forceFullDecodeRaw: false, cancellationToken);
+            if (key.HasValue)
+            {
+                StoreCachedThumbnail(key.Value, result);
+            }
             return result?.ImageSource;
         }
         finally
@@ -71,11 +108,25 @@ public class ThumbnailService : IThumbnailService
 
     public async Task<DecodeResult?> GetThumbnailWithSizeAsync(StorageFile file, uint longSidePixels, CancellationToken cancellationToken)
     {
+        var key = IsCacheEligible(longSidePixels)
+            ? await CreateCacheKeyAsync(file, longSidePixels, forceFullDecodeRaw: false, cancellationToken)
+            : (ThumbnailCacheKey?)null;
+        if (key.HasValue && TryGetCachedThumbnail(key.Value, out var cachedResult))
+            return cachedResult;
+
         var gate = _decodeGate;
         await gate.WaitAsync(cancellationToken);
         try
         {
-            return await DecodeThumbnailAsync(file, longSidePixels, forceFullDecodeRaw: false, cancellationToken);
+            if (key.HasValue && TryGetCachedThumbnail(key.Value, out cachedResult))
+                return cachedResult;
+
+            var result = await DecodeThumbnailAsync(file, longSidePixels, forceFullDecodeRaw: false, cancellationToken);
+            if (key.HasValue)
+            {
+                StoreCachedThumbnail(key.Value, result);
+            }
+            return result;
         }
         finally
         {
@@ -85,11 +136,25 @@ public class ThumbnailService : IThumbnailService
 
     public async Task<DecodeResult?> GetThumbnailWithSizeAsync(StorageFile file, uint longSidePixels, bool forceFullDecode, CancellationToken cancellationToken)
     {
+        var key = IsCacheEligible(longSidePixels)
+            ? await CreateCacheKeyAsync(file, longSidePixels, forceFullDecode, cancellationToken)
+            : (ThumbnailCacheKey?)null;
+        if (key.HasValue && TryGetCachedThumbnail(key.Value, out var cachedResult))
+            return cachedResult;
+
         var gate = _decodeGate;
         await gate.WaitAsync(cancellationToken);
         try
         {
-            return await DecodeThumbnailAsync(file, longSidePixels, forceFullDecode, cancellationToken);
+            if (key.HasValue && TryGetCachedThumbnail(key.Value, out cachedResult))
+                return cachedResult;
+
+            var result = await DecodeThumbnailAsync(file, longSidePixels, forceFullDecode, cancellationToken);
+            if (key.HasValue)
+            {
+                StoreCachedThumbnail(key.Value, result);
+            }
+            return result;
         }
         finally
         {
@@ -97,15 +162,175 @@ public class ThumbnailService : IThumbnailService
         }
     }
 
+    public async Task<DecodeResult?> TryGetCachedThumbnailAsync(
+        StorageFile file,
+        uint longSidePixels,
+        bool forceFullDecode,
+        CancellationToken cancellationToken)
+    {
+        if (!IsCacheEligible(longSidePixels))
+            return null;
+
+        var key = await CreateCacheKeyAsync(file, longSidePixels, forceFullDecode, cancellationToken);
+        return TryGetCachedThumbnail(key, out var result) ? result : null;
+    }
+
+    public async Task StoreCachedThumbnailAsync(
+        StorageFile file,
+        uint longSidePixels,
+        bool forceFullDecode,
+        DecodeResult result,
+        CancellationToken cancellationToken)
+    {
+        if (!IsCacheEligible(longSidePixels))
+            return;
+
+        var key = await CreateCacheKeyAsync(file, longSidePixels, forceFullDecode, cancellationToken);
+        StoreCachedThumbnail(key, result);
+    }
+
     public void Invalidate(StorageFile file)
     {
-        // Thumbnail caching is intentionally disabled; size changes reload visible items.
+        var path = NormalizePath(GetFilePath(file));
+        lock (_thumbnailCacheLock)
+        {
+            var keysToRemove = _thumbnailCache.Keys
+                .Where(key => key.Path == path)
+                .ToArray();
+
+            foreach (var key in keysToRemove)
+            {
+                RemoveCacheEntry(key);
+            }
+        }
     }
 
     public void Clear()
     {
-        // Thumbnail caching is intentionally disabled; size changes reload visible items.
+        lock (_thumbnailCacheLock)
+        {
+            _thumbnailCache.Clear();
+            _thumbnailCacheLru.Clear();
+            _cachedThumbnailPixels = 0;
+        }
     }
+
+    private static string GetFilePath(StorageFile file)
+    {
+        return string.IsNullOrWhiteSpace(file.Path) ? file.Name : file.Path;
+    }
+
+    private static string NormalizePath(string value)
+    {
+        return value.Trim().ToUpperInvariant();
+    }
+
+    private static async Task<ThumbnailCacheKey> CreateCacheKeyAsync(
+        StorageFile file,
+        uint longSidePixels,
+        bool forceFullDecodeRaw,
+        CancellationToken cancellationToken)
+    {
+        var properties = await file.GetBasicPropertiesAsync().AsTask(cancellationToken);
+        return new ThumbnailCacheKey(
+            NormalizePath(GetFilePath(file)),
+            file.FileType.ToUpperInvariant(),
+            longSidePixels,
+            forceFullDecodeRaw,
+            properties.Size,
+            properties.DateModified);
+    }
+
+    private static bool IsCacheEligible(uint longSidePixels)
+    {
+        return longSidePixels <= MaxCachedThumbnailLongSidePixels;
+    }
+
+    private bool TryGetCachedThumbnail(ThumbnailCacheKey key, out DecodeResult result)
+    {
+        lock (_thumbnailCacheLock)
+        {
+            if (_thumbnailCache.TryGetValue(key, out var node))
+            {
+                _thumbnailCacheLru.Remove(node);
+                _thumbnailCacheLru.AddLast(node);
+                var entry = node.Value;
+                result = new DecodeResult(entry.Width, entry.Height, entry.ImageSource);
+                System.Diagnostics.Debug.WriteLine($"[ThumbnailService] Cache hit: {key.Path}, size={key.LongSidePixels}");
+                return true;
+            }
+        }
+
+        result = null!;
+        System.Diagnostics.Debug.WriteLine($"[ThumbnailService] Cache miss: {key.Path}, size={key.LongSidePixels}");
+        return false;
+    }
+
+    private void StoreCachedThumbnail(ThumbnailCacheKey key, DecodeResult? result)
+    {
+        if (result?.ImageSource == null)
+            return;
+
+        if (key.LongSidePixels > MaxCachedThumbnailLongSidePixels)
+            return;
+
+        lock (_thumbnailCacheLock)
+        {
+            RemoveCacheEntry(key);
+
+            var pixelCount = EstimatePixelCount(key, result);
+            var entry = new ThumbnailCacheEntry(key, result.Width, result.Height, pixelCount, result.ImageSource);
+            var node = new LinkedListNode<ThumbnailCacheEntry>(entry);
+            _thumbnailCacheLru.AddLast(node);
+            _thumbnailCache[key] = node;
+            _cachedThumbnailPixels += pixelCount;
+
+            while (_thumbnailCache.Count > MaxCachedThumbnails ||
+                   _cachedThumbnailPixels > MaxCachedThumbnailPixels)
+            {
+                var oldest = _thumbnailCacheLru.First;
+                if (oldest == null)
+                    break;
+
+                System.Diagnostics.Debug.WriteLine($"[ThumbnailService] Cache evict: {oldest.Value.Key.Path}, size={oldest.Value.Key.LongSidePixels}");
+                _thumbnailCache.Remove(oldest.Value.Key);
+                _cachedThumbnailPixels = Math.Max(0, _cachedThumbnailPixels - oldest.Value.PixelCount);
+                _thumbnailCacheLru.RemoveFirst();
+            }
+        }
+    }
+
+    private void RemoveCacheEntry(ThumbnailCacheKey key)
+    {
+        if (!_thumbnailCache.TryGetValue(key, out var node))
+            return;
+
+        _thumbnailCacheLru.Remove(node);
+        _thumbnailCache.Remove(key);
+        _cachedThumbnailPixels = Math.Max(0, _cachedThumbnailPixels - node.Value.PixelCount);
+    }
+
+    private static long EstimatePixelCount(ThumbnailCacheKey key, DecodeResult result)
+    {
+        var width = result.Width > 0 ? result.Width : key.LongSidePixels;
+        var height = result.Height > 0 ? result.Height : key.LongSidePixels;
+        return Math.Max(1L, (long)width * height);
+    }
+
+    private readonly record struct ThumbnailCacheKey(
+        string Path,
+        string FileType,
+        uint LongSidePixels,
+        bool ForceFullDecodeRaw,
+        ulong Size,
+        DateTimeOffset DateModified);
+
+    private sealed record ThumbnailCacheEntry(
+        ThumbnailCacheKey Key,
+        uint Width,
+        uint Height,
+        long PixelCount,
+        ImageSource ImageSource);
 
     private static bool IsRawFile(string extension)
     {

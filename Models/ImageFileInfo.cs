@@ -156,6 +156,17 @@ public class ImageFileInfo : INotifyPropertyChanged
         if (cancellationToken.IsCancellationRequested || AppLifetime.IsShuttingDown)
             return null;
 
+        var thumbnailService = App.GetService<Contracts.Services.IThumbnailService>();
+        var cachedThumbnail = await thumbnailService.TryGetCachedThumbnailAsync(
+            ImageFile,
+            optimalSize,
+            forceFullDecode: false,
+            cancellationToken);
+        if (cachedThumbnail?.ImageSource != null)
+        {
+            return cachedThumbnail.ImageSource;
+        }
+
         // 优先尝试获取系统缩略图（最快）
         try
         {
@@ -169,6 +180,12 @@ public class ImageFileInfo : INotifyPropertyChanged
                 var bitmap = new BitmapImage();
                 bitmap.DecodePixelWidth = (int)optimalSize;
                 await bitmap.SetSourceAsync(thumbnail).AsTask(cancellationToken);
+                await thumbnailService.StoreCachedThumbnailAsync(
+                    ImageFile,
+                    optimalSize,
+                    forceFullDecode: false,
+                    CreateDecodeResult(bitmap),
+                    cancellationToken);
                 return bitmap;
             }
             else if (thumbnail != null && thumbnail.Type != ThumbnailType.Image)
@@ -198,6 +215,12 @@ public class ImageFileInfo : INotifyPropertyChanged
                 var bitmap = new BitmapImage();
                 bitmap.DecodePixelWidth = (int)optimalSize;
                 await bitmap.SetSourceAsync(thumbnail).AsTask(cancellationToken);
+                await thumbnailService.StoreCachedThumbnailAsync(
+                    ImageFile,
+                    optimalSize,
+                    forceFullDecode: false,
+                    CreateDecodeResult(bitmap),
+                    cancellationToken);
                 return bitmap;
             }
             else if (thumbnail != null && thumbnail.Type != ThumbnailType.Image)
@@ -217,7 +240,6 @@ public class ImageFileInfo : INotifyPropertyChanged
         // 系统缩略图失败，回退到完整解码
         try
         {
-            var thumbnailService = App.GetService<Contracts.Services.IThumbnailService>();
             var imageSource = await thumbnailService.GetThumbnailByLongSideAsync(ImageFile, optimalSize, cancellationToken);
             
             return imageSource;
@@ -228,6 +250,14 @@ public class ImageFileInfo : INotifyPropertyChanged
         }
 
         return null;
+    }
+
+    private static DecodeResult CreateDecodeResult(BitmapImage bitmap)
+    {
+        return new DecodeResult(
+            (uint)Math.Max(0, bitmap.PixelWidth),
+            (uint)Math.Max(0, bitmap.PixelHeight),
+            bitmap);
     }
 
     public ImageSource? Thumbnail

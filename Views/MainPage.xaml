@@ -74,14 +74,13 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
         <TreeView
             Grid.Column="0"
             Grid.Row="0"
-            Grid.RowSpan="4"
+            Grid.RowSpan="3"
             x:Name="FolderTreeView"
             ItemsSource="{x:Bind ViewModel.FolderTree}"
             Expanding="FolderTreeView_Expanding"
@@ -120,7 +119,7 @@
             </TreeView.ItemTemplate>
         </TreeView>
 
-        <Grid Grid.Column="1" Grid.Row="0" Margin="12,8,50,8">
+        <Grid Grid.Column="1" Grid.Row="0" Margin="12,8,30,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
@@ -138,13 +137,68 @@
                         Style="{ThemeResource BodyLargeTextBlockStyle}"
                         FontSize="28"
                         VerticalAlignment="Center"/>
+                    <Border
+                     Width="1"
+                     Background="White"
+                     Opacity="0.3"
+                     Margin="3,0,2,0"
+                     />
+                    <Border
+                        Padding="8,2"
+                        Background="Transparent"
+                        BorderBrush="{ThemeResource TextFillColorSecondaryBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        VerticalAlignment="Center">
+                        <TextBlock
+                            Style="{ThemeResource CaptionTextBlockStyle}"
+                            Opacity="0.75"
+                            VerticalAlignment="Center">
+                            <Run Text="{x:Bind ViewModel.Images.Count, Mode=OneWay}"/>
+                            <Run Text=" photos"/>
+                        </TextBlock>
+                    </Border>
+                    <Border
+                        Padding="8,2"
+                        Background="Transparent"
+                        BorderBrush="{ThemeResource SystemFillColorCriticalBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        VerticalAlignment="Center"
+                        Visibility="{x:Bind ViewModel.PendingDeleteCount, Mode=OneWay, Converter={StaticResource IntToVisibilityConverter}}">
+                        <StackPanel
+                            Orientation="Horizontal"
+                            Spacing="4"
+                            VerticalAlignment="Center">
+                            <TextBlock
+                                Style="{ThemeResource CaptionTextBlockStyle}"
+                                Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                VerticalAlignment="Center">
+                                <Run Text="{x:Bind ViewModel.PendingDeleteCount, Mode=OneWay}"/>
+                                <Run Text=" 预删除"/>
+                            </TextBlock>
+                            <Button
+                                Click="ClearAllPendingDelete_Click"
+                                Padding="4,0"
+                                VerticalAlignment="Center"
+                                Background="Transparent"
+                                BorderBrush="Transparent"
+                                BorderThickness="0">
+                                <FontIcon
+                                    Glyph="&#xE711;"
+                                    FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                    FontSize="12"
+                                    Foreground="{ThemeResource SystemFillColorCriticalBrush}"/>
+                            </Button>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
                 <StackPanel 
                     Orientation="Horizontal" 
                     VerticalAlignment="Center"
                     Margin="0,8,0,12"
                     
-                    Visibility="{x:Bind ViewModel.SelectedFolder, Mode=OneWay, Converter={StaticResource NullToVisibilityConverter}}">
+                    Visibility="Collapsed">
                     <Border
                         Padding="8,2"
                         Background="Transparent"
@@ -257,58 +311,11 @@
         </Grid>
 
 
-        <StackPanel 
-            Grid.Column="1" 
-            Grid.Row="1" 
-            Margin="12,0,12,4"
-            Orientation="Horizontal"
-            Visibility="{x:Bind ViewModel.BreadcrumbPath.Count, Mode=OneWay, Converter={StaticResource NullToVisibilityConverter}}">
-            
-            <Button
-                x:Name="BackButton"
-                Margin="0,3,0,0"
-                ToolTipService.ToolTip="Back"
-                Click="BackButton_Click"
-                IsEnabled="{x:Bind ViewModel.CanGoBack, Mode=OneWay}"
-                Style="{StaticResource BreadcrumbButtonStyle}">
-                <FontIcon Glyph="&#xE72B;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="12"/>
-            </Button>
-            <Button
-                x:Name="UpButton"
-                Margin="0,3,0,0"
-                ToolTipService.ToolTip="Go up one level"
-                Click="UpButton_Click"
-                IsEnabled="{x:Bind ViewModel.CanGoUp, Mode=OneWay}"
-                Style="{StaticResource BreadcrumbButtonStyle}">
-                <FontIcon Glyph="&#xE74A;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="12"/>
-            </Button>
-            <Button
-                x:Name="RefreshButton"
-                Margin="0,3,0,0"
-                ToolTipService.ToolTip="Refresh"
-                Click="RefreshButton_Click"
-                Style="{StaticResource BreadcrumbButtonStyle}">
-                <FontIcon Glyph="&#xE72C;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="12"/>
-            </Button>
-            
-            <BreadcrumbBar
-                x:Name="BreadcrumbBar"
-                Margin="12,0,0,0"
-                ItemsSource="{x:Bind ViewModel.BreadcrumbPath}"
-                ItemClicked="BreadcrumbBar_ItemClicked">
-                <BreadcrumbBar.ItemTemplate>
-                    <DataTemplate x:DataType="models:FolderNode">
-                        <TextBlock Text="{x:Bind Name}"/>
-                    </DataTemplate>
-                </BreadcrumbBar.ItemTemplate>
-            </BreadcrumbBar>
-        </StackPanel>
-
         <Border
             x:Name="FolderDrawerRoot"
             Grid.Column="1"
-            Grid.Row="2"
-            Margin="12,0,12,6"
+            Grid.Row="1"
+            Margin="8,0,30,6"
             Padding="10,8"
             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -316,12 +323,63 @@
             CornerRadius="10"
             Visibility="Visible">
             <StackPanel Spacing="8">
-                <Grid>
+                <Grid ColumnSpacing="12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <StackPanel
+                        Grid.Column="0"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        Visibility="{x:Bind ViewModel.BreadcrumbPath.Count, Mode=OneWay, Converter={StaticResource NullToVisibilityConverter}}">
+                        <Button
+                            x:Name="BackButton"
+                            Margin="0,3,0,0"
+                            ToolTipService.ToolTip="Back"
+                            Click="BackButton_Click"
+                            IsEnabled="{x:Bind ViewModel.CanGoBack, Mode=OneWay}"
+                            Style="{StaticResource BreadcrumbButtonStyle}">
+                            <FontIcon Glyph="&#xE72B;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="12"/>
+                        </Button>
+                        <Button
+                            x:Name="UpButton"
+                            Margin="0,3,0,0"
+                            ToolTipService.ToolTip="Go up one level"
+                            Click="UpButton_Click"
+                            IsEnabled="{x:Bind ViewModel.CanGoUp, Mode=OneWay}"
+                            Style="{StaticResource BreadcrumbButtonStyle}">
+                            <FontIcon Glyph="&#xE74A;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="12"/>
+                        </Button>
+                        <Button
+                            x:Name="RefreshButton"
+                            Margin="0,3,0,0"
+                            ToolTipService.ToolTip="Refresh"
+                            Click="RefreshButton_Click"
+                            Style="{StaticResource BreadcrumbButtonStyle}">
+                            <FontIcon Glyph="&#xE72C;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="12"/>
+                        </Button>
+
+                        <BreadcrumbBar
+                            x:Name="BreadcrumbBar"
+                            Margin="12,0,0,0"
+                            ItemsSource="{x:Bind ViewModel.BreadcrumbPath}"
+                            ItemClicked="BreadcrumbBar_ItemClicked">
+                            <BreadcrumbBar.ItemTemplate>
+                                <DataTemplate x:DataType="models:FolderNode">
+                                    <TextBlock Text="{x:Bind Name}"/>
+                                </DataTemplate>
+                            </BreadcrumbBar.ItemTemplate>
+                        </BreadcrumbBar>
+                    </StackPanel>
+                    <StackPanel
+                        Grid.Column="1"
+                        Margin="0,0,34,0"
+                        Orientation="Horizontal"
+                        Spacing="8"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Visibility="Collapsed">
                         <FontIcon
                             Glyph="&#xE8B7;"
                             FontFamily="{StaticResource SymbolThemeFontFamily}"
@@ -343,16 +401,40 @@
                     <Button
                         x:Name="FolderDrawerToggleButton"
                         Grid.Column="1"
-                        Padding="6"
+                        Padding="8,4"
                         Background="Transparent"
-                        BorderBrush="Transparent"
-                        BorderThickness="0"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
                         Click="FolderDrawerToggleButton_Click">
-                        <FontIcon
-                            x:Name="FolderDrawerChevron"
-                            Glyph="&#xE70E;"
-                            FontFamily="{StaticResource SymbolThemeFontFamily}"
-                            FontSize="12"/>
+                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <FontIcon
+                                Glyph="&#xE8B7;"
+                                FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                FontSize="14"
+                                VerticalAlignment="Center"/>
+                            <TextBlock
+                                Text="文件夹"
+                                Style="{ThemeResource BodyTextBlockStyle}"
+                                FontWeight="SemiBold"
+                                VerticalAlignment="Center"/>
+                            <TextBlock
+                                Style="{ThemeResource CaptionTextBlockStyle}"
+                                Opacity="0.7"
+                                VerticalAlignment="Center">
+                                <Run Text="{x:Bind ViewModel.SubFolderCount, Mode=OneWay}"/>
+                            </TextBlock>
+                            <FontIcon
+                                x:Name="FolderDrawerChevron"
+                                Glyph="&#xE70D;"
+                                FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                FontSize="12"
+                                RenderTransformOrigin="0.5,0.5">
+                                <FontIcon.RenderTransform>
+                                    <RotateTransform x:Name="FolderDrawerChevronTransform" Angle="0"/>
+                                </FontIcon.RenderTransform>
+                            </FontIcon>
+                        </StackPanel>
                     </Button>
                 </Grid>
 
@@ -443,7 +525,7 @@
         <GridView
             x:Name="ImageGridView"
             Grid.Column="1"
-            Grid.Row="3"
+            Grid.Row="2"
             ItemsSource="{x:Bind ViewModel.Images}"
             SelectionMode="Extended"
             SelectionChanged="ImageGridView_SelectionChanged"
@@ -669,6 +751,6 @@
             Grid.Column="0"
             Grid.ColumnSpan="2"
             Grid.Row="0"
-            Grid.RowSpan="4"/>
+            Grid.RowSpan="3"/>
     </Grid>
 </Page>
