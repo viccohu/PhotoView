@@ -21,8 +21,10 @@ public sealed partial class CollectPage : Page
     private const int VisibleThumbnailStartBudgetPerTick = 16;
     private const int VisibleThumbnailPrefetchItemCount = 12;
     private readonly DispatcherTimer _visibleThumbnailLoadTimer;
+    private readonly DispatcherTimer _ratingDebounceTimer;
     private readonly HashSet<ImageFileInfo> _pendingVisibleThumbnailLoads = new();
     private readonly HashSet<ImageFileInfo> _realizedImageItems = new();
+    private readonly Dictionary<RatingControl, bool> _ratingControlEventMap = new();
     private readonly ISettingsService _settingsService;
     private readonly ShellToolbarService _shellToolbarService;
     private FolderNode? _rightClickedFolderNode;
@@ -34,6 +36,7 @@ public sealed partial class CollectPage : Page
     private bool _isUpdatingZoomSlider;
     private Button? _shellDeleteButton;
     private SplitButton? _shellFilterSplitButton;
+    private (ImageFileInfo Image, uint Rating)? _pendingRatingUpdate;
 
     public CollectViewModel ViewModel
     {
@@ -48,12 +51,16 @@ public sealed partial class CollectPage : Page
         NavigationCacheMode = NavigationCacheMode.Disabled;
         InitializeComponent();
         DataContext = ViewModel;
-        FilterFlyoutControl.FilterViewModel = ViewModel.Filter;
         _visibleThumbnailLoadTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromMilliseconds(50)
         };
         _visibleThumbnailLoadTimer.Tick += VisibleThumbnailLoadTimer_Tick;
+        _ratingDebounceTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(500)
+        };
+        _ratingDebounceTimer.Tick += RatingDebounceTimer_Tick;
         ViewModel.Images.CollectionChanged += Images_CollectionChanged;
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         ViewModel.Filter.FilterChanged += Filter_FilterChanged;
@@ -97,6 +104,7 @@ public sealed partial class CollectPage : Page
         _shellDeleteButton = null;
         _shellFilterSplitButton = null;
         _visibleThumbnailLoadTimer.Tick -= VisibleThumbnailLoadTimer_Tick;
+        _ratingDebounceTimer.Tick -= RatingDebounceTimer_Tick;
         ViewModel.Images.CollectionChanged -= Images_CollectionChanged;
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         ViewModel.Filter.FilterChanged -= Filter_FilterChanged;
@@ -364,7 +372,7 @@ public sealed partial class CollectPage : Page
         }
         else if (e.PropertyName == nameof(CollectViewModel.IsThumbnailStripCollapsed))
         {
-            ThumbnailStripHost.Height = ViewModel.IsThumbnailStripCollapsed ? 64 : 160;
+            ThumbnailStripHost.Height = ViewModel.IsThumbnailStripCollapsed ? 90 : 135;
         }
         else if (e.PropertyName == nameof(CollectViewModel.PendingDeleteCount))
         {
@@ -476,7 +484,6 @@ public sealed partial class CollectPage : Page
         if (ViewModel.Filter.IsFilterActive)
         {
             var activeColor = Windows.UI.Color.FromArgb(0xFF, 0x00, 0x78, 0xD4);
-            FilterSplitButton.Background = new SolidColorBrush(activeColor);
             if (_shellFilterSplitButton != null)
             {
                 _shellFilterSplitButton.Background = new SolidColorBrush(activeColor);
@@ -484,7 +491,6 @@ public sealed partial class CollectPage : Page
         }
         else
         {
-            FilterSplitButton.ClearValue(Control.BackgroundProperty);
             if (_shellFilterSplitButton != null)
             {
                 ApplyToolbarButtonChrome(_shellFilterSplitButton);
@@ -495,6 +501,116 @@ public sealed partial class CollectPage : Page
     private void UpdateSelectedImageUi()
     {
         PreviewInfoDrawer.DataContext = ViewModel.SelectedImage;
+    }
+
+    private void PreviewThumbnailRatingControl_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is RatingControl ratingControl && !_ratingControlEventMap.ContainsKey(ratingControl))
+        {
+            ratingControl.ValueChanged += PreviewThumbnailRatingControl_ValueChanged;
+            _ratingControlEventMap[ratingControl] = true;
+        }
+    }
+
+    private void PreviewThumbnailRatingControl_ValueChanged(RatingControl sender, object args)
+    {
+        try
+        {
+            if (_isDisposed || _isUnloaded)
+                return;
+
+            var imageInfo = FindImageInfoFromRatingControl(sender);
+            if (imageInfo == null)
+                return;
+
+            var controlValue = sender.Value;
+            uint ratingValue = 0;
+            if (controlValue > 0)
+            {
+                var stars = (int)Math.Round(controlValue, MidpointRounding.AwayFromZero);
+                ratingValue = ImageFileInfo.StarsToRating(Math.Clamp(stars, 1, 5));
+            }
+
+            _pendingRatingUpdate = (imageInfo, ratingValue);
+            _ratingDebounceTimer.Stop();
+            _ratingDebounceTimer.Start();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CollectPage] rating change failed: {ex.Message}");
+        }
+    }
+
+    private async void RatingDebounceTimer_Tick(object? sender, object e)
+    {
+        _ratingDebounceTimer.Stop();
+        if (!_pendingRatingUpdate.HasValue)
+            return;
+
+        var (image, rating) = _pendingRatingUpdate.Value;
+        _pendingRatingUpdate = null;
+
+        var imagesToProcess = GetImagesForRatingUpdate(image);
+        foreach (var imageInfo in imagesToProcess)
+        {
+            await UpdateRatingAsync(imageInfo, rating);
+        }
+    }
+
+    private static ImageFileInfo? FindImageInfoFromRatingControl(RatingControl ratingControl)
+    {
+        try
+        {
+            var parent = VisualTreeHelper.GetParent(ratingControl);
+            while (parent != null)
+            {
+                if (parent is FrameworkElement { DataContext: ImageFileInfo imageInfo })
+                {
+                    return imageInfo;
+                }
+
+                parent = VisualTreeHelper.GetParent(parent);
+            }
+        }
+        catch
+        {
+        }
+
+        return null;
+    }
+
+    private static List<ImageFileInfo> GetImagesForRatingUpdate(ImageFileInfo image)
+    {
+        var imagesToProcess = new List<ImageFileInfo>();
+        if (image.Group != null)
+        {
+            foreach (var groupImage in image.Group.Images)
+            {
+                if (!imagesToProcess.Contains(groupImage))
+                {
+                    imagesToProcess.Add(groupImage);
+                }
+            }
+        }
+        else
+        {
+            imagesToProcess.Add(image);
+        }
+
+        return imagesToProcess;
+    }
+
+    private static async Task UpdateRatingAsync(ImageFileInfo imageInfo, uint rating)
+    {
+        try
+        {
+            var ratingService = App.GetService<RatingService>();
+            await imageInfo.SetRatingAsync(ratingService, rating);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CollectPage] update rating failed: {ex.Message}");
+        }
     }
 
     private void PreviewCanvas_ZoomPercentChanged(object? sender, double percent)
@@ -532,11 +648,6 @@ public sealed partial class CollectPage : Page
     private void FlipPreviewVertical_Click(object sender, RoutedEventArgs e)
     {
         PreviewCanvas.FlipVertical();
-    }
-
-    private void ToggleThumbnailStrip_Click(object sender, RoutedEventArgs e)
-    {
-        ViewModel.IsThumbnailStripCollapsed = !ViewModel.IsThumbnailStripCollapsed;
     }
 
     private void ToggleInfoDrawer_Click(object sender, RoutedEventArgs e)
@@ -705,26 +816,17 @@ public sealed partial class CollectPage : Page
 
         var stars = key - VirtualKey.Number0;
         var imagesToProcess = new List<ImageFileInfo>();
-
-        foreach (var imageInfo in selectedImages)
+        foreach (var selectedImage in selectedImages)
         {
-            if (imageInfo.Group != null)
+            foreach (var imageInfo in GetImagesForRatingUpdate(selectedImage))
             {
-                foreach (var groupImage in imageInfo.Group.Images)
+                if (!imagesToProcess.Contains(imageInfo))
                 {
-                    if (!imagesToProcess.Contains(groupImage))
-                    {
-                        imagesToProcess.Add(groupImage);
-                    }
+                    imagesToProcess.Add(imageInfo);
                 }
-            }
-            else if (!imagesToProcess.Contains(imageInfo))
-            {
-                imagesToProcess.Add(imageInfo);
             }
         }
 
-        var ratingService = App.GetService<RatingService>();
         foreach (var imageInfo in imagesToProcess)
         {
             uint newRating;
@@ -740,7 +842,7 @@ public sealed partial class CollectPage : Page
                     : ImageFileInfo.StarsToRating(stars);
             }
 
-            _ = imageInfo.SetRatingAsync(ratingService, newRating);
+            _ = UpdateRatingAsync(imageInfo, newRating);
         }
     }
 

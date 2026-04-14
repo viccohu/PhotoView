@@ -12,6 +12,7 @@
 
     <Page.Resources>
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <converters:BooleanToDoubleConverter x:Key="ThumbnailItemHeightConverter" TrueValue="80" FalseValue="120"/>
         <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
         <converters:IntToVisibilityConverter x:Key="IntToVisibilityConverter"/>
         <converters:IntToBoolConverter x:Key="IntToBoolConverter"/>
@@ -255,39 +256,49 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Left">
-                        <Button Click="ToggleThumbnailStrip_Click" ToolTipService.ToolTip="折叠缩略图">
+                        <ToggleButton
+                            IsChecked="{x:Bind ViewModel.IsThumbnailStripCollapsed, Mode=TwoWay}"
+                            ToolTipService.ToolTip="折叠缩略图">
                             <FontIcon Glyph="&#xE75B;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
-                        </Button>
+                        </ToggleButton>
                         <Button Click="ToggleInfoDrawer_Click" ToolTipService.ToolTip="文件信息">
                             <FontIcon Glyph="&#xE946;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
                         </Button>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                        
+                        <Button Click="FlipPreviewHorizontal_Click" ToolTipService.ToolTip="左右镜像">
+                            <FontIcon Glyph="&#xE8AB;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16" />
+                        </Button>
                         <Button Click="RotatePreview_Click" ToolTipService.ToolTip="旋转">
                             <FontIcon Glyph="&#xE7AD;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
                         </Button>
-                        <Button Click="FlipPreviewHorizontal_Click" ToolTipService.ToolTip="左右镜像">
-                            <FontIcon Glyph="&#xE8AB;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
-                        </Button>
                         <Button Click="FlipPreviewVertical_Click" ToolTipService.ToolTip="上下镜像">
-                            <FontIcon Glyph="&#xE8AC;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
+                            <FontIcon 
+                                Glyph="&#xE8AB;" 
+                                FontFamily="{StaticResource SymbolThemeFontFamily}" 
+                                FontSize="16"
+                                RenderTransformOrigin="0.5,0.5">
+                                <FontIcon.RenderTransform>
+                                    <RotateTransform Angle="90"/>
+                                </FontIcon.RenderTransform>
+                            </FontIcon>
                         </Button>
                     </StackPanel>
 
-                    <Grid Grid.Column="3" ColumnSpacing="8" Width="288" HorizontalAlignment="Right">
+                    <Grid Grid.Column="2" ColumnSpacing="8" Width="220" HorizontalAlignment="Right">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="72"/>
+                            <ColumnDefinition Width="80"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <Button
                             x:Name="ZoomValueButton"
                             Content="100%"
-                            Width="65"
+                            Width="80"
                             Click="ZoomValueButton_Click"/>
 
                         <Slider
@@ -299,32 +310,6 @@
                             ValueChanged="ZoomSlider_ValueChanged"/>
                     </Grid>
 
-                    <StackPanel x:Name="PreviewPageCommandBar" Grid.Column="1" Orientation="Horizontal" Spacing="6" Visibility="Collapsed">
-                        <Button Click="ExportButton_Click" ToolTipService.ToolTip="导出">
-                            <FontIcon Glyph="&#xE72D;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
-                        </Button>
-                        <Button
-                            Click="DeleteButton_Click"
-                            IsEnabled="{x:Bind ViewModel.PendingDeleteCount, Mode=OneWay, Converter={StaticResource IntToBoolConverter}}"
-                            ToolTipService.ToolTip="删除">
-                            <FontIcon Glyph="&#xE74D;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
-                        </Button>
-                        <SplitButton x:Name="FilterSplitButton" Click="FilterSplitButton_Click">
-                            <SplitButton.Content>
-                                <FontIcon Glyph="&#xE71C;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
-                            </SplitButton.Content>
-                            <SplitButton.Flyout>
-                                <Flyout Placement="Top">
-                                    <Flyout.FlyoutPresenterStyle>
-                                        <Style TargetType="FlyoutPresenter">
-                                            <Setter Property="Padding" Value="16"/>
-                                        </Style>
-                                    </Flyout.FlyoutPresenterStyle>
-                                    <local:FilterFlyout x:Name="FilterFlyoutControl"/>
-                                </Flyout>
-                            </SplitButton.Flyout>
-                        </SplitButton>
-                    </StackPanel>
                 </Grid>
             </Border>
 
@@ -332,7 +317,7 @@
                 x:Name="ThumbnailStripHost"
                 Grid.Row="2"
                 Grid.Column="0"
-                Height="Auto"
+                Height="135"
                 Padding="6,0,6,0"
                 Margin="0,0,0,0"
                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
@@ -353,7 +338,10 @@
                     ScrollViewer.ZoomMode="Disabled">
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="models:ImageFileInfo">
-                            <Grid Width="142" Height="128" Tag="{x:Bind}">
+                            <Grid
+                                Width="142"
+                                Height="{Binding DataContext.IsThumbnailStripCollapsed, ElementName=PreviewThumbnailGridView, Converter={StaticResource ThumbnailItemHeightConverter}}"
+                                Tag="{x:Bind}">
                                 <Border
                                     Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
                                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -363,7 +351,7 @@
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="*"/>
                                             <RowDefinition Height="1"/>
-                                            <RowDefinition Height="30"/>
+                                            <RowDefinition Height="25"/>
                                         </Grid.RowDefinitions>
                                         <Grid
                                             Grid.Row="0"
@@ -428,17 +416,80 @@
                                                 </StackPanel>
                                             </Border>
                                         </Grid>
-                                        <StackPanel
+                                        <Grid
                                             Grid.Row="0"
                                             Grid.RowSpan="3"
-                                            Margin="8"
-                                            Spacing="4"
-                                            VerticalAlignment="Center"
                                             Visibility="{Binding DataContext.IsThumbnailStripCollapsed, ElementName=PreviewThumbnailGridView, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                            <TextBlock Text="{x:Bind FileType}" FontWeight="SemiBold"/>
-                                            <TextBlock Text="{x:Bind ImageName}" TextTrimming="CharacterEllipsis"/>
-                                            <RatingControl Value="{x:Bind RatingValue, Mode=OneWay}" IsReadOnly="True" MaxRating="5" IsHitTestVisible="False"/>
-                                        </StackPanel>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="26"/>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="28"/>
+                                            </Grid.RowDefinitions>
+
+                                            <StackPanel
+                                                Grid.Row="0"
+                                                Orientation="Horizontal"
+                                                Spacing="6"
+                                                Margin="10,5,10,0"
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Top"
+                                                Visibility="{x:Bind FormatTags.Count, Mode=OneWay, Converter={StaticResource IntToVisibilityConverter}}">
+                                                <FontIcon
+                                                    Glyph="&#xF156;"
+                                                    FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                                    FontSize="11"
+                                                    Opacity="0.8"
+                                                    VerticalAlignment="Center"/>
+                                                <ItemsControl ItemsSource="{x:Bind FormatTags, Mode=OneWay}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <StackPanel Orientation="Horizontal"/>
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="models:FormatTag">
+                                                            <Border
+                                                                Background="{Binding Color, Converter={StaticResource StringToBrushConverter}}"
+                                                                CornerRadius="4"
+                                                                Padding="6,1"
+                                                                Margin="0,0,6,0">
+                                                                <TextBlock
+                                                                    Text="{x:Bind Format}"
+                                                                    FontSize="10"
+                      
+                                                                    Foreground="White"/>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
+
+                                            <TextBlock
+                                                Grid.Row="1"
+                                                Text="{x:Bind ImageName}"
+                                                FontSize="16"
+                                                Margin="0,-10,0,0"
+                                                
+                                                TextTrimming="CharacterEllipsis"
+                                                MaxWidth="120"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"/>
+
+                                            <Border
+                                                Grid.Row="2"
+                                                Background="{ThemeResource SmokeFillColorDefaultBrush}"
+                                                CornerRadius="0,0,8,8">
+                                                <RatingControl
+                                                    Value="{x:Bind RatingValue, Mode=TwoWay}"
+                                                    IsReadOnly="False"
+                                                    IsClearEnabled="True"
+                                                    MaxRating="5"
+                                                    FontSize="12"
+                                                    HorizontalAlignment="Center"
+                                                    VerticalAlignment="Center"
+                                                    Loaded="PreviewThumbnailRatingControl_Loaded"/>
+                                            </Border>
+                                        </Grid>
                                         <Rectangle
                                             Grid.Row="1"
                                             Fill="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -449,13 +500,14 @@
                                             CornerRadius="0,0,8,8"
                                             Visibility="{Binding DataContext.IsThumbnailStripCollapsed, ElementName=PreviewThumbnailGridView, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
                                             <RatingControl
-                                                Value="{x:Bind RatingValue, Mode=OneWay}"
-                                                IsReadOnly="True"
-                                                IsHitTestVisible="False"
+                                                Value="{x:Bind RatingValue, Mode=TwoWay}"
+                                                IsReadOnly="False"
+                                                IsClearEnabled="True"
                                                 MaxRating="5"
                                                 FontSize="12"
                                                 HorizontalAlignment="Center"
-                                                VerticalAlignment="Center"/>
+                                                VerticalAlignment="Center"
+                                                Loaded="PreviewThumbnailRatingControl_Loaded"/>
                                         </Border>
                                     </Grid>
                                 </Border>
