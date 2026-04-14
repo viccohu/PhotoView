@@ -268,32 +268,7 @@
                 BorderThickness="0"
                 CornerRadius="8"
                 Visibility="{x:Bind ViewModel.IsInfoDrawerOpen, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Spacing="14">
-                        <TextBlock Text="文件信息" Style="{ThemeResource BodyStrongTextBlockStyle}"/>
-                        <TextBlock Text="{Binding ImageName}" TextWrapping="Wrap" Style="{ThemeResource BodyTextBlockStyle}"/>
-                        <TextBlock Text="{Binding ImageDimensions}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.75"/>
-                        <TextBlock Text="{Binding ImageFile.Path}" TextWrapping="Wrap" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.75"/>
-                        <ItemsControl ItemsSource="{Binding FormatTags}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="models:FormatTag">
-                                    <Border
-                                        Margin="0,0,6,0"
-                                        Padding="6,2"
-                                        Background="{Binding Color, Converter={StaticResource StringToBrushConverter}}"
-                                        CornerRadius="4">
-                                        <TextBlock Text="{x:Bind Format}" Foreground="White" FontSize="11"/>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-                </ScrollViewer>
+                <controls:ImageInfoPanelControl ViewModel="{x:Bind PreviewInfoViewModel, Mode=OneWay}"/>
             </Border>
 
             <Border

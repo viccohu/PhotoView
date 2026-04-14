@@ -131,6 +131,7 @@ public sealed partial class MainPage : Page
         QueueVisibleThumbnailLoad("page-loaded");
         UpdateFilterButtonState();
         UpdateFolderDrawerState(animate: false);
+        ReattachActiveViewerAfterNavigation();
     }
 
     private async void ImageViewer_Closed(object? sender, EventArgs e)
@@ -173,6 +174,20 @@ public sealed partial class MainPage : Page
 
             await _settingsService.ResumeAlwaysDecodeRawPersistenceAsync("viewer-close");
         }
+    }
+
+    private void ReattachActiveViewerAfterNavigation()
+    {
+        if (ViewerContainer.Content is not Controls.ImageViewerControl viewer)
+            return;
+
+        _currentViewer = viewer;
+        viewer.Closed -= ImageViewer_Closed;
+        viewer.Closed += ImageViewer_Closed;
+        viewer.ViewModel.RatingUpdated -= ViewModel_RatingUpdated;
+        viewer.ViewModel.RatingUpdated += ViewModel_RatingUpdated;
+        viewer.ReactivateAfterNavigation();
+        _settingsService.SuspendAlwaysDecodeRawPersistence("viewer-return");
     }
 
     private void ViewModel_RatingUpdated(object? sender, (ImageFileInfo Image, uint Rating) e)

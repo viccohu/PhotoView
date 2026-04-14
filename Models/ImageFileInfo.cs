@@ -171,7 +171,7 @@ public class ImageFileInfo : INotifyPropertyChanged
         // 优先尝试获取系统缩略图（最快）
         try
         {
-            using var thumbnail = await ImageFile.GetThumbnailAsync(
+            var thumbnail = await ImageFile.GetThumbnailAsync(
                 ThumbnailMode.SingleItem,
                 optimalSize,
                 ThumbnailOptions.None).AsTask(cancellationToken);
@@ -228,7 +228,7 @@ public class ImageFileInfo : INotifyPropertyChanged
         await Task.Delay(150, cancellationToken);
         try
         {
-            using var thumbnail = await ImageFile.GetThumbnailAsync(
+            var thumbnail = await ImageFile.GetThumbnailAsync(
                 ThumbnailMode.SingleItem,
                 optimalSize,
                 ThumbnailOptions.None).AsTask(cancellationToken);

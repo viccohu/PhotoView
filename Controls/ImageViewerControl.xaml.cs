@@ -214,6 +214,20 @@ public sealed partial class ImageViewerControl : UserControl
         StopPhysics();
     }
 
+    public void ReactivateAfterNavigation()
+    {
+        if (!_hasPrepared || Visibility == Visibility.Collapsed)
+            return;
+
+        _isClosing = false;
+        if (_isLoaded)
+        {
+            StartPhysics();
+        }
+
+        Focus(FocusState.Programmatic);
+    }
+
     public void PrepareContent(ImageFileInfo imageFileInfo)
     {
         if (_hasPrepared)

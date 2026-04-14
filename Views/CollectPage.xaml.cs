@@ -49,9 +49,15 @@ public sealed partial class CollectPage : Page
         get;
     }
 
+    public ImageViewerViewModel PreviewInfoViewModel
+    {
+        get;
+    }
+
     public CollectPage()
     {
         ViewModel = App.GetService<CollectViewModel>();
+        PreviewInfoViewModel = App.GetService<ImageViewerViewModel>();
         _settingsService = App.GetService<ISettingsService>();
         _shellToolbarService = App.GetService<ShellToolbarService>();
         NavigationCacheMode = NavigationCacheMode.Disabled;
@@ -70,6 +76,7 @@ public sealed partial class CollectPage : Page
         ViewModel.Images.CollectionChanged += Images_CollectionChanged;
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         ViewModel.Filter.FilterChanged += Filter_FilterChanged;
+        PreviewInfoViewModel.RatingUpdated += PreviewInfoViewModel_RatingUpdated;
         PreviewCanvas.ZoomPercentChanged += PreviewCanvas_ZoomPercentChanged;
         _thumbnailWheelHandler = PreviewThumbnailGridView_PointerWheelChanged;
         PreviewThumbnailGridView.AddHandler(UIElement.PointerWheelChangedEvent, _thumbnailWheelHandler, true);
@@ -115,6 +122,7 @@ public sealed partial class CollectPage : Page
         ViewModel.Images.CollectionChanged -= Images_CollectionChanged;
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         ViewModel.Filter.FilterChanged -= Filter_FilterChanged;
+        PreviewInfoViewModel.RatingUpdated -= PreviewInfoViewModel_RatingUpdated;
         Bindings.StopTracking();
         PreviewCanvas.ZoomPercentChanged -= PreviewCanvas_ZoomPercentChanged;
         if (_thumbnailWheelHandler != null)
@@ -129,6 +137,7 @@ public sealed partial class CollectPage : Page
 
     private async void LoadPreview_Click(object sender, RoutedEventArgs e)
     {
+        CollapseLoadDrawer();
         await ViewModel.LoadPreviewAsync();
         QueueVisibleThumbnailLoad("load-preview");
     }
@@ -414,6 +423,13 @@ public sealed partial class CollectPage : Page
 
     private bool IsLoadDrawerExpanded => !_isLoadDrawerPinnedCollapsed || _isLoadDrawerTemporarilyExpanded;
 
+    private void CollapseLoadDrawer()
+    {
+        _isLoadDrawerPinnedCollapsed = true;
+        _isLoadDrawerTemporarilyExpanded = false;
+        UpdateLoadDrawerState();
+    }
+
     private void UpdateLoadDrawerState(bool animate = true)
     {
         var isExpanded = IsLoadDrawerExpanded;
@@ -645,9 +661,23 @@ public sealed partial class CollectPage : Page
         }
     }
 
-    private void UpdateSelectedImageUi()
+    private async void UpdateSelectedImageUi()
     {
-        PreviewInfoDrawer.DataContext = ViewModel.SelectedImage;
+        var imageInfo = ViewModel.SelectedImage;
+        if (imageInfo == null)
+        {
+            PreviewInfoViewModel.Clear();
+            return;
+        }
+
+        PreviewInfoViewModel.SetBasicInfo(imageInfo);
+        await PreviewInfoViewModel.LoadFileDetailsAsync(imageInfo.ImageFile);
+    }
+
+    private void PreviewInfoViewModel_RatingUpdated(object? sender, (ImageFileInfo Image, uint Rating) e)
+    {
+        e.Image.Rating = e.Rating;
+        QueueVisibleThumbnailLoad("preview-info-rating-updated");
     }
 
     private void PreviewThumbnailRatingControl_Loaded(object sender, RoutedEventArgs e)
