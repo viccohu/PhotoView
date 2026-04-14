@@ -30,6 +30,7 @@ public sealed partial class MainPage : Page
     private readonly DispatcherTimer _ratingDebounceTimer;
     private readonly DispatcherTimer _visibleThumbnailLoadTimer;
     private readonly ISettingsService _settingsService;
+    private readonly ShellToolbarService _shellToolbarService;
     private readonly HashSet<ImageFileInfo> _pendingVisibleThumbnailLoads = new();
     private readonly HashSet<ImageFileInfo> _realizedImageItems = new();
     private readonly HashSet<ImageFileInfo> _immediateVisibleThumbnailLoads = new();
@@ -49,8 +50,6 @@ public sealed partial class MainPage : Page
     private bool _isUnloaded;
     private bool _isProgrammaticScrollActive;
     private bool _isUserScrollInProgress;
-    private DateTime _lastClickTime;
-    private FolderNode? _lastClickedNode;
     private bool _hasAttemptedRestoreLastFolder;
     private bool _isFolderDrawerExpanded = true;
     private bool _isFolderDrawerContentVisible;
@@ -62,6 +61,8 @@ public sealed partial class MainPage : Page
     private (ImageFileInfo Image, uint Rating)? _pendingRatingUpdate;
     private ImageFileInfo? _storedImageFileInfo;
     private Controls.ImageViewerControl? _currentViewer;
+    private Button? _shellDeleteButton;
+    private SplitButton? _shellFilterSplitButton;
 
     public MainPage()
     {
@@ -69,6 +70,7 @@ public sealed partial class MainPage : Page
         
         ViewModel = App.GetService<MainViewModel>();
         _settingsService = App.GetService<ISettingsService>();
+        _shellToolbarService = App.GetService<ShellToolbarService>();
         System.Diagnostics.Debug.WriteLine($"[MainPage] ViewModel 已获取, FolderTree.Count={ViewModel.FolderTree.Count}");
         
         NavigationCacheMode = NavigationCacheMode.Enabled;
@@ -120,6 +122,7 @@ public sealed partial class MainPage : Page
     {
         _isUnloaded = false;
         FilterFlyoutControl.FilterViewModel = ViewModel.Filter;
+        RegisterShellToolbar();
         ViewModel.Filter.FilterChanged += Filter_FilterChanged;
         ImageGridView.DoubleTapped += ImageGridView_DoubleTapped;
         AttachImageGridScrollViewer();
@@ -185,6 +188,112 @@ public sealed partial class MainPage : Page
         {
             SetFolderDrawerExpanded(ViewModel.HasSubFoldersInCurrentFolder, "subfolders-changed");
         }
+        else if (e.PropertyName == nameof(MainViewModel.PendingDeleteCount))
+        {
+            UpdateShellToolbarState();
+        }
+    }
+
+    private void RegisterShellToolbar()
+    {
+        var toolbar = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        var exportButton = CreateToolbarButton("\uE72D", "导出");
+        exportButton.Click += ExportButton_Click;
+        toolbar.Children.Add(exportButton);
+
+        _shellDeleteButton = CreateToolbarButton("\uE74D", "删除");
+        _shellDeleteButton.Click += DeleteButton_Click;
+        toolbar.Children.Add(_shellDeleteButton);
+
+        _shellFilterSplitButton = new SplitButton
+        {
+            Padding = new Thickness(8),
+            Content = CreateToolbarIcon("\uE71C"),
+            Flyout = CreateFilterFlyout()
+        };
+        _shellFilterSplitButton.Click += FilterSplitButton_Click;
+        toolbar.Children.Add(_shellFilterSplitButton);
+
+        var sizeButton = new DropDownButton
+        {
+            Padding = new Thickness(8),
+            Content = CreateToolbarIcon("\uECA5"),
+            Flyout = CreateThumbnailSizeFlyout()
+        };
+        ToolTipService.SetToolTip(sizeButton, "缩略图大小");
+        toolbar.Children.Add(sizeButton);
+
+        UpdateShellToolbarState();
+        UpdateFilterButtonState();
+        _shellToolbarService.SetToolbar(this, toolbar);
+    }
+
+    private void UpdateShellToolbarState()
+    {
+        if (_shellDeleteButton != null)
+        {
+            _shellDeleteButton.IsEnabled = ViewModel.PendingDeleteCount > 0;
+        }
+    }
+
+    private static Button CreateToolbarButton(string glyph, string tooltip)
+    {
+        var button = new Button
+        {
+            Padding = new Thickness(8),
+            Content = CreateToolbarIcon(glyph)
+        };
+        ToolTipService.SetToolTip(button, tooltip);
+        return button;
+    }
+
+    private static FontIcon CreateToolbarIcon(string glyph)
+    {
+        return new FontIcon
+        {
+            Glyph = glyph,
+            FontFamily = (FontFamily)Application.Current.Resources["SymbolThemeFontFamily"],
+            FontSize = 16
+        };
+    }
+
+    private Flyout CreateFilterFlyout()
+    {
+        return new Flyout
+        {
+            Placement = FlyoutPlacementMode.Bottom,
+            Content = new FilterFlyout
+            {
+                FilterViewModel = ViewModel.Filter
+            }
+        };
+    }
+
+    private MenuFlyout CreateThumbnailSizeFlyout()
+    {
+        var flyout = new MenuFlyout
+        {
+            Placement = FlyoutPlacementMode.Bottom
+        };
+
+        foreach (var size in new[] { "Small", "Medium", "Large" })
+        {
+            var item = new MenuFlyoutItem
+            {
+                Text = size,
+                Tag = size
+            };
+            item.Click += ThumbnailSize_Click;
+            flyout.Items.Add(item);
+        }
+
+        return flyout;
     }
 
     private async void ImageGridView_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
@@ -238,11 +347,17 @@ public sealed partial class MainPage : Page
         
         if (isActive)
         {
-            FilterSplitButton.Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(0xFF, 0x00, 0x78, 0xD4));
+            var activeColor = Windows.UI.Color.FromArgb(0xFF, 0x00, 0x78, 0xD4);
+            FilterSplitButton.Background = new SolidColorBrush(activeColor);
+            if (_shellFilterSplitButton != null)
+            {
+                _shellFilterSplitButton.Background = new SolidColorBrush(activeColor);
+            }
         }
         else
         {
             FilterSplitButton.ClearValue(Control.BackgroundProperty);
+            _shellFilterSplitButton?.ClearValue(Control.BackgroundProperty);
         }
     }
 
@@ -406,6 +521,9 @@ public sealed partial class MainPage : Page
     private void MainPage_Unloaded(object sender, RoutedEventArgs e)
     {
         _isUnloaded = true;
+        _shellToolbarService.ClearToolbar(this);
+        _shellDeleteButton = null;
+        _shellFilterSplitButton = null;
         if (_currentViewer != null)
         {
             _currentViewer.Closed -= ImageViewer_Closed;
@@ -414,6 +532,8 @@ public sealed partial class MainPage : Page
             _ = _settingsService.ResumeAlwaysDecodeRawPersistenceAsync("main-page-unloaded");
         }
 
+        ViewModel.Filter.FilterChanged -= Filter_FilterChanged;
+        ImageGridView.DoubleTapped -= ImageGridView_DoubleTapped;
         _loadImagesThrottleTimer.Stop();
         _ratingDebounceTimer.Stop();
         _visibleThumbnailLoadTimer.Stop();
@@ -605,19 +725,11 @@ public sealed partial class MainPage : Page
     {
         if (args.InvokedItem is FolderNode node)
         {
-            var now = DateTime.Now;
-            var isDoubleClick = (now - _lastClickTime).TotalMilliseconds < 300
-                && _lastClickedNode == node;
-            _lastClickTime = now;
-            _lastClickedNode = node;
-
-            if (FolderTreeView.SelectedItem == node || isDoubleClick)
+            if (sender.ContainerFromItem(node) is TreeViewItem treeViewItem
+                && node.HasExpandableChildren
+                && !treeViewItem.IsExpanded)
             {
-                var treeViewItem = sender.ContainerFromItem(node) as TreeViewItem;
-                if (treeViewItem != null)
-                {
-                    treeViewItem.IsExpanded = !treeViewItem.IsExpanded;
-                }
+                treeViewItem.IsExpanded = true;
             }
 
             ThrottleLoadImages(node);
@@ -1338,6 +1450,15 @@ public sealed partial class MainPage : Page
         }
     }
 
+    private void AddFolderToPreview_Click(object sender, RoutedEventArgs e)
+    {
+        if (_rightClickedFolderNode == null || string.IsNullOrEmpty(_rightClickedFolderNode.FullPath))
+            return;
+
+        var previewWorkspace = App.GetService<PreviewWorkspaceService>();
+        previewWorkspace.AddSource(_rightClickedFolderNode.FullPath);
+    }
+
     private void OpenSubFolderInExplorer_Click(object sender, RoutedEventArgs e)
     {
         if (_rightClickedSubFolderNode == null || string.IsNullOrEmpty(_rightClickedSubFolderNode.FullPath))
@@ -1359,6 +1480,15 @@ public sealed partial class MainPage : Page
         {
             System.Diagnostics.Debug.WriteLine($"OpenSubFolderInExplorer_Click error: {ex}");
         }
+    }
+
+    private void AddSubFolderToPreview_Click(object sender, RoutedEventArgs e)
+    {
+        if (_rightClickedSubFolderNode == null || string.IsNullOrEmpty(_rightClickedSubFolderNode.FullPath))
+            return;
+
+        var previewWorkspace = App.GetService<PreviewWorkspaceService>();
+        previewWorkspace.AddSource(_rightClickedSubFolderNode.FullPath);
     }
 
     private ImageFileInfo? _rightClickedImageInfo;

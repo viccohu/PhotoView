@@ -75,14 +75,12 @@ public sealed partial class ThumbnailItemControl : UserControl
     {
         if (ThumbnailItem == null)
         {
-            LoadingRing.IsActive = false;
             SelectionBorder.Opacity = 0;
             SelectionCheckBox.Opacity = 0;
             SelectionCheckBox.IsChecked = false;
             return;
         }
 
-        LoadingRing.IsActive = ThumbnailItem.IsLoading;
         SelectionBorder.Opacity = ThumbnailItem.IsSelected ? 1 : 0;
         SelectionCheckBox.Opacity = ThumbnailItem.IsSelected ? 1 : 0;
         SelectionCheckBox.IsChecked = ThumbnailItem.IsSelected;

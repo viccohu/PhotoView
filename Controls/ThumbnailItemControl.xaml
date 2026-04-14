@@ -19,13 +19,6 @@
                 <Image
                     x:Name="ThumbnailImage"
                     Stretch="UniformToFill" />
-                <ProgressRing
-                    x:Name="LoadingRing"
-                    Width="24"
-                    Height="24"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    IsActive="False" />
             </Grid>
         </Border>
 

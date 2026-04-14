@@ -61,6 +61,8 @@ public partial class App : Application
             services.AddSingleton<RatingService>();
             services.AddSingleton<IThumbnailService, ThumbnailService>();
             services.AddSingleton<IExifService, ExifService>();
+            services.AddSingleton<PreviewWorkspaceService>();
+            services.AddSingleton<ShellToolbarService>();
 
             services.AddSingleton<IActivationService, ActivationService>();
             services.AddSingleton<IPageService, PageService>();
@@ -77,7 +79,7 @@ public partial class App : Application
             services.AddTransient<ShellPage>();
             services.AddTransient<ShellViewModel>();
             services.AddTransient<CollectPage>();
-            services.AddTransient<CollectViewModel>();
+            services.AddSingleton<CollectViewModel>();
             services.AddTransient<ImageViewerViewModel>();
 
             // Configuration

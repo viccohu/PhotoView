@@ -4,8 +4,571 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:models="using:PhotoView.Models"
+    xmlns:converters="using:PhotoView.Converters"
+    xmlns:controls="using:PhotoView.Controls"
+    xmlns:local="using:PhotoView.Views"
     mc:Ignorable="d">
-    
+
+    <Page.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
+        <converters:IntToVisibilityConverter x:Key="IntToVisibilityConverter"/>
+        <converters:IntToBoolConverter x:Key="IntToBoolConverter"/>
+        <converters:NodeTypeToIconConverter x:Key="NodeTypeToIconConverter"/>
+        <converters:StringToBrushConverter x:Key="StringToBrushConverter"/>
+    </Page.Resources>
+
     <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="292"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid
+            Grid.Column="0"
+            Margin="12,12,8,12"
+            RowSpacing="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Border
+                Grid.Row="0"
+                Padding="12"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+                <StackPanel Spacing="10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <FontIcon Glyph="&#xE8B7;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
+                            <TextBlock Text="载入区" Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                        </StackPanel>
+                        <InfoBadge
+                            Grid.Column="1"
+                            Value="{x:Bind ViewModel.SelectedSourceCount, Mode=OneWay}"/>
+                    </Grid>
+
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.SelectedSources, Mode=OneWay}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="6"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="models:PreviewSource">
+                                <Border
+                                    Padding="8,5"
+                                    Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock
+                                            Text="{x:Bind DisplayName}"
+                                            TextTrimming="CharacterEllipsis"
+                                            VerticalAlignment="Center"/>
+                                        <Button
+                                            Grid.Column="1"
+                                            Tag="{x:Bind}"
+                                            Padding="4"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Click="RemoveSource_Click">
+                                            <FontIcon Glyph="&#xE711;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="12"/>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <CheckBox
+                            Content="包含子文件夹"
+                            IsChecked="{x:Bind ViewModel.IncludeSubfolders, Mode=TwoWay}"
+                            VerticalAlignment="Center"/>
+                        <Button
+                            Grid.Column="1"
+                            Content="载入"
+                            Click="LoadPreview_Click"/>
+                    </Grid>
+
+                    <TextBlock
+                        Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
+                        Style="{ThemeResource CaptionTextBlockStyle}"
+                        Opacity="0.72"
+                        TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+
+            <Border
+                Grid.Row="1"
+                Padding="6"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+                <TreeView
+                    x:Name="PreviewFolderTreeView"
+                    ItemsSource="{x:Bind ViewModel.FolderTree}"
+                    Expanding="PreviewFolderTreeView_Expanding">
+                    <TreeView.ItemTemplate>
+                        <DataTemplate x:DataType="models:FolderNode">
+                            <TreeViewItem
+                                ItemsSource="{x:Bind Children}"
+                                IsExpanded="{x:Bind IsExpanded, Mode=TwoWay}"
+                                HasUnrealizedChildren="{x:Bind HasExpandableChildren, Mode=OneWay}"
+                                DoubleTapped="PreviewFolderTreeItem_DoubleTapped"
+                                RightTapped="PreviewFolderTreeItem_RightTapped">
+                                <Grid Tag="{x:Bind}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <FlyoutBase.AttachedFlyout>
+                                        <MenuFlyout Placement="Bottom">
+                                            <MenuFlyoutItem Text="放进预览载入区" Icon="Add" Click="AddFolderToPreviewSource_Click"/>
+                                        </MenuFlyout>
+                                    </FlyoutBase.AttachedFlyout>
+                                    <FontIcon
+                                        Grid.Column="0"
+                                        Glyph="{Binding Converter={StaticResource NodeTypeToIconConverter}}"
+                                        FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                        FontSize="16"
+                                        Margin="0,0,6,0"/>
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        Text="{x:Bind Name}"
+                                        TextTrimming="CharacterEllipsis"
+                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </TreeViewItem>
+                        </DataTemplate>
+                    </TreeView.ItemTemplate>
+                </TreeView>
+            </Border>
+        </Grid>
+
+        <Grid
+            Grid.Column="1"
+            Margin="4,12,8,12"
+            RowSpacing="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="0"/>
+            </Grid.RowDefinitions>
+
+            <Border
+                Grid.Row="0"
+                Grid.Column="0"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8,8,0,0">
+                <controls:PreviewImageCanvasControl
+                    x:Name="PreviewCanvas"
+                    CurrentImage="{x:Bind ViewModel.SelectedImage, Mode=OneWay}"/>
+            </Border>
+
+            <Border
+                x:Name="PreviewInfoDrawer"
+                Grid.Row="0"
+                Grid.RowSpan="4"
+                Grid.Column="1"
+                Width="340"
+                Margin="8,0,0,0"
+                Padding="14"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="0"
+                CornerRadius="8"
+                Visibility="{x:Bind ViewModel.IsInfoDrawerOpen, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="14">
+                        <TextBlock Text="文件信息" Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                        <TextBlock Text="{Binding ImageName}" TextWrapping="Wrap" Style="{ThemeResource BodyTextBlockStyle}"/>
+                        <TextBlock Text="{Binding ImageDimensions}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.75"/>
+                        <TextBlock Text="{Binding ImageFile.Path}" TextWrapping="Wrap" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.75"/>
+                        <ItemsControl ItemsSource="{Binding FormatTags}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="models:FormatTag">
+                                    <Border
+                                        Margin="0,0,6,0"
+                                        Padding="6,2"
+                                        Background="{Binding Color, Converter={StaticResource StringToBrushConverter}}"
+                                        CornerRadius="4">
+                                        <TextBlock Text="{x:Bind Format}" Foreground="White" FontSize="11"/>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <Border
+                Grid.Row="1"
+                Grid.Column="0"
+                Padding="8"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="0,0,8,8">
+                <Grid ColumnSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition MaxWidth="220" MinWidth="180"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
+                        <Button Click="ToggleThumbnailStrip_Click" ToolTipService.ToolTip="折叠缩略图">
+                            <FontIcon Glyph="&#xE8A7;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
+                        </Button>
+                        <Button Click="ToggleInfoDrawer_Click" ToolTipService.ToolTip="文件信息">
+                            <FontIcon Glyph="&#xE946;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
+                        </Button>
+                    </StackPanel>
+
+                    <RatingControl
+                        x:Name="PreviewRatingControl"
+                        Grid.Column="1"
+                        MaxRating="5"
+                        IsClearEnabled="True"
+                        VerticalAlignment="Center"
+                        ValueChanged="PreviewRatingControl_ValueChanged"/>
+
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" >
+                        <Button Click="RotatePreview_Click" ToolTipService.ToolTip="旋转">
+                            <FontIcon Glyph="&#xE7AD;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
+                        </Button>
+                        <Button Click="FlipPreviewHorizontal_Click" ToolTipService.ToolTip="左右镜像">
+                            <FontIcon Glyph="&#xE8AB;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
+                        </Button>
+                        <Button Click="FlipPreviewVertical_Click" ToolTipService.ToolTip="上下镜像">
+                            <FontIcon Glyph="&#xE8AC;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
+                        </Button>
+                    </StackPanel>
+
+                    <Grid Grid.Column="3" ColumnSpacing="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="72"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Button
+                            x:Name="ZoomValueButton"
+                            Content="100%"
+                            Width="65"
+                            Click="ZoomValueButton_Click"/>
+
+                        <Slider
+                            x:Name="ZoomSlider"
+                            Grid.Column="1"
+                            Minimum="10"
+                            Maximum="800"
+                            Value="100"
+                            ValueChanged="ZoomSlider_ValueChanged"/>
+                    </Grid>
+
+                    <StackPanel x:Name="PreviewPageCommandBar" Grid.Column="4" Orientation="Horizontal" Spacing="6" Visibility="Collapsed">
+                        <Button Click="ExportButton_Click" ToolTipService.ToolTip="导出">
+                            <FontIcon Glyph="&#xE72D;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
+                        </Button>
+                        <Button
+                            Click="DeleteButton_Click"
+                            IsEnabled="{x:Bind ViewModel.PendingDeleteCount, Mode=OneWay, Converter={StaticResource IntToBoolConverter}}"
+                            ToolTipService.ToolTip="删除">
+                            <FontIcon Glyph="&#xE74D;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
+                        </Button>
+                        <SplitButton x:Name="FilterSplitButton" Click="FilterSplitButton_Click">
+                            <SplitButton.Content>
+                                <FontIcon Glyph="&#xE71C;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
+                            </SplitButton.Content>
+                            <SplitButton.Flyout>
+                                <Flyout Placement="Top">
+                                    <Flyout.FlyoutPresenterStyle>
+                                        <Style TargetType="FlyoutPresenter">
+                                            <Setter Property="Padding" Value="16"/>
+                                        </Style>
+                                    </Flyout.FlyoutPresenterStyle>
+                                    <local:FilterFlyout x:Name="FilterFlyoutControl"/>
+                                </Flyout>
+                            </SplitButton.Flyout>
+                        </SplitButton>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border
+                x:Name="ThumbnailStripHost"
+                Grid.Row="2"
+                Grid.Column="0"
+                Height="160"
+                Padding="6"
+                Margin="0,12,0,0"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+                <ListView
+                    x:Name="PreviewThumbnailGridView"
+                    ItemsSource="{x:Bind ViewModel.Images}"
+                    SelectionMode="Extended"
+                    SelectedItem="{x:Bind ViewModel.SelectedImage, Mode=TwoWay}"
+                    SelectionChanged="PreviewThumbnailGridView_SelectionChanged"
+                    ContainerContentChanging="PreviewThumbnailGridView_ContainerContentChanging"
+                    IsItemClickEnabled="True"
+                    ItemClick="PreviewThumbnailGridView_ItemClick"
+                    ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                    ScrollViewer.HorizontalScrollMode="Enabled"
+                    ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                    ScrollViewer.VerticalScrollMode="Disabled"
+                    ScrollViewer.ZoomMode="Disabled">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="models:ImageFileInfo">
+                            <Grid Width="142" Height="128" Tag="{x:Bind}">
+                                <Border
+                                    Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8">
+                                    <Grid RowSpacing="0">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="1"/>
+                                            <RowDefinition Height="30"/>
+                                        </Grid.RowDefinitions>
+                                        <Grid
+                                            Grid.Row="0"
+                                            Margin="4"
+                                            Visibility="{Binding DataContext.IsThumbnailStripCollapsed, ElementName=PreviewThumbnailGridView, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                                            <Image
+                                                Source="{x:Bind Thumbnail, Mode=OneWay}"
+                                                Stretch="Uniform"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"/>
+                                            <FontIcon
+                                                Glyph="&#xEB90;"
+                                                FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                                FontSize="22"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                Visibility="{x:Bind IsThumbnailFailed, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                            <Border
+                                                Padding="6,3"
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Top"
+                                                Background="{ThemeResource SmokeFillColorDefaultBrush}"
+                                                CornerRadius="4"
+                                                Visibility="{x:Bind FormatTags.Count, Mode=OneWay, Converter={StaticResource IntToVisibilityConverter}}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <FontIcon
+                                                        Glyph="&#xF156;"
+                                                        FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                                        FontSize="12"
+                                                        Foreground="White"
+                                                        Margin="0,0,4,0"/>
+                                                    <ItemsControl ItemsSource="{x:Bind FormatTags, Mode=OneWay}">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <StackPanel Orientation="Horizontal"/>
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate x:DataType="models:FormatTag">
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <Border
+                                                                        Background="{Binding Color, Converter={StaticResource StringToBrushConverter}}"
+                                                                        CornerRadius="4"
+                                                                        Padding="6,2"
+                                                                        Margin="2,0,2,0">
+                                                                        <TextBlock
+                                                                            Text="{x:Bind Format}"
+                                                                            FontSize="11"
+                                                                            FontWeight="SemiBold"
+                                                                            Foreground="White"/>
+                                                                    </Border>
+                                                                    <Border
+                                                                        Width="1"
+                                                                        Background="White"
+                                                                        Opacity="0.3"
+                                                                        Margin="3,0,2,0"
+                                                                        Visibility="{x:Bind IsLast, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
+                                                                </StackPanel>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </Border>
+                                        </Grid>
+                                        <StackPanel
+                                            Grid.Row="0"
+                                            Grid.RowSpan="3"
+                                            Margin="8"
+                                            Spacing="4"
+                                            VerticalAlignment="Center"
+                                            Visibility="{Binding DataContext.IsThumbnailStripCollapsed, ElementName=PreviewThumbnailGridView, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                            <TextBlock Text="{x:Bind FileType}" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{x:Bind ImageName}" TextTrimming="CharacterEllipsis"/>
+                                            <RatingControl Value="{x:Bind RatingValue, Mode=OneWay}" IsReadOnly="True" MaxRating="5" IsHitTestVisible="False"/>
+                                        </StackPanel>
+                                        <Rectangle
+                                            Grid.Row="1"
+                                            Fill="{ThemeResource CardStrokeColorDefaultBrush}"
+                                            Visibility="{Binding DataContext.IsThumbnailStripCollapsed, ElementName=PreviewThumbnailGridView, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
+                                        <Border
+                                            Grid.Row="2"
+                                            Background="#99000000"
+                                            CornerRadius="0,0,8,8"
+                                            Visibility="{Binding DataContext.IsThumbnailStripCollapsed, ElementName=PreviewThumbnailGridView, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                                            <RatingControl
+                                                Value="{x:Bind RatingValue, Mode=OneWay}"
+                                                IsReadOnly="True"
+                                                IsHitTestVisible="False"
+                                                MaxRating="5"
+                                                FontSize="12"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"/>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                                <Grid
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Top"
+                                    Visibility="{x:Bind IsPendingDelete, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <Grid.Resources>
+                                        <LinearGradientBrush x:Key="DeleteGradient" StartPoint="0.658,0.321" EndPoint="-0.359,1.315">
+                                            <GradientStop Offset="0" Color="#FFFFFF"/>
+                                            <GradientStop Offset="1" Color="#BFBFBF"/>
+                                        </LinearGradientBrush>
+                                    </Grid.Resources>
+                                    <Path
+                                        Width="30"
+                                        Height="30"
+                                        Stretch="Uniform"
+                                        Fill="{StaticResource DeleteGradient}"
+                                        Data="M50,50 L3.5,50 A3.5,3.5,0,0,1,0,46.5 L0,0 L50,50 Z"/>
+                                    <Path
+                                        Width="30"
+                                        Height="30"
+                                        Stretch="Uniform"
+                                        Fill="#f95656"
+                                        Data="M50,0 L0,0 L50,50 Z"/>
+                                </Grid>
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="Margin" Value="4"/>
+                            <Setter Property="Padding" Value="0"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+                            <Setter Property="UseSystemFocusVisuals" Value="False"/>
+                            <Setter Property="FocusVisualPrimaryThickness" Value="0"/>
+                            <Setter Property="FocusVisualSecondaryThickness" Value="0"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListViewItem">
+                                        <Grid
+                                            x:Name="ContentBorder"
+                                            Background="{TemplateBinding Background}"
+                                            BorderBrush="Transparent"
+                                            BorderThickness="0"
+                                            CornerRadius="8">
+                                            <VisualStateManager.VisualStateGroups>
+                                                <VisualStateGroup x:Name="CommonStates">
+                                                    <VisualState x:Name="Normal"/>
+                                                    <VisualState x:Name="PointerOver">
+                                                        <VisualState.Setters>
+                                                            <Setter Target="ContentBorder.Background" Value="{ThemeResource CardBackgroundFillColorSecondaryBrush}"/>
+                                                        </VisualState.Setters>
+                                                    </VisualState>
+                                                    <VisualState x:Name="Pressed"/>
+                                                    <VisualState x:Name="Selected">
+                                                        <VisualState.Setters>
+                                                            <Setter Target="SelectionBorder.BorderBrush" Value="{ThemeResource AccentFillColorDefaultBrush}"/>
+                                                            <Setter Target="SelectionBorder.BorderThickness" Value="3"/>
+                                                        </VisualState.Setters>
+                                                    </VisualState>
+                                                    <VisualState x:Name="PointerOverSelected">
+                                                        <VisualState.Setters>
+                                                            <Setter Target="ContentBorder.Background" Value="{ThemeResource CardBackgroundFillColorSecondaryBrush}"/>
+                                                            <Setter Target="SelectionBorder.BorderBrush" Value="{ThemeResource AccentFillColorDefaultBrush}"/>
+                                                            <Setter Target="SelectionBorder.BorderThickness" Value="3"/>
+                                                        </VisualState.Setters>
+                                                    </VisualState>
+                                                    <VisualState x:Name="PressedSelected">
+                                                        <VisualState.Setters>
+                                                            <Setter Target="SelectionBorder.BorderBrush" Value="{ThemeResource AccentFillColorDefaultBrush}"/>
+                                                            <Setter Target="SelectionBorder.BorderThickness" Value="3"/>
+                                                        </VisualState.Setters>
+                                                    </VisualState>
+                                                </VisualStateGroup>
+                                                <VisualStateGroup x:Name="FocusStates">
+                                                    <VisualState x:Name="Focused"/>
+                                                    <VisualState x:Name="Unfocused"/>
+                                                    <VisualState x:Name="PointerFocused"/>
+                                                </VisualStateGroup>
+                                            </VisualStateManager.VisualStateGroups>
+                                            <ContentPresenter
+                                                Content="{TemplateBinding Content}"
+                                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
+                                                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                Margin="{TemplateBinding Padding}"/>
+                                            <Border
+                                                x:Name="SelectionBorder"
+                                                CornerRadius="8"
+                                                BorderThickness="0"/>
+                                        </Grid>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                    <ListView.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <ItemsStackPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ListView.ItemsPanel>
+                </ListView>
+            </Border>
+
+            <Grid Grid.Row="3" Grid.Column="0" />
+        </Grid>
     </Grid>
 </Page>

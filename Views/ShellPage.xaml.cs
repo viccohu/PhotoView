@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Media;
 
 using PhotoView.Contracts.Services;
 using PhotoView.Helpers;
+using PhotoView.Services;
 using PhotoView.ViewModels;
 using PhotoView.Views;
 
@@ -25,6 +26,7 @@ public sealed partial class ShellPage : Page
     private readonly IThemeSelectorService _themeSelectorService;
     private readonly INavigationService _navigationService;
     private readonly ISettingsService _settingsService;
+    private readonly ShellToolbarService _shellToolbarService;
     private string? _lastPageKey;
     private bool _isOnSettingsPage;
 
@@ -32,6 +34,7 @@ public sealed partial class ShellPage : Page
     {
         ViewModel = viewModel;
         _settingsService = settingsService;
+        _shellToolbarService = App.GetService<ShellToolbarService>();
         InitializeComponent();
 
         ViewModel.NavigationService.Frame = NavigationFrame;
@@ -48,6 +51,7 @@ public sealed partial class ShellPage : Page
 
         _navigationService = App.GetService<INavigationService>();
         _navigationService.Navigated += OnNavigationServiceNavigated;
+        _shellToolbarService.ToolbarChanged += OnShellToolbarChanged;
 
         // 使用官方 TitleBar
         App.MainWindow.ExtendsContentIntoTitleBar = true;
@@ -103,6 +107,14 @@ public sealed partial class ShellPage : Page
         {
             await Task.Delay(50);
             UpdateTitleBarColor();
+        });
+    }
+
+    private void OnShellToolbarChanged(object? sender, EventArgs e)
+    {
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            ShellToolbarHost.Content = _shellToolbarService.CurrentToolbar;
         });
     }
 
