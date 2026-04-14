@@ -31,7 +31,6 @@ public sealed partial class CollectPage : Page
     private PointerEventHandler? _thumbnailWheelHandler;
     private bool _isUnloaded;
     private bool _isDisposed;
-    private bool _isUpdatingRatingControl;
     private bool _isUpdatingZoomSlider;
     private Button? _shellDeleteButton;
     private SplitButton? _shellFilterSplitButton;
@@ -176,15 +175,6 @@ public sealed partial class CollectPage : Page
             return true;
         }
         return false;
-    }
-
-    private void PreviewThumbnailGridView_ItemClick(object sender, ItemClickEventArgs e)
-    {
-        if (e.ClickedItem is ImageFileInfo imageInfo)
-        {
-            ViewModel.SelectedImage = imageInfo;
-            PreviewThumbnailGridView.SelectedItem = imageInfo;
-        }
     }
 
     private void PreviewThumbnailGridView_SelectionChanged(object sender, Microsoft.UI.Xaml.Controls.SelectionChangedEventArgs e)
@@ -382,8 +372,12 @@ public sealed partial class CollectPage : Page
         }
     }
 
-    private void RegisterShellToolbar()
+    private async void RegisterShellToolbar()
     {
+        await Task.Yield();
+        if (_isDisposed || _isUnloaded)
+            return;
+
         var toolbar = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -405,6 +399,7 @@ public sealed partial class CollectPage : Page
             Content = CreateToolbarIcon("\uE71C"),
             Flyout = CreateFilterFlyout()
         };
+        ApplyToolbarButtonChrome(_shellFilterSplitButton);
         _shellFilterSplitButton.Click += FilterSplitButton_Click;
         toolbar.Children.Add(_shellFilterSplitButton);
 
@@ -428,8 +423,18 @@ public sealed partial class CollectPage : Page
             Padding = new Thickness(8),
             Content = CreateToolbarIcon(glyph)
         };
+        ApplyToolbarButtonChrome(button);
         ToolTipService.SetToolTip(button, tooltip);
         return button;
+    }
+
+    private static void ApplyToolbarButtonChrome(Control control)
+    {
+        control.MinWidth = 40;
+        control.Height = 40;
+        control.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        control.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        control.BorderThickness = new Thickness(0);
     }
 
     private static FontIcon CreateToolbarIcon(string glyph)
@@ -444,14 +449,21 @@ public sealed partial class CollectPage : Page
 
     private Flyout CreateFilterFlyout()
     {
-        return new Flyout
+        var flyout = new Flyout
         {
-            Placement = FlyoutPlacementMode.Bottom,
-            Content = new FilterFlyout
+            Placement = FlyoutPlacementMode.Bottom
+        };
+        flyout.Opening += (_, _) =>
+        {
+            if (flyout.Content == null)
             {
-                FilterViewModel = ViewModel.Filter
+                flyout.Content = new FilterFlyout
+                {
+                    FilterViewModel = ViewModel.Filter
+                };
             }
         };
+        return flyout;
     }
 
     private void Filter_FilterChanged(object? sender, EventArgs e)
@@ -473,26 +485,16 @@ public sealed partial class CollectPage : Page
         else
         {
             FilterSplitButton.ClearValue(Control.BackgroundProperty);
-            _shellFilterSplitButton?.ClearValue(Control.BackgroundProperty);
+            if (_shellFilterSplitButton != null)
+            {
+                ApplyToolbarButtonChrome(_shellFilterSplitButton);
+            }
         }
     }
 
     private void UpdateSelectedImageUi()
     {
         PreviewInfoDrawer.DataContext = ViewModel.SelectedImage;
-        _isUpdatingRatingControl = true;
-        PreviewRatingControl.Value = ViewModel.SelectedImage?.RatingValue ?? -1;
-        _isUpdatingRatingControl = false;
-    }
-
-    private async void PreviewRatingControl_ValueChanged(RatingControl sender, object args)
-    {
-        if (_isUpdatingRatingControl || ViewModel.SelectedImage == null)
-            return;
-
-        var stars = sender.Value <= 0 ? 0 : (int)Math.Round(sender.Value, MidpointRounding.AwayFromZero);
-        var rating = ImageFileInfo.StarsToRating(Math.Clamp(stars, 0, 5));
-        await ViewModel.SelectedImage.SetRatingAsync(App.GetService<RatingService>(), rating);
     }
 
     private void PreviewCanvas_ZoomPercentChanged(object? sender, double percent)
@@ -514,7 +516,7 @@ public sealed partial class CollectPage : Page
 
     private void ZoomValueButton_Click(object sender, RoutedEventArgs e)
     {
-        PreviewCanvas.SetZoomPercent(100);
+        PreviewCanvas.ToggleOriginalOrFitZoom();
     }
 
     private void RotatePreview_Click(object sender, RoutedEventArgs e)
@@ -677,18 +679,68 @@ public sealed partial class CollectPage : Page
         }
         else if (e.Key >= VirtualKey.Number0 && e.Key <= VirtualKey.Number5)
         {
-            var stars = e.Key - VirtualKey.Number0;
-            var rating = ImageFileInfo.StarsToRating(stars);
-            foreach (var image in PreviewThumbnailGridView.SelectedItems.OfType<ImageFileInfo>())
-            {
-                _ = image.SetRatingAsync(App.GetService<RatingService>(), rating);
-            }
+            HandleRatingShortcut(e.Key);
+            e.Handled = true;
+        }
+        else if (e.Key >= VirtualKey.NumberPad0 && e.Key <= VirtualKey.NumberPad5)
+        {
+            HandleRatingShortcut(e.Key - (VirtualKey.NumberPad0 - VirtualKey.Number0));
             e.Handled = true;
         }
         else if (e.Key == VirtualKey.Left || e.Key == VirtualKey.Right)
         {
             MoveSelection(e.Key == VirtualKey.Right ? 1 : -1);
             e.Handled = true;
+        }
+    }
+
+    private void HandleRatingShortcut(VirtualKey key)
+    {
+        var selectedImages = PreviewThumbnailGridView.SelectedItems
+            .OfType<ImageFileInfo>()
+            .ToList();
+
+        if (selectedImages.Count == 0)
+            return;
+
+        var stars = key - VirtualKey.Number0;
+        var imagesToProcess = new List<ImageFileInfo>();
+
+        foreach (var imageInfo in selectedImages)
+        {
+            if (imageInfo.Group != null)
+            {
+                foreach (var groupImage in imageInfo.Group.Images)
+                {
+                    if (!imagesToProcess.Contains(groupImage))
+                    {
+                        imagesToProcess.Add(groupImage);
+                    }
+                }
+            }
+            else if (!imagesToProcess.Contains(imageInfo))
+            {
+                imagesToProcess.Add(imageInfo);
+            }
+        }
+
+        var ratingService = App.GetService<RatingService>();
+        foreach (var imageInfo in imagesToProcess)
+        {
+            uint newRating;
+            if (stars == 0)
+            {
+                newRating = 0;
+            }
+            else
+            {
+                var currentStars = ImageFileInfo.RatingToStars(imageInfo.Rating);
+                newRating = currentStars == stars
+                    ? 0
+                    : ImageFileInfo.StarsToRating(stars);
+            }
+
+            _ = imageInfo.SetRatingAsync(ratingService, newRating);
         }
     }
 

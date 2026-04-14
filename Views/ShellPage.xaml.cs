@@ -29,6 +29,7 @@ public sealed partial class ShellPage : Page
     private readonly ShellToolbarService _shellToolbarService;
     private string? _lastPageKey;
     private bool _isOnSettingsPage;
+    private int _shellToolbarUpdateVersion;
 
     public ShellPage(ShellViewModel viewModel, ISettingsService settingsService)
     {
@@ -112,8 +113,13 @@ public sealed partial class ShellPage : Page
 
     private void OnShellToolbarChanged(object? sender, EventArgs e)
     {
-        DispatcherQueue.TryEnqueue(() =>
+        var version = ++_shellToolbarUpdateVersion;
+        DispatcherQueue.TryEnqueue(async () =>
         {
+            await Task.Yield();
+            if (version != _shellToolbarUpdateVersion)
+                return;
+
             ShellToolbarHost.Content = _shellToolbarService.CurrentToolbar;
         });
     }

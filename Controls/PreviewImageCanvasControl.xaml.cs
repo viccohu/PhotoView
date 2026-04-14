@@ -79,6 +79,15 @@ public sealed partial class PreviewImageCanvasControl : UserControl
         ZoomPercentChanged?.Invoke(this, percent);
     }
 
+    public void ToggleOriginalOrFitZoom()
+    {
+        if (_imageFileInfo == null)
+            return;
+
+        var currentPercent = GetTargetZoomPercent();
+        SetZoomPercent(Math.Abs(currentPercent - 100d) < 1d ? GetFitZoomPercent() : 100d);
+    }
+
     public void RotateClockwise()
     {
         _rotationDegrees = (_rotationDegrees + 90) % 360;
@@ -140,6 +149,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
 
         EmptyText.Visibility = Visibility.Collapsed;
         MainImage.Source = imageFileInfo.Thumbnail;
+        ZoomPercentChanged?.Invoke(this, GetCurrentZoomPercent());
         var localVersion = _loadVersion;
         var cts = new CancellationTokenSource();
         cts.CancelAfter(TimeSpan.FromSeconds(8));
@@ -179,6 +189,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
                 MainImage.Source = result.ImageSource;
                 _isLoadingHighRes = false;
                 ApplyTransform();
+                ZoomPercentChanged?.Invoke(this, GetCurrentZoomPercent());
             });
         }
         catch (OperationCanceledException)
@@ -229,6 +240,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
         ImageClip.Rect = new Windows.Foundation.Rect(0, 0, ImageContainer.ActualWidth, ImageContainer.ActualHeight);
         ClampTranslation();
         ApplyTransform();
+        ZoomPercentChanged?.Invoke(this, GetCurrentZoomPercent());
     }
 
     private void ImageContainer_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
@@ -270,8 +282,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
         if (_imageFileInfo == null)
             return;
 
-        var currentPercent = GetTargetZoomPercent();
-        SetZoomPercent(Math.Abs(currentPercent - 100d) < 1d ? GetFitZoomPercent() : 100d);
+        ToggleOriginalOrFitZoom();
         e.Handled = true;
     }
 

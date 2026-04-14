@@ -10,7 +10,7 @@
 
     <Grid
         x:Name="ImageContainer"
-        Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
         PointerPressed="ImageContainer_PointerPressed"
         PointerMoved="ImageContainer_PointerMoved"
         PointerReleased="ImageContainer_PointerReleased"

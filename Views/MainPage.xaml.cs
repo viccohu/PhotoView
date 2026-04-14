@@ -194,8 +194,12 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private void RegisterShellToolbar()
+    private async void RegisterShellToolbar()
     {
+        await Task.Yield();
+        if (_isUnloaded || AppLifetime.IsShuttingDown)
+            return;
+
         var toolbar = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -217,6 +221,7 @@ public sealed partial class MainPage : Page
             Content = CreateToolbarIcon("\uE71C"),
             Flyout = CreateFilterFlyout()
         };
+        ApplyToolbarButtonChrome(_shellFilterSplitButton);
         _shellFilterSplitButton.Click += FilterSplitButton_Click;
         toolbar.Children.Add(_shellFilterSplitButton);
 
@@ -226,6 +231,7 @@ public sealed partial class MainPage : Page
             Content = CreateToolbarIcon("\uECA5"),
             Flyout = CreateThumbnailSizeFlyout()
         };
+        ApplyToolbarButtonChrome(sizeButton);
         ToolTipService.SetToolTip(sizeButton, "缩略图大小");
         toolbar.Children.Add(sizeButton);
 
@@ -249,8 +255,18 @@ public sealed partial class MainPage : Page
             Padding = new Thickness(8),
             Content = CreateToolbarIcon(glyph)
         };
+        ApplyToolbarButtonChrome(button);
         ToolTipService.SetToolTip(button, tooltip);
         return button;
+    }
+
+    private static void ApplyToolbarButtonChrome(Control control)
+    {
+        control.MinWidth = 40;
+        control.Height = 40;
+        control.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        control.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        control.BorderThickness = new Thickness(0);
     }
 
     private static FontIcon CreateToolbarIcon(string glyph)
@@ -265,14 +281,21 @@ public sealed partial class MainPage : Page
 
     private Flyout CreateFilterFlyout()
     {
-        return new Flyout
+        var flyout = new Flyout
         {
-            Placement = FlyoutPlacementMode.Bottom,
-            Content = new FilterFlyout
+            Placement = FlyoutPlacementMode.Bottom
+        };
+        flyout.Opening += (_, _) =>
+        {
+            if (flyout.Content == null)
             {
-                FilterViewModel = ViewModel.Filter
+                flyout.Content = new FilterFlyout
+                {
+                    FilterViewModel = ViewModel.Filter
+                };
             }
         };
+        return flyout;
     }
 
     private MenuFlyout CreateThumbnailSizeFlyout()
@@ -357,7 +380,10 @@ public sealed partial class MainPage : Page
         else
         {
             FilterSplitButton.ClearValue(Control.BackgroundProperty);
-            _shellFilterSplitButton?.ClearValue(Control.BackgroundProperty);
+            if (_shellFilterSplitButton != null)
+            {
+                ApplyToolbarButtonChrome(_shellFilterSplitButton);
+            }
         }
     }
 
