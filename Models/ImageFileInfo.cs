@@ -164,6 +164,7 @@ public class ImageFileInfo : INotifyPropertyChanged
             cancellationToken);
         if (cachedThumbnail?.ImageSource != null)
         {
+            System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Thumbnail cache hit for {ImageName}, size={optimalSize}");
             return cachedThumbnail.ImageSource;
         }
 
@@ -186,6 +187,7 @@ public class ImageFileInfo : INotifyPropertyChanged
                     forceFullDecode: false,
                     CreateDecodeResult(bitmap),
                     cancellationToken);
+                System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] System thumbnail image used for {ImageName}, size={optimalSize}");
                 return bitmap;
             }
             else if (thumbnail != null && thumbnail.Type != ThumbnailType.Image)
@@ -200,6 +202,27 @@ public class ImageFileInfo : INotifyPropertyChanged
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] System thumbnail failed for {ImageName}: {ex.Message}");
+        }
+
+        // System can return an icon before it has generated the real thumbnail. Prefer immediate
+        // local fallback for first-screen responsiveness, then retry the system API only as a last resort.
+        try
+        {
+            System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Fallback thumbnail decode start for {ImageName}, size={optimalSize}");
+            var imageSource = await thumbnailService.GetThumbnailByLongSideAsync(ImageFile, optimalSize, cancellationToken);
+            if (imageSource != null)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Fallback thumbnail decode used for {ImageName}, size={optimalSize}");
+                return imageSource;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Fallback thumbnail decode failed for {ImageName}: {ex.Message}");
         }
 
         await Task.Delay(150, cancellationToken);
@@ -221,6 +244,7 @@ public class ImageFileInfo : INotifyPropertyChanged
                     forceFullDecode: false,
                     CreateDecodeResult(bitmap),
                     cancellationToken);
+                System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Retried system thumbnail image used for {ImageName}, size={optimalSize}");
                 return bitmap;
             }
             else if (thumbnail != null && thumbnail.Type != ThumbnailType.Image)
@@ -237,18 +261,7 @@ public class ImageFileInfo : INotifyPropertyChanged
             System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Retried system thumbnail failed for {ImageName}: {ex.Message}");
         }
 
-        // 系统缩略图失败，回退到完整解码
-        try
-        {
-            var imageSource = await thumbnailService.GetThumbnailByLongSideAsync(ImageFile, optimalSize, cancellationToken);
-            
-            return imageSource;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Fallback thumbnail decode failed for {ImageName}: {ex.Message}");
-        }
-
+        // System retry and local fallback both failed.
         return null;
     }
 
@@ -366,6 +379,7 @@ public class ImageFileInfo : INotifyPropertyChanged
                         _loadedThumbnailSize = size;
                         IsThumbnailLoading = false;
                         IsThumbnailFailed = result == null;
+                        System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Thumbnail commit for {ImageName}, size={size}, success={result != null}");
                     }
                 }
                 else
@@ -387,6 +401,7 @@ public class ImageFileInfo : INotifyPropertyChanged
                             _loadedThumbnailSize = size;
                             IsThumbnailLoading = false;
                             IsThumbnailFailed = result == null;
+                            System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Thumbnail commit for {ImageName}, size={size}, success={result != null}");
                         }
                     }))
                     {

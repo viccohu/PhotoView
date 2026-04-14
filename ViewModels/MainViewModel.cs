@@ -67,10 +67,13 @@ public partial class MainViewModel : ObservableRecipient
     };
 
     private const uint PageSize = 100;
+    private const uint InitialFileEnumerationBatchSize = 30;
+    private const int DeferredImageInfoLoadDelayMs = 400;
     private CancellationTokenSource? _loadImagesCts;
     private readonly Stack<FolderNode> _navigationHistory = new();
     private int _pendingDeleteCount;
     private readonly List<ImageFileInfo> _allImages = new();
+    private readonly SemaphoreSlim _metadataHydrationGate = new(2);
     public FilterViewModel Filter { get; }
 
     public event EventHandler? ImagesChanged;
@@ -283,12 +286,16 @@ public partial class MainViewModel : ObservableRecipient
             var fileNameMap = new Dictionary<string, List<StorageFile>>(StringComparer.OrdinalIgnoreCase);
             var processedGroups = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             
-            var batchSize = (uint)_settingsService.BatchSize;
+            var batchSize = (uint)Math.Max(1, _settingsService.BatchSize);
             uint index = 0;
+            var loadStopwatch = System.Diagnostics.Stopwatch.StartNew();
             
             while (!cancellationToken.IsCancellationRequested)
             {
-                var batch = await result.GetFilesAsync(index, batchSize);
+                var requestBatchSize = index == 0
+                    ? Math.Min(batchSize, InitialFileEnumerationBatchSize)
+                    : batchSize;
+                var batch = await result.GetFilesAsync(index, requestBatchSize);
                 if (batch.Count == 0)
                     break;
                 
@@ -335,6 +342,10 @@ public partial class MainViewModel : ObservableRecipient
                     System.Diagnostics.Debug.WriteLine($"[LoadImagesAsync] 批次 {index/batchSize + 1}, 加载新主图片 {newPrimaryFiles.Count} 个");
                     
                     AddPlaceholderGroups(newGroupMap, cancellationToken);
+                    if (index == 0)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[LoadImagesAsync] First placeholders added in {loadStopwatch.ElapsedMilliseconds}ms, files={batch.Count}, primary={newPrimaryFiles.Count}");
+                    }
                 }
                 
                 index += (uint)batch.Count;
@@ -490,8 +501,37 @@ public partial class MainViewModel : ObservableRecipient
 
     private void StartDeferredImageInfoLoad(ImageFileInfo imageInfo, CancellationToken cancellationToken)
     {
-        _ = HydrateImageMetadataAsync(imageInfo, cancellationToken);
-        _ = imageInfo.LoadRatingAsync(_ratingService);
+        _ = StartDeferredImageInfoLoadAsync(imageInfo, cancellationToken);
+    }
+
+    private async Task StartDeferredImageInfoLoadAsync(ImageFileInfo imageInfo, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(DeferredImageInfoLoadDelayMs, cancellationToken);
+
+            await _metadataHydrationGate.WaitAsync(cancellationToken);
+            try
+            {
+                await HydrateImageMetadataAsync(imageInfo, cancellationToken);
+            }
+            finally
+            {
+                _metadataHydrationGate.Release();
+            }
+
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                await imageInfo.LoadRatingAsync(_ratingService);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[StartDeferredImageInfoLoadAsync] failed for {imageInfo.ImageName}: {ex.Message}");
+        }
     }
 
     private async Task HydrateImageMetadataAsync(ImageFileInfo imageInfo, CancellationToken cancellationToken)
@@ -798,12 +838,16 @@ public partial class MainViewModel : ObservableRecipient
             var fileNameMap = new Dictionary<string, List<StorageFile>>(StringComparer.OrdinalIgnoreCase);
             var processedGroups = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             
-            var batchSize = (uint)_settingsService.BatchSize;
+            var batchSize = (uint)Math.Max(1, _settingsService.BatchSize);
             uint index = 0;
+            var loadStopwatch = System.Diagnostics.Stopwatch.StartNew();
             
             while (!cancellationToken.IsCancellationRequested)
             {
-                var batch = await result.GetFilesAsync(index, batchSize);
+                var requestBatchSize = index == 0
+                    ? Math.Min(batchSize, InitialFileEnumerationBatchSize)
+                    : batchSize;
+                var batch = await result.GetFilesAsync(index, requestBatchSize);
                 if (batch.Count == 0)
                     break;
                 
@@ -849,6 +893,10 @@ public partial class MainViewModel : ObservableRecipient
                 {
 
                     AddPlaceholderGroups(newGroupMap, cancellationToken);
+                    if (index == 0)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[LoadImagesWithoutHistoryAsync] First placeholders added in {loadStopwatch.ElapsedMilliseconds}ms, files={batch.Count}, primary={newPrimaryFiles.Count}");
+                    }
                 }
                 
                 index += (uint)batch.Count;

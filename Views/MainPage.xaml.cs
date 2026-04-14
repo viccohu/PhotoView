@@ -32,6 +32,7 @@ public sealed partial class MainPage : Page
     private readonly ISettingsService _settingsService;
     private readonly HashSet<ImageFileInfo> _pendingVisibleThumbnailLoads = new();
     private readonly HashSet<ImageFileInfo> _realizedImageItems = new();
+    private readonly HashSet<ImageFileInfo> _immediateVisibleThumbnailLoads = new();
     private readonly HashSet<ImageFileInfo> _selectedImageState = new();
     private const double GridViewItemMargin = 4d;
     private const double GridViewItemGap = GridViewItemMargin * 2d;
@@ -55,6 +56,7 @@ public sealed partial class MainPage : Page
     private bool _isFolderDrawerContentVisible;
     private bool _isImageGridPointerWheelHandlerAttached;
     private double _lastImageGridVerticalOffset;
+    private int _immediateVisibleThumbnailStartCount;
     private int _folderDrawerAnimationVersion;
     private Storyboard? _folderDrawerStoryboard;
     private (ImageFileInfo Image, uint Rating)? _pendingRatingUpdate;
@@ -458,6 +460,7 @@ public sealed partial class MainPage : Page
             return;
         }
 
+        ResetImmediateVisibleThumbnailLoadState();
         UpdateImageGridTileSize();
         TriggerVisibleItemsThumbnailLoad();
     }
@@ -972,6 +975,7 @@ public sealed partial class MainPage : Page
                 ClearGridViewSelection();
                 _pendingVisibleThumbnailLoads.Clear();
                 _realizedImageItems.Clear();
+                ResetImmediateVisibleThumbnailLoadState();
                 ClearSelectedImageState();
             }
 
@@ -989,6 +993,7 @@ public sealed partial class MainPage : Page
             imageInfo.CancelThumbnailLoad();
             _pendingVisibleThumbnailLoads.Remove(imageInfo);
             _realizedImageItems.Remove(imageInfo);
+            _immediateVisibleThumbnailLoads.Remove(imageInfo);
             return;
         }
 
@@ -999,6 +1004,7 @@ public sealed partial class MainPage : Page
         else if (args.Phase == 1)
         {
             _realizedImageItems.Add(imageInfo);
+            TryStartImmediateVisibleThumbnailLoad(imageInfo, "container-phase1");
             QueueVisibleThumbnailLoad("container-phase1");
         }
     }
@@ -1051,6 +1057,49 @@ public sealed partial class MainPage : Page
         {
             _visibleThumbnailLoadTimer.Start();
         }
+    }
+
+    private void TryStartImmediateVisibleThumbnailLoad(ImageFileInfo imageInfo, string reason)
+    {
+        if (_isUnloaded ||
+            AppLifetime.IsShuttingDown ||
+            _isProgrammaticScrollActive ||
+            _immediateVisibleThumbnailStartCount >= VisibleThumbnailStartBudgetPerTick)
+        {
+            return;
+        }
+
+        if (!IsItemContainerRealized(imageInfo) || !IsItemInCurrentVisibleRange(imageInfo))
+            return;
+
+        if (!_immediateVisibleThumbnailLoads.Add(imageInfo))
+            return;
+
+        _pendingVisibleThumbnailLoads.Remove(imageInfo);
+        _immediateVisibleThumbnailStartCount++;
+        System.Diagnostics.Debug.WriteLine($"[MainPage] Immediate thumbnail start reason={reason}, item={imageInfo.ImageName}, count={_immediateVisibleThumbnailStartCount}");
+        _ = imageInfo.EnsureThumbnailAsync(ViewModel.ThumbnailSize);
+    }
+
+    private bool IsItemInCurrentVisibleRange(ImageFileInfo imageInfo)
+    {
+        AttachImageItemsWrapGrid();
+        if (_imageItemsWrapGrid == null ||
+            _imageItemsWrapGrid.FirstVisibleIndex < 0 ||
+            _imageItemsWrapGrid.LastVisibleIndex < _imageItemsWrapGrid.FirstVisibleIndex)
+        {
+            return true;
+        }
+
+        var index = ViewModel.Images.IndexOf(imageInfo);
+        return index >= _imageItemsWrapGrid.FirstVisibleIndex &&
+               index <= _imageItemsWrapGrid.LastVisibleIndex;
+    }
+
+    private void ResetImmediateVisibleThumbnailLoadState()
+    {
+        _immediateVisibleThumbnailLoads.Clear();
+        _immediateVisibleThumbnailStartCount = 0;
     }
 
     private readonly Dictionary<RatingControl, bool> _ratingControlEventMap = new();
