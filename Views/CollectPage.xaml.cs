@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using PhotoView.Contracts.Services;
 using PhotoView.Dialogs;
@@ -18,6 +19,8 @@ namespace PhotoView.Views;
 
 public sealed partial class CollectPage : Page
 {
+    private const double LoadDrawerExpandedWidth = 292;
+    private const double LoadDrawerCollapsedWidth = 30;
     private const int VisibleThumbnailStartBudgetPerTick = 16;
     private const int VisibleThumbnailPrefetchItemCount = 12;
     private readonly DispatcherTimer _visibleThumbnailLoadTimer;
@@ -31,9 +34,12 @@ public sealed partial class CollectPage : Page
     private ItemsStackPanel? _thumbnailItemsPanel;
     private ScrollViewer? _thumbnailScrollViewer;
     private PointerEventHandler? _thumbnailWheelHandler;
+    private Storyboard? _loadDrawerStoryboard;
     private bool _isUnloaded;
     private bool _isDisposed;
     private bool _isUpdatingZoomSlider;
+    private bool _isLoadDrawerPinnedCollapsed;
+    private bool _isLoadDrawerTemporarilyExpanded;
     private Button? _shellDeleteButton;
     private SplitButton? _shellFilterSplitButton;
     private (ImageFileInfo Image, uint Rating)? _pendingRatingUpdate;
@@ -80,6 +86,7 @@ public sealed partial class CollectPage : Page
         _isUnloaded = false;
         RegisterShellToolbar();
         UpdateSelectedImageUi();
+        UpdateLoadDrawerState(animate: false);
         QueueVisibleThumbnailLoad("page-loaded");
     }
 
@@ -378,6 +385,146 @@ public sealed partial class CollectPage : Page
         {
             UpdateShellToolbarState();
         }
+    }
+
+    private void LoadDrawerToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        _isLoadDrawerPinnedCollapsed = !_isLoadDrawerPinnedCollapsed;
+        _isLoadDrawerTemporarilyExpanded = false;
+        UpdateLoadDrawerState();
+    }
+
+    private void LoadDrawerRoot_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_isLoadDrawerPinnedCollapsed || _isLoadDrawerTemporarilyExpanded)
+            return;
+
+        _isLoadDrawerTemporarilyExpanded = true;
+        UpdateLoadDrawerState();
+    }
+
+    private void LoadDrawerRoot_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_isLoadDrawerPinnedCollapsed || !_isLoadDrawerTemporarilyExpanded)
+            return;
+
+        _isLoadDrawerTemporarilyExpanded = false;
+        UpdateLoadDrawerState();
+    }
+
+    private bool IsLoadDrawerExpanded => !_isLoadDrawerPinnedCollapsed || _isLoadDrawerTemporarilyExpanded;
+
+    private void UpdateLoadDrawerState(bool animate = true)
+    {
+        var isExpanded = IsLoadDrawerExpanded;
+        var targetWidth = isExpanded ? LoadDrawerExpandedWidth : LoadDrawerCollapsedWidth;
+        var targetChevronAngle = isExpanded ? 180 : 0;
+
+        if (isExpanded)
+        {
+            SetLoadDrawerContentVisibility(Visibility.Visible);
+        }
+
+        if (!animate)
+        {
+            StopLoadDrawerAnimation();
+            LoadDrawerRoot.Width = targetWidth;
+            LoadDrawerChevronTransform.Angle = targetChevronAngle;
+            if (!isExpanded)
+            {
+                SetLoadDrawerContentVisibility(Visibility.Collapsed);
+            }
+            return;
+        }
+
+        AnimateLoadDrawer(targetWidth, targetChevronAngle, isExpanded);
+    }
+
+    private void AnimateLoadDrawer(double targetWidth, double targetChevronAngle, bool isExpanding)
+    {
+        StopLoadDrawerAnimation();
+
+        var currentWidth = LoadDrawerRoot.ActualWidth > 0
+            ? LoadDrawerRoot.ActualWidth
+            : LoadDrawerRoot.Width;
+        if (double.IsNaN(currentWidth) || currentWidth <= 0)
+        {
+            currentWidth = isExpanding ? LoadDrawerCollapsedWidth : LoadDrawerExpandedWidth;
+        }
+
+        if (Math.Abs(currentWidth - targetWidth) < 0.5)
+        {
+            LoadDrawerRoot.Width = targetWidth;
+            LoadDrawerChevronTransform.Angle = targetChevronAngle;
+            if (!IsLoadDrawerExpanded)
+            {
+                SetLoadDrawerContentVisibility(Visibility.Collapsed);
+            }
+            return;
+        }
+
+        var animation = new DoubleAnimation
+        {
+            From = currentWidth,
+            To = targetWidth,
+            Duration = new Duration(TimeSpan.FromMilliseconds(180)),
+            EnableDependentAnimation = true,
+            EasingFunction = new QuadraticEase
+            {
+                EasingMode = EasingMode.EaseOut
+            }
+        };
+
+        Storyboard.SetTarget(animation, LoadDrawerRoot);
+        Storyboard.SetTargetProperty(animation, "Width");
+
+        var chevronAnimation = new DoubleAnimation
+        {
+            From = LoadDrawerChevronTransform.Angle,
+            To = targetChevronAngle,
+            Duration = new Duration(TimeSpan.FromMilliseconds(180)),
+            EnableDependentAnimation = true,
+            EasingFunction = new QuadraticEase
+            {
+                EasingMode = EasingMode.EaseOut
+            }
+        };
+
+        Storyboard.SetTarget(chevronAnimation, LoadDrawerChevronTransform);
+        Storyboard.SetTargetProperty(chevronAnimation, "Angle");
+
+        var storyboard = new Storyboard();
+        storyboard.Children.Add(animation);
+        storyboard.Children.Add(chevronAnimation);
+        storyboard.Completed += (_, _) =>
+        {
+            if (!ReferenceEquals(_loadDrawerStoryboard, storyboard))
+                return;
+
+            LoadDrawerRoot.Width = targetWidth;
+            LoadDrawerChevronTransform.Angle = targetChevronAngle;
+            if (!IsLoadDrawerExpanded)
+            {
+                SetLoadDrawerContentVisibility(Visibility.Collapsed);
+            }
+            _loadDrawerStoryboard = null;
+        };
+
+        _loadDrawerStoryboard = storyboard;
+        storyboard.Begin();
+    }
+
+    private void StopLoadDrawerAnimation()
+    {
+        var storyboard = _loadDrawerStoryboard;
+        _loadDrawerStoryboard = null;
+        storyboard?.Stop();
+    }
+
+    private void SetLoadDrawerContentVisibility(Visibility visibility)
+    {
+        LoadDrawerHeader.Visibility = visibility;
+        LoadDrawerTree.Visibility = visibility;
     }
 
     private async void RegisterShellToolbar()

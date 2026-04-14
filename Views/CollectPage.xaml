@@ -22,7 +22,7 @@
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="292"/>
+            <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
@@ -30,9 +30,18 @@
         </Grid.RowDefinitions>
 
         <Grid
+            x:Name="LoadDrawerRoot"
             Grid.Column="0"
-            Margin="12,12,8,12"
-            RowSpacing="0">
+            Width="292"
+            Margin="0,12,0,12"
+            RowSpacing="0"
+            HorizontalAlignment="Left"
+            PointerEntered="LoadDrawerRoot_PointerEntered"
+            PointerExited="LoadDrawerRoot_PointerExited">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="30"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
@@ -40,10 +49,52 @@
 
             <Border
                 Grid.Row="0"
-                Padding="12"
+                Grid.RowSpan="2"
+                Grid.Column="0"
+                Grid.ColumnSpan="2"
                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                 BorderThickness="1"
+                CornerRadius="8"/>
+
+            <Button
+                x:Name="LoadDrawerToggleButton"
+                Grid.Row="0"
+                Grid.RowSpan="2"
+                Grid.Column="0"
+                Width="30"
+                Padding="0"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Stretch"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                BorderThickness="0"
+                CornerRadius="0"
+                Click="LoadDrawerToggleButton_Click">
+                <Button.Resources>
+                    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent"/>
+                </Button.Resources>
+                <FontIcon
+                    Glyph="&#xE76C;"
+                    FontFamily="{StaticResource SymbolThemeFontFamily}"
+                    FontSize="16"
+                    Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                    RenderTransformOrigin="0.5,0.5">
+                    <FontIcon.RenderTransform>
+                        <RotateTransform x:Name="LoadDrawerChevronTransform" Angle="180"/>
+                    </FontIcon.RenderTransform>
+                </FontIcon>
+            </Button>
+
+            <Border
+                x:Name="LoadDrawerHeader"
+                Grid.Row="0"
+                Grid.Column="1"
+                Padding="12"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                BorderThickness="0"
                 CornerRadius="8">
                 <StackPanel Spacing="10">
                     <Grid>
@@ -128,11 +179,13 @@
             </Border>
 
             <Border
+                x:Name="LoadDrawerTree"
                 Grid.Row="1"
+                Grid.Column="1"
                 Padding="6"
-                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                BorderThickness="1"
+                Background="Transparent"
+                BorderBrush="{ThemeResource ControlAltFillColorTertiaryBrush}"
+                BorderThickness="0,2,0,0"
                 CornerRadius="8">
                 <TreeView
                     x:Name="PreviewFolderTreeView"
