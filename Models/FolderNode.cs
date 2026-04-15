@@ -1,7 +1,13 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Windows.Storage;
+using Windows.Storage.FileProperties;
 
 namespace PhotoView.Models;
 
@@ -40,6 +46,15 @@ public partial class FolderNode : ObservableObject
     [ObservableProperty]
     private bool _hasSubFolders;
 
+    private ImageSource? _listIcon;
+    private bool _isListIconLoading;
+
+    public ImageSource? ListIcon
+    {
+        get => _listIcon;
+        private set => SetProperty(ref _listIcon, value);
+    }
+
     public bool HasExpandableChildren => IsLoaded ? Children.Count > 0 : HasSubFolders;
 
     partial void OnHasSubFoldersChanged(bool value)
@@ -56,6 +71,46 @@ public partial class FolderNode : ObservableObject
     public bool IsLoaded { get; set; }
 
     public bool IsRemovable { get; set; }
+
+    public string CreatedTimeText => Folder == null
+        ? string.Empty
+        : Folder.DateCreated.ToLocalTime().ToString("yyyy/M/d HH:mm", CultureInfo.CurrentCulture);
+
+    public async Task EnsureListIconAsync(CancellationToken cancellationToken)
+    {
+        if (ListIcon != null || _isListIconLoading || Folder == null)
+            return;
+
+        _isListIconLoading = true;
+        try
+        {
+            var thumbnail = await Folder.GetThumbnailAsync(
+                ThumbnailMode.ListView,
+                32,
+                ThumbnailOptions.None).AsTask(cancellationToken);
+
+            if (thumbnail == null || thumbnail.Size <= 0)
+                return;
+
+            var bitmap = new BitmapImage
+            {
+                DecodePixelWidth = 20
+            };
+            await bitmap.SetSourceAsync(thumbnail).AsTask(cancellationToken);
+            ListIcon = bitmap;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[FolderNode] Load folder icon failed for {Name}: {ex.Message}");
+        }
+        finally
+        {
+            _isListIconLoading = false;
+        }
+    }
 
     public FolderNode(StorageFolder? folder = null, NodeType nodeType = NodeType.Folder, FolderNode? parent = null)
     {

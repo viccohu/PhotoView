@@ -221,6 +221,7 @@ public sealed partial class CollectPage : Page
         if (PreviewThumbnailGridView.SelectedItem is ImageFileInfo imageInfo)
         {
             ViewModel.SelectedImage = imageInfo;
+            StartSelectedThumbnailLoad(imageInfo);
         }
     }
 
@@ -400,6 +401,10 @@ public sealed partial class CollectPage : Page
         if (e.PropertyName == nameof(CollectViewModel.SelectedImage))
         {
             UpdateSelectedImageUi();
+            if (ViewModel.SelectedImage != null)
+            {
+                StartSelectedThumbnailLoad(ViewModel.SelectedImage);
+            }
         }
         else if (e.PropertyName == nameof(CollectViewModel.IsThumbnailStripCollapsed))
         {
@@ -687,6 +692,31 @@ public sealed partial class CollectPage : Page
 
         PreviewInfoViewModel.SetBasicInfo(imageInfo);
         await PreviewInfoViewModel.LoadFileDetailsAsync(imageInfo.ImageFile);
+    }
+
+    private void StartSelectedThumbnailLoad(ImageFileInfo imageInfo)
+    {
+        if (_isDisposed || _isUnloaded)
+            return;
+
+        _pendingVisibleThumbnailLoads.Remove(imageInfo);
+        _ = LoadSelectedThumbnailAsync(imageInfo);
+    }
+
+    private async Task LoadSelectedThumbnailAsync(ImageFileInfo imageInfo)
+    {
+        try
+        {
+            await imageInfo.EnsureFastPreviewAsync(ViewModel.ThumbnailSize);
+            await imageInfo.EnsureThumbnailAsync(ViewModel.ThumbnailSize);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CollectPage] selected thumbnail load failed: {ex.Message}");
+        }
     }
 
     private void PreviewInfoViewModel_RatingUpdated(object? sender, (ImageFileInfo Image, uint Rating) e)

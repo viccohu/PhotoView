@@ -17,10 +17,18 @@ public sealed partial class PreviewImageCanvasControl : UserControl
     private const double ZoomEasingFactor = 0.18;
     private const double InertiaDamping = 0.88;
     private const double VelocityThreshold = 0.08;
+    private const int LayoutReadyRetryCount = 30;
+    private const int FitImageLoadTimeoutSeconds = 30;
+    private const int MaxFitImageLoadRetries = 3;
 
     private ImageFileInfo? _imageFileInfo;
     private CancellationTokenSource? _loadCts;
+    private CancellationTokenSource? _originalImageLoadCts;
     private int _loadVersion;
+    private int _originalImageLoadVersion;
+    private int _fitImageLoadRetryCount;
+    private uint _activeDecodeLongSide;
+    private bool _isOriginalImageLoaded;
     private double _zoomScale = 1d;
     private double _targetZoomScale = 1d;
     private double _translateX;
@@ -40,6 +48,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
     private int _mirrorX = 1;
     private int _mirrorY = 1;
     private bool _reloadImageOnLoaded;
+    private const double OriginalDecodeZoomPercentThreshold = 85d;
 
     public event EventHandler<double>? ZoomPercentChanged;
 
@@ -75,6 +84,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
         _targetZoomScale = originalScale * (percent / 100d);
         _hasZoomAnchor = false;
         ClampTranslation();
+        TryStartOriginalImageLoad();
         StartPhysics();
         ZoomPercentChanged?.Invoke(this, percent);
     }
@@ -109,7 +119,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
     private void PreviewImageCanvasControl_Loaded(object sender, RoutedEventArgs e)
     {
         _isLoaded = true;
-        if (_reloadImageOnLoaded && _imageFileInfo != null)
+        if (_imageFileInfo != null)
         {
             _reloadImageOnLoaded = false;
             _ = LoadImageAsync(_imageFileInfo);
@@ -126,7 +136,10 @@ public sealed partial class PreviewImageCanvasControl : UserControl
         _isDragging = false;
         _isLoadingHighRes = false;
         _loadVersion++;
+        _originalImageLoadVersion++;
+        _fitImageLoadRetryCount = 0;
         _loadCts?.Cancel();
+        _originalImageLoadCts?.Cancel();
         _loadCts = null;
         CompositionTarget.Rendering -= OnRendering;
     }
@@ -134,7 +147,10 @@ public sealed partial class PreviewImageCanvasControl : UserControl
     private async Task LoadImageAsync(ImageFileInfo? imageFileInfo)
     {
         _loadVersion++;
+        _originalImageLoadVersion++;
+        _fitImageLoadRetryCount = 0;
         _loadCts?.Cancel();
+        _originalImageLoadCts?.Cancel();
         _loadCts = null;
         _reloadImageOnLoaded = !_isLoaded && imageFileInfo != null;
         ResetViewer(resetTransforms: true);
@@ -148,18 +164,67 @@ public sealed partial class PreviewImageCanvasControl : UserControl
         }
 
         EmptyText.Visibility = Visibility.Collapsed;
-        MainImage.Source = imageFileInfo.Thumbnail;
+        if (!_isLoaded)
+        {
+            if (imageFileInfo.Thumbnail != null)
+            {
+                MainImage.Source = imageFileInfo.Thumbnail;
+            }
+
+            return;
+        }
+
+        _activeDecodeLongSide = 0;
+        _isOriginalImageLoaded = false;
         ZoomPercentChanged?.Invoke(this, GetCurrentZoomPercent());
+
+        if (MainImage.Source == null && imageFileInfo.Thumbnail != null)
+        {
+            MainImage.Source = imageFileInfo.Thumbnail;
+        }
+
         var localVersion = _loadVersion;
+        await LoadFitImageAsync(imageFileInfo, localVersion);
+    }
+
+    private async Task LoadFitImageAsync(ImageFileInfo imageFileInfo, int localVersion)
+    {
         var cts = new CancellationTokenSource();
-        cts.CancelAfter(TimeSpan.FromSeconds(8));
+        cts.CancelAfter(TimeSpan.FromSeconds(FitImageLoadTimeoutSeconds));
         _loadCts = cts;
 
         try
         {
             var thumbnailService = App.GetService<IThumbnailService>();
+            await WaitForImageContainerReadyAsync(localVersion, cts.Token);
+            if (!_isLoaded ||
+                localVersion != _loadVersion ||
+                cts.IsCancellationRequested ||
+                !ReferenceEquals(_imageFileInfo, imageFileInfo))
+            {
+                return;
+            }
+
             var targetLongSide = GetTargetDecodeLongSide();
             var forceFullDecodeRaw = IsRawFile(imageFileInfo.FileType) && App.GetService<ISettingsService>().AlwaysDecodeRaw;
+
+            var cachedResult = await thumbnailService.TryGetCachedThumbnailAsync(
+                imageFileInfo.ImageFile,
+                targetLongSide,
+                forceFullDecodeRaw,
+                cts.Token);
+
+            if (cachedResult?.ImageSource != null)
+            {
+                ApplyLoadedImageResult(imageFileInfo, cachedResult, localVersion, cts);
+                return;
+            }
+
+            if (imageFileInfo.Thumbnail != null)
+            {
+                MainImage.Source = imageFileInfo.Thumbnail;
+            }
+
             _isLoadingHighRes = true;
             var result = await thumbnailService.GetThumbnailWithSizeAsync(
                 imageFileInfo.ImageFile,
@@ -170,34 +235,28 @@ public sealed partial class PreviewImageCanvasControl : UserControl
             if (!_isLoaded ||
                 localVersion != _loadVersion ||
                 cts.IsCancellationRequested ||
-                !ReferenceEquals(_imageFileInfo, imageFileInfo) ||
-                result?.ImageSource == null)
+                !ReferenceEquals(_imageFileInfo, imageFileInfo))
             {
                 return;
             }
 
-            DispatcherQueue.TryEnqueue(() =>
+            if (result?.ImageSource == null)
             {
-                if (!_isLoaded ||
-                    localVersion != _loadVersion ||
-                    cts.IsCancellationRequested ||
-                    !ReferenceEquals(_imageFileInfo, imageFileInfo))
-                {
-                    return;
-                }
+                ScheduleFitImageRetry(imageFileInfo, localVersion);
+                return;
+            }
 
-                MainImage.Source = result.ImageSource;
-                _isLoadingHighRes = false;
-                ApplyTransform();
-                ZoomPercentChanged?.Invoke(this, GetCurrentZoomPercent());
-            });
+            DispatcherQueue.TryEnqueue(() =>
+                ApplyLoadedImageResult(imageFileInfo, result, localVersion, cts));
         }
         catch (OperationCanceledException)
         {
+            ScheduleFitImageRetry(imageFileInfo, localVersion);
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[PreviewImageCanvas] high-res load failed: {ex.Message}");
+            ScheduleFitImageRetry(imageFileInfo, localVersion);
         }
         finally
         {
@@ -205,7 +264,89 @@ public sealed partial class PreviewImageCanvasControl : UserControl
         }
     }
 
+    private void ScheduleFitImageRetry(ImageFileInfo imageFileInfo, int loadVersion)
+    {
+        if (!_isLoaded ||
+            _isOriginalImageLoaded ||
+            !ReferenceEquals(_imageFileInfo, imageFileInfo) ||
+            loadVersion != _loadVersion ||
+            _fitImageLoadRetryCount >= MaxFitImageLoadRetries)
+        {
+            return;
+        }
+
+        _fitImageLoadRetryCount++;
+        var delayMs = 250 * _fitImageLoadRetryCount;
+        _ = RetryFitImageLoadAsync(imageFileInfo, loadVersion, delayMs);
+    }
+
+    private async Task RetryFitImageLoadAsync(ImageFileInfo imageFileInfo, int loadVersion, int delayMs)
+    {
+        try
+        {
+            await Task.Delay(delayMs);
+            if (!_isLoaded ||
+                _isLoadingHighRes ||
+                _isOriginalImageLoaded ||
+                !ReferenceEquals(_imageFileInfo, imageFileInfo) ||
+                loadVersion != _loadVersion)
+            {
+                return;
+            }
+
+            await LoadFitImageAsync(imageFileInfo, loadVersion);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task WaitForImageContainerReadyAsync(int loadVersion, CancellationToken cancellationToken)
+    {
+        var retryCount = 0;
+        while (_isLoaded &&
+               loadVersion == _loadVersion &&
+               (ImageContainer.ActualWidth <= 0 ||
+                ImageContainer.ActualHeight <= 0) &&
+               retryCount < LayoutReadyRetryCount)
+        {
+            await Task.Delay(16, cancellationToken);
+            retryCount++;
+        }
+    }
+
+    private void ApplyLoadedImageResult(
+        ImageFileInfo imageFileInfo,
+        DecodeResult result,
+        int loadVersion,
+        CancellationTokenSource cts)
+    {
+        if (!_isLoaded ||
+            loadVersion != _loadVersion ||
+            cts.IsCancellationRequested ||
+            !ReferenceEquals(_imageFileInfo, imageFileInfo) ||
+            result.ImageSource == null)
+        {
+            return;
+        }
+
+        if (!_isOriginalImageLoaded)
+        {
+            SetMainImageSource(result);
+        }
+
+        _isLoadingHighRes = false;
+        _fitImageLoadRetryCount = 0;
+        ApplyTransform();
+        ZoomPercentChanged?.Invoke(this, GetCurrentZoomPercent());
+    }
+
     private uint GetTargetDecodeLongSide()
+    {
+        return ClampDecodeLongSideToOriginal(GetViewportTargetDecodeLongSide());
+    }
+
+    private uint GetViewportTargetDecodeLongSide()
     {
         var longSide = Math.Max(ImageContainer.ActualWidth, ImageContainer.ActualHeight);
         if (longSide <= 0)
@@ -224,6 +365,8 @@ public sealed partial class PreviewImageCanvasControl : UserControl
         _velocityX = 0;
         _velocityY = 0;
         _hasZoomAnchor = false;
+        _activeDecodeLongSide = 0;
+        _isOriginalImageLoaded = false;
 
         if (resetTransforms)
         {
@@ -241,6 +384,16 @@ public sealed partial class PreviewImageCanvasControl : UserControl
         ClampTranslation();
         ApplyTransform();
         ZoomPercentChanged?.Invoke(this, GetCurrentZoomPercent());
+
+        if (_isLoaded &&
+            _imageFileInfo != null &&
+            !_isLoadingHighRes &&
+            !_isOriginalImageLoaded &&
+            _activeDecodeLongSide > 0 &&
+            GetTargetDecodeLongSide() > _activeDecodeLongSide + 32)
+        {
+            _ = LoadImageAsync(_imageFileInfo);
+        }
     }
 
     private void ImageContainer_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
@@ -272,6 +425,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
         _hasZoomAnchor = true;
 
         _targetZoomScale = newTarget;
+        TryStartOriginalImageLoad();
         StartPhysics();
         ZoomPercentChanged?.Invoke(this, GetTargetZoomPercent());
         e.Handled = true;
@@ -343,7 +497,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
 
     private void OnRendering(object? sender, object e)
     {
-        if (!_isLoaded || _isLoadingHighRes)
+        if (!_isLoaded)
             return;
 
         var needsUpdate = false;
@@ -477,6 +631,118 @@ public sealed partial class PreviewImageCanvasControl : UserControl
     {
         var originalScale = CalculateOriginalScale();
         return Math.Clamp((1d / Math.Max(originalScale, 0.0001)) * 100d, MinZoomPercent, MaxZoomPercent);
+    }
+
+    private uint GetOriginalLongSide()
+    {
+        if (_imageFileInfo == null)
+            return 0;
+
+        return (uint)Math.Max(0, Math.Max(_imageFileInfo.Width, _imageFileInfo.Height));
+    }
+
+    private uint ClampDecodeLongSideToOriginal(uint longSidePixels)
+    {
+        var originalLongSide = GetOriginalLongSide();
+        return originalLongSide > 0 ? Math.Min(longSidePixels, originalLongSide) : longSidePixels;
+    }
+
+    private void SetMainImageSource(DecodeResult result)
+    {
+        MainImage.Source = result.ImageSource;
+        _activeDecodeLongSide = Math.Max(_activeDecodeLongSide, Math.Max(result.Width, result.Height));
+
+        var originalLongSide = GetOriginalLongSide();
+        if (originalLongSide > 0 && _activeDecodeLongSide >= originalLongSide)
+        {
+            _isOriginalImageLoaded = true;
+        }
+    }
+
+    private void TryStartOriginalImageLoad()
+    {
+        if (_imageFileInfo?.ImageFile == null || _isOriginalImageLoaded)
+            return;
+
+        var originalLongSide = GetOriginalLongSide();
+        if (originalLongSide == 0 || _activeDecodeLongSide >= originalLongSide)
+        {
+            _isOriginalImageLoaded = originalLongSide > 0;
+            return;
+        }
+
+        if (GetTargetZoomPercent() < OriginalDecodeZoomPercentThreshold)
+            return;
+
+        var currentCts = _originalImageLoadCts;
+        if (currentCts != null && !currentCts.IsCancellationRequested)
+            return;
+
+        var version = ++_originalImageLoadVersion;
+        var cts = new CancellationTokenSource();
+        cts.CancelAfter(TimeSpan.FromSeconds(30));
+        _originalImageLoadCts = cts;
+        _ = LoadOriginalImageAsync(_imageFileInfo, originalLongSide, version, cts.Token);
+    }
+
+    private async Task LoadOriginalImageAsync(
+        ImageFileInfo imageInfo,
+        uint originalLongSide,
+        int version,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var thumbnailService = App.GetService<IThumbnailService>();
+            var forceFullDecodeRaw = IsRawFile(imageInfo.ImageFile.FileType) && App.GetService<ISettingsService>().AlwaysDecodeRaw;
+            var result = await thumbnailService.GetThumbnailWithSizeAsync(
+                imageInfo.ImageFile,
+                originalLongSide,
+                forceFullDecodeRaw,
+                cancellationToken);
+
+            if (result?.ImageSource == null ||
+                cancellationToken.IsCancellationRequested ||
+                version != _originalImageLoadVersion ||
+                !ReferenceEquals(_imageFileInfo, imageInfo))
+            {
+                return;
+            }
+
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                if (!_isLoaded ||
+                    version != _originalImageLoadVersion ||
+                    !ReferenceEquals(_imageFileInfo, imageInfo) ||
+                    result.ImageSource == null)
+                {
+                    return;
+                }
+
+                ApplyOriginalImageResult(result);
+            });
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PreviewImageCanvas] original image load failed: {ex.Message}");
+        }
+    }
+
+    private void ApplyOriginalImageResult(DecodeResult result)
+    {
+        try
+        {
+            SetMainImageSource(result);
+            ApplyTransform();
+            ZoomPercentChanged?.Invoke(this, GetCurrentZoomPercent());
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PreviewImageCanvas] apply original image failed: {ex.Message}");
+        }
     }
 
     private static bool IsRawFile(string extension)

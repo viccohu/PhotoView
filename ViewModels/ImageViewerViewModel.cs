@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PhotoView.Contracts.Services;
+using PhotoView.Helpers;
 using PhotoView.Models;
 using PhotoView.Services;
 using System;
@@ -206,7 +207,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
     {
         try
         {
-            var basicProps = await file.GetBasicPropertiesAsync();
+            var basicProps = await StorageFilePropertyReader.GetBasicPropertiesAsync(file);
             FileSize = FormatFileSize(basicProps.Size);
         }
         catch (Exception ex)

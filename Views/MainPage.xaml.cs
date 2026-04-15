@@ -45,7 +45,7 @@ public sealed partial class MainPage : Page
     private const double GridViewItemGap = GridViewItemMargin * 2d;
     private const double NavigationDrawerExpandedWidth = 265d;
     private const double NavigationDrawerCollapsedWidth = 25d;
-    private const double FolderDrawerExpandedMaxHeight = 150d;
+    private const double FolderDrawerExpandedMaxHeight = 260d;
     private const double FolderDrawerCollapsedOffsetY = -8d;
     private const double ImageGridTopScrollTolerance = 1d;
     private const int FolderDrawerAnimationDurationMs = 220;
@@ -1073,11 +1073,23 @@ public sealed partial class MainPage : Page
         _folderDrawerStoryboard?.Stop();
         _folderDrawerStoryboard = null;
 
+        var currentMaxHeight = double.IsInfinity(FolderDrawerContentHost.MaxHeight)
+            ? FolderDrawerContentHost.ActualHeight
+            : FolderDrawerContentHost.MaxHeight;
+        var fromHeight = Math.Max(0d, FolderDrawerContentHost.ActualHeight > 0d
+            ? FolderDrawerContentHost.ActualHeight
+            : currentMaxHeight);
+        var toHeight = showContent ? FolderDrawerExpandedMaxHeight : 0d;
+
         if (showContent)
         {
             FolderDrawerContentHost.Visibility = Visibility.Visible;
-            FolderDrawerContentHost.MaxHeight = FolderDrawerExpandedMaxHeight;
+            FolderDrawerContentHost.MaxHeight = fromHeight;
             SubFolderGridView.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            FolderDrawerContentHost.MaxHeight = fromHeight;
         }
 
         var easing = new CubicEase
@@ -1095,6 +1107,17 @@ public sealed partial class MainPage : Page
         Storyboard.SetTarget(opacityAnimation, FolderDrawerContentHost);
         Storyboard.SetTargetProperty(opacityAnimation, "Opacity");
 
+        var heightAnimation = new DoubleAnimation
+        {
+            From = fromHeight,
+            To = toHeight,
+            Duration = new Duration(TimeSpan.FromMilliseconds(FolderDrawerAnimationDurationMs)),
+            EasingFunction = easing,
+            EnableDependentAnimation = true
+        };
+        Storyboard.SetTarget(heightAnimation, FolderDrawerContentHost);
+        Storyboard.SetTargetProperty(heightAnimation, "MaxHeight");
+
         var translateAnimation = new DoubleAnimation
         {
             From = FolderDrawerContentTransform.Y,
@@ -1106,6 +1129,7 @@ public sealed partial class MainPage : Page
         Storyboard.SetTargetProperty(translateAnimation, "Y");
 
         var storyboard = new Storyboard();
+        storyboard.Children.Add(heightAnimation);
         storyboard.Children.Add(opacityAnimation);
         storyboard.Children.Add(translateAnimation);
         storyboard.Completed += (_, _) =>

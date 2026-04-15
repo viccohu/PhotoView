@@ -18,7 +18,7 @@ namespace PhotoView.Services;
 public class ThumbnailService : IThumbnailService
 {
     private const int MaxCachedThumbnails = 2000;
-    private const uint MaxCachedThumbnailLongSidePixels = 1024;
+    private const uint MaxCachedThumbnailLongSidePixels = 4096;
     private const long MaxCachedThumbnailPixels = 160_000_000;
     private const uint FastPreviewFallbackLongSidePixels = 160;
 
@@ -319,7 +319,7 @@ public class ThumbnailService : IThumbnailService
         bool forceFullDecodeRaw,
         CancellationToken cancellationToken)
     {
-        var properties = await file.GetBasicPropertiesAsync().AsTask(cancellationToken);
+        var properties = await StorageFilePropertyReader.GetBasicPropertiesAsync(file, cancellationToken);
         return new ThumbnailCacheKey(
             NormalizePath(GetFilePath(file)),
             file.FileType.ToUpperInvariant(),
@@ -695,16 +695,21 @@ public class ThumbnailService : IThumbnailService
         var decoder = await BitmapDecoder.CreateAsync(stream).AsTask(cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
 
+        var sourceLongSide = Math.Max(decoder.PixelWidth, decoder.PixelHeight);
+        var decodeLongSidePixels = sourceLongSide > 0
+            ? Math.Min(longSidePixels, sourceLongSide)
+            : longSidePixels;
+
         uint scaledWidth, scaledHeight;
         if (decoder.PixelWidth >= decoder.PixelHeight)
         {
-            scaledWidth = Math.Max(1u, longSidePixels);
+            scaledWidth = Math.Max(1u, decodeLongSidePixels);
             var aspectRatio = decoder.PixelWidth == 0 ? 1d : (double)decoder.PixelHeight / decoder.PixelWidth;
             scaledHeight = Math.Max(1u, (uint)Math.Round(scaledWidth * aspectRatio));
         }
         else
         {
-            scaledHeight = Math.Max(1u, longSidePixels);
+            scaledHeight = Math.Max(1u, decodeLongSidePixels);
             var aspectRatio = decoder.PixelHeight == 0 ? 1d : (double)decoder.PixelWidth / decoder.PixelHeight;
             scaledWidth = Math.Max(1u, (uint)Math.Round(scaledHeight * aspectRatio));
         }

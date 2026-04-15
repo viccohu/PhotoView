@@ -468,6 +468,7 @@ public partial class MainViewModel : ObservableRecipient
         foreach (var child in subFolders)
         {
             CurrentSubFolders.Add(child);
+            _ = child.EnsureListIconAsync(cancellationToken);
         }
 
         OnPropertyChanged(nameof(SubFolderCount));

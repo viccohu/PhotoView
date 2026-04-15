@@ -33,8 +33,14 @@ public sealed partial class ImageViewerControl : UserControl
     private Task<DecodeResult?>? _highResLoadTask;
     private CancellationTokenSource? _highResLoadCts;
     private int _highResLoadVersion;
+    private CancellationTokenSource? _originalImageLoadCts;
+    private int _originalImageLoadVersion;
+    private uint _activeDecodeLongSide;
+    private bool _isOriginalImageLoaded;
     private bool _hasPrepared = false;
     private bool _hasShown = false;
+    private const double OriginalDecodeZoomPercentThreshold = 85d;
+    private const uint ViewerFitDecodeMaxLongSidePixels = 4096;
 
     private static readonly HashSet<string> RawFileExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -275,20 +281,25 @@ public sealed partial class ImageViewerControl : UserControl
 
     private uint GetTargetDecodeLongSide()
     {
+        return ClampDecodeLongSideToOriginal(GetViewportDecodeLongSide());
+    }
+
+    private uint GetViewportDecodeLongSide()
+    {
         var settingsService = App.GetService<ISettingsService>();
         var scaleFactor = settingsService.DecodeScaleFactor;
 
         if (ImageContainer.ActualWidth > 0 && ImageContainer.ActualHeight > 0)
         {
             var containerLongSide = Math.Max(ImageContainer.ActualWidth, ImageContainer.ActualHeight);
-            var targetSize = (uint)(containerLongSide * scaleFactor);
+            var targetSize = (uint)Math.Clamp(containerLongSide * scaleFactor, 1d, ViewerFitDecodeMaxLongSidePixels);
             // System.Diagnostics.Debug.WriteLine($"[ImageViewer] GetTargetDecodeLongSide: 视窗尺寸={ImageContainer.ActualWidth}x{ImageContainer.ActualHeight}, 系数={scaleFactor}, 解码尺寸={targetSize}");
             return targetSize;
         }
         else
         {
             var fallbackSize = 1080u;
-            var targetSize = (uint)(fallbackSize * scaleFactor);
+            var targetSize = (uint)Math.Clamp(fallbackSize * scaleFactor, 1d, ViewerFitDecodeMaxLongSidePixels);
             // System.Diagnostics.Debug.WriteLine($"[ImageViewer] GetTargetDecodeLongSide: 视窗未布局，使用兜底尺寸={fallbackSize}, 系数={scaleFactor}, 解码尺寸={targetSize}");
             return targetSize;
         }
@@ -396,7 +407,6 @@ public sealed partial class ImageViewerControl : UserControl
 
             _targetDecodeLongSide = GetTargetDecodeLongSide();
             // System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 解码最长边={_targetDecodeLongSide}");
-
             StopPhysics();
             MainImage.Source = _imageFileInfo?.Thumbnail;
             MainImage.Stretch = Stretch.Uniform;
@@ -443,6 +453,8 @@ public sealed partial class ImageViewerControl : UserControl
         _justSnappedTo100Percent = false;
         _snapStayCounter = 0;
         _is1To1Scale = false;
+        _activeDecodeLongSide = 0;
+        _isOriginalImageLoaded = false;
 
         ApplyTransform();
     }
@@ -480,7 +492,10 @@ public sealed partial class ImageViewerControl : UserControl
                     try
                     {
                         StopPhysics();
-                        MainImage.Source = highResResult.ImageSource;
+                        if (!_isOriginalImageLoaded)
+                        {
+                            SetMainImageSource(highResResult);
+                        }
                         // System.Diagnostics.Debug.WriteLine($"[ImageViewer] WaitForHighResAndReplaceAsync: 高清图渐进式替换完成");
                         _isLoadingHighRes = false;
                         if (!_isClosing)
@@ -573,6 +588,8 @@ public sealed partial class ImageViewerControl : UserControl
     {
         _highResLoadVersion++;
         _highResLoadCts?.Cancel();
+        _originalImageLoadVersion++;
+        _originalImageLoadCts?.Cancel();
         _isLoadingHighRes = false;
     }
 
@@ -739,6 +756,7 @@ public sealed partial class ImageViewerControl : UserControl
             _is1To1Scale = true;
         }
         _hasZoomAnchor = false;
+        TryStartOriginalImageLoad();
         e.Handled = true;
     }
 
@@ -930,6 +948,7 @@ public sealed partial class ImageViewerControl : UserControl
         _hasZoomAnchor = true;
 
         _targetZoomScale = newTarget;
+        TryStartOriginalImageLoad();
         e.Handled = true;
     }
 
@@ -1237,6 +1256,112 @@ public sealed partial class ImageViewerControl : UserControl
 
         var dpiScale = XamlRoot?.RasterizationScale ?? 1.0;
         return (1.0 / fitScale) / dpiScale;
+    }
+
+    private double GetTargetZoomPercent()
+    {
+        var originalScale = CalculateOriginalScale();
+        return (_targetZoomScale / Math.Max(originalScale, 0.0001)) * 100d;
+    }
+
+    private uint GetOriginalLongSide()
+    {
+        if (_imageFileInfo == null)
+            return 0;
+
+        return (uint)Math.Max(0, Math.Max(_imageFileInfo.Width, _imageFileInfo.Height));
+    }
+
+    private uint ClampDecodeLongSideToOriginal(uint longSidePixels)
+    {
+        var originalLongSide = GetOriginalLongSide();
+        return originalLongSide > 0 ? Math.Min(longSidePixels, originalLongSide) : longSidePixels;
+    }
+
+    private void SetMainImageSource(DecodeResult result)
+    {
+        MainImage.Source = result.ImageSource;
+        _activeDecodeLongSide = Math.Max(_activeDecodeLongSide, Math.Max(result.Width, result.Height));
+
+        var originalLongSide = GetOriginalLongSide();
+        if (originalLongSide > 0 && _activeDecodeLongSide >= originalLongSide)
+        {
+            _isOriginalImageLoaded = true;
+        }
+    }
+
+    private void TryStartOriginalImageLoad()
+    {
+        if (_imageFileInfo?.ImageFile == null || _isClosing || _isOriginalImageLoaded)
+            return;
+
+        var originalLongSide = GetOriginalLongSide();
+        if (originalLongSide == 0 || _activeDecodeLongSide >= originalLongSide)
+        {
+            _isOriginalImageLoaded = originalLongSide > 0;
+            return;
+        }
+
+        if (GetTargetZoomPercent() < OriginalDecodeZoomPercentThreshold)
+            return;
+
+        var currentCts = _originalImageLoadCts;
+        if (currentCts != null && !currentCts.IsCancellationRequested)
+            return;
+
+        var version = ++_originalImageLoadVersion;
+        var cts = new CancellationTokenSource();
+        cts.CancelAfter(TimeSpan.FromSeconds(30));
+        _originalImageLoadCts = cts;
+        _ = LoadOriginalImageAsync(_imageFileInfo, originalLongSide, version, cts.Token);
+    }
+
+    private async Task LoadOriginalImageAsync(
+        ImageFileInfo imageInfo,
+        uint originalLongSide,
+        int version,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var thumbnailService = App.GetService<IThumbnailService>();
+            var forceFullDecodeRaw = IsRawFile(imageInfo.ImageFile.FileType) && App.GetService<ISettingsService>().AlwaysDecodeRaw;
+            var result = await thumbnailService.GetThumbnailWithSizeAsync(
+                imageInfo.ImageFile,
+                originalLongSide,
+                forceFullDecodeRaw,
+                cancellationToken);
+
+            if (result?.ImageSource == null ||
+                cancellationToken.IsCancellationRequested ||
+                version != _originalImageLoadVersion ||
+                !ReferenceEquals(_imageFileInfo, imageInfo))
+            {
+                return;
+            }
+
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                if (!_isLoaded ||
+                    _isClosing ||
+                    version != _originalImageLoadVersion ||
+                    !ReferenceEquals(_imageFileInfo, imageInfo) ||
+                    result.ImageSource == null)
+                {
+                    return;
+                }
+
+                SetMainImageSource(result);
+                ApplyTransform();
+            });
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ImageViewer] original image load failed: {ex.Message}");
+        }
     }
 
     #endregion
