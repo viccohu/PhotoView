@@ -39,7 +39,7 @@
             PointerEntered="LoadDrawerRoot_PointerEntered"
             PointerExited="LoadDrawerRoot_PointerExited">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="30"/>
+                <ColumnDefinition Width="25"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
@@ -55,14 +55,14 @@
                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                 BorderThickness="1"
-                CornerRadius="8"/>
+                CornerRadius="0,8,8,0"/>
 
             <Button
                 x:Name="LoadDrawerToggleButton"
                 Grid.Row="0"
                 Grid.RowSpan="2"
                 Grid.Column="0"
-                Width="30"
+                Width="25"
                 Padding="0"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Stretch"
@@ -185,8 +185,9 @@
                 Padding="6"
                 Background="Transparent"
                 BorderBrush="{ThemeResource ControlAltFillColorTertiaryBrush}"
-                BorderThickness="0,2,0,0"
-                CornerRadius="8">
+                BorderThickness="0,1,0,0"
+                Margin="0,12,0,0"
+                CornerRadius="0">
                 <TreeView
                     x:Name="PreviewFolderTreeView"
                     ItemsSource="{x:Bind ViewModel.FolderTree}"
@@ -230,7 +231,7 @@
 
         <Grid
             Grid.Column="1"
-            Margin="4,12,8,12"
+            Margin="4,12,0,12"
             RowSpacing="0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
@@ -249,6 +250,7 @@
                 Background="{ThemeResource SmokeFillColorDefaultBrush}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                 BorderThickness="1"
+                Margin="0,0,6,0"
                 CornerRadius="8,8,0,0">
                 <controls:PreviewImageCanvasControl
                     x:Name="PreviewCanvas"
@@ -261,12 +263,12 @@
                 Grid.RowSpan="4"
                 Grid.Column="1"
                 Width="340"
-                Margin="8,0,0,0"
-                Padding="14"
+                Margin="0,0,0,0"
+                Padding="0,6,0,0"
                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                 BorderThickness="0"
-                CornerRadius="8"
+                CornerRadius="8,0,0,8"
                 Visibility="{x:Bind ViewModel.IsInfoDrawerOpen, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <controls:ImageInfoPanelControl ViewModel="{x:Bind PreviewInfoViewModel, Mode=OneWay}"/>
             </Border>
@@ -275,6 +277,7 @@
                 Grid.Row="1"
                 Grid.Column="0"
                 Padding="8,4,8,4"
+                Margin="0,0,6,0"
                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                 BorderThickness="1"
@@ -347,7 +350,7 @@
                 Grid.Column="0"
                 Height="135"
                 Padding="6,0,6,0"
-                Margin="0,0,0,0"
+                Margin="0,0,6,0"
                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                 BorderThickness="1"

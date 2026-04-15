@@ -339,12 +339,12 @@ public partial class MainViewModel : ObservableRecipient
                 
                 if (newPrimaryFiles.Count > 0)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[LoadImagesAsync] 批次 {index/batchSize + 1}, 加载新主图片 {newPrimaryFiles.Count} 个");
+                    // System.Diagnostics.Debug.WriteLine($"[LoadImagesAsync] 批次 {index/batchSize + 1}, 加载新主图片 {newPrimaryFiles.Count} 个");
                     
                     AddPlaceholderGroups(newGroupMap, cancellationToken);
                     if (index == 0)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[LoadImagesAsync] First placeholders added in {loadStopwatch.ElapsedMilliseconds}ms, files={batch.Count}, primary={newPrimaryFiles.Count}");
+                        // System.Diagnostics.Debug.WriteLine($"[LoadImagesAsync] First placeholders added in {loadStopwatch.ElapsedMilliseconds}ms, files={batch.Count}, primary={newPrimaryFiles.Count}");
                     }
                 }
                 
@@ -895,7 +895,7 @@ public partial class MainViewModel : ObservableRecipient
                     AddPlaceholderGroups(newGroupMap, cancellationToken);
                     if (index == 0)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[LoadImagesWithoutHistoryAsync] First placeholders added in {loadStopwatch.ElapsedMilliseconds}ms, files={batch.Count}, primary={newPrimaryFiles.Count}");
+                        // System.Diagnostics.Debug.WriteLine($"[LoadImagesWithoutHistoryAsync] First placeholders added in {loadStopwatch.ElapsedMilliseconds}ms, files={batch.Count}, primary={newPrimaryFiles.Count}");
                     }
                 }
                 

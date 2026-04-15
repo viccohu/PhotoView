@@ -110,7 +110,7 @@ public class ExifService : IExifService
         {
             var exifData = new ExifData();
             
-            System.Diagnostics.Debug.WriteLine($"[ExifService] 开始处理文件: {file.Name}, 格式: {file.FileType}");
+            // System.Diagnostics.Debug.WriteLine($"[ExifService] 开始处理文件: {file.Name}, 格式: {file.FileType}");
 
             // 1. 首先尝试使用 ImageProperties API 获取 DateTaken
             try
@@ -119,11 +119,11 @@ public class ExifService : IExifService
                 if (imageProperties.DateTaken != DateTimeOffset.MinValue && imageProperties.DateTaken != default)
                 {
                     exifData.DateTaken = imageProperties.DateTaken.DateTime;
-                    System.Diagnostics.Debug.WriteLine($"[ExifService] DateTaken (ImageProperties): {imageProperties.DateTaken}");
+                    // System.Diagnostics.Debug.WriteLine($"[ExifService] DateTaken (ImageProperties): {imageProperties.DateTaken}");
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"[ExifService] DateTaken (ImageProperties): 未找到");
+                    // System.Diagnostics.Debug.WriteLine($"[ExifService] DateTaken (ImageProperties): 未找到");
                 }
             }
             catch (Exception ex)
@@ -160,24 +160,24 @@ public class ExifService : IExifService
                     if (properties.TryGetValue("System.Photo.DateTaken", out var dateProp) && dateProp.Value is DateTime dateTaken)
                     {
                         exifData.DateTaken = dateTaken;
-                        System.Diagnostics.Debug.WriteLine($"[ExifService] DateTaken (BitmapProperties): {dateTaken}");
+                        // System.Diagnostics.Debug.WriteLine($"[ExifService] DateTaken (BitmapProperties): {dateTaken}");
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine($"[ExifService] DateTaken (BitmapProperties): 未找到");
+                        // System.Diagnostics.Debug.WriteLine($"[ExifService] DateTaken (BitmapProperties): 未找到");
                     }
                 }
 
                 if (properties.TryGetValue("System.Photo.CameraManufacturer", out var manuProp) && manuProp.Value is string manufacturer)
                 {
                     exifData.CameraManufacturer = manufacturer;
-                    System.Diagnostics.Debug.WriteLine($"[ExifService] CameraManufacturer: {manufacturer}");
+                    // System.Diagnostics.Debug.WriteLine($"[ExifService] CameraManufacturer: {manufacturer}");
                 }
 
                 if (properties.TryGetValue("System.Photo.CameraModel", out var modelProp) && modelProp.Value is string model)
                 {
                     exifData.CameraModel = model;
-                    System.Diagnostics.Debug.WriteLine($"[ExifService] CameraModel: {model}");
+                    // System.Diagnostics.Debug.WriteLine($"[ExifService] CameraModel: {model}");
                 }
 
                 if (properties.TryGetValue("System.Photo.Orientation", out var orientProp) && orientProp.Value is ushort orientation)
@@ -188,42 +188,42 @@ public class ExifService : IExifService
                 if (properties.TryGetValue("System.Photo.ExposureTime", out var expProp) && expProp.Value is double exposureTime)
                 {
                     exifData.ExposureTime = exposureTime;
-                    System.Diagnostics.Debug.WriteLine($"[ExifService] ExposureTime: {exposureTime}");
+                    // System.Diagnostics.Debug.WriteLine($"[ExifService] ExposureTime: {exposureTime}");
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"[ExifService] ExposureTime: 未找到");
+                    // System.Diagnostics.Debug.WriteLine($"[ExifService] ExposureTime: 未找到");
                 }
 
                 if (properties.TryGetValue("System.Photo.FNumber", out var fProp) && fProp.Value is double fNumber)
                 {
                     exifData.FNumber = fNumber;
-                    System.Diagnostics.Debug.WriteLine($"[ExifService] FNumber: {fNumber}");
+                    // System.Diagnostics.Debug.WriteLine($"[ExifService] FNumber: {fNumber}");
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"[ExifService] FNumber: 未找到");
+                    // System.Diagnostics.Debug.WriteLine($"[ExifService] FNumber: 未找到");
                 }
 
                 // ISOSpeed - 尝试多种数据类型
                 if (properties.TryGetValue("System.Photo.ISOSpeed", out var isoProp))
                 {
-                    System.Diagnostics.Debug.WriteLine($"[ExifService] ISOSpeed 原始值: {isoProp.Value}, 类型: {isoProp.Value?.GetType().Name}");
+                    // System.Diagnostics.Debug.WriteLine($"[ExifService] ISOSpeed 原始值: {isoProp.Value}, 类型: {isoProp.Value?.GetType().Name}");
                     
                     if (isoProp.Value is ushort isoSpeedUshort)
                     {
                         exifData.ISOSpeed = isoSpeedUshort;
-                        System.Diagnostics.Debug.WriteLine($"[ExifService] ISOSpeed (ushort): {isoSpeedUshort}");
+                        // System.Diagnostics.Debug.WriteLine($"[ExifService] ISOSpeed (ushort): {isoSpeedUshort}");
                     }
                     else if (isoProp.Value is uint isoSpeedUint)
                     {
                         exifData.ISOSpeed = isoSpeedUint;
-                        System.Diagnostics.Debug.WriteLine($"[ExifService] ISOSpeed (uint): {isoSpeedUint}");
+                        // System.Diagnostics.Debug.WriteLine($"[ExifService] ISOSpeed (uint): {isoSpeedUint}");
                     }
                     else if (isoProp.Value is double isoSpeedDouble)
                     {
                         exifData.ISOSpeed = (uint)isoSpeedDouble;
-                        System.Diagnostics.Debug.WriteLine($"[ExifService] ISOSpeed (double): {isoSpeedDouble}");
+                        // System.Diagnostics.Debug.WriteLine($"[ExifService] ISOSpeed (double): {isoSpeedDouble}");
                     }
                     else if (isoProp.Value != null)
                     {
@@ -231,7 +231,7 @@ public class ExifService : IExifService
                         try
                         {
                             exifData.ISOSpeed = Convert.ToUInt32(isoProp.Value);
-                            System.Diagnostics.Debug.WriteLine($"[ExifService] ISOSpeed (converted): {exifData.ISOSpeed}");
+                            // System.Diagnostics.Debug.WriteLine($"[ExifService] ISOSpeed (converted): {exifData.ISOSpeed}");
                         }
                         catch (Exception ex)
                         {
@@ -241,23 +241,23 @@ public class ExifService : IExifService
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"[ExifService] ISOSpeed: 未找到");
+                    // System.Diagnostics.Debug.WriteLine($"[ExifService] ISOSpeed: 未找到");
                 }
 
                 if (properties.TryGetValue("System.Photo.FocalLength", out var flProp) && flProp.Value is double focalLength)
                 {
                     exifData.FocalLength = focalLength;
-                    System.Diagnostics.Debug.WriteLine($"[ExifService] FocalLength: {focalLength}");
+                    // System.Diagnostics.Debug.WriteLine($"[ExifService] FocalLength: {focalLength}");
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"[ExifService] FocalLength: 未找到");
+                    // System.Diagnostics.Debug.WriteLine($"[ExifService] FocalLength: 未找到");
                 }
 
                 if (properties.TryGetValue("System.Photo.FocalLengthInFilm", out var flfProp) && flfProp.Value is double focalLengthInFilm)
                 {
                     exifData.FocalLengthInFilm = focalLengthInFilm;
-                    System.Diagnostics.Debug.WriteLine($"[ExifService] FocalLengthInFilm: {focalLengthInFilm}");
+                    // System.Diagnostics.Debug.WriteLine($"[ExifService] FocalLengthInFilm: {focalLengthInFilm}");
                 }
 
                 if (properties.TryGetValue("System.Photo.ExposureProgram", out var epProp) && epProp.Value is ushort exposureProgram)
@@ -293,11 +293,11 @@ public class ExifService : IExifService
                 if (properties.TryGetValue("System.Photo.LensModel", out var lmProp) && lmProp.Value is string lensModel)
                 {
                     exifData.LensModel = lensModel;
-                    System.Diagnostics.Debug.WriteLine($"[ExifService] LensModel: {lensModel}");
+                    // System.Diagnostics.Debug.WriteLine($"[ExifService] LensModel: {lensModel}");
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"[ExifService] LensModel: 未找到");
+                    // System.Diagnostics.Debug.WriteLine($"[ExifService] LensModel: 未找到");
                 }
             }
             catch (Exception ex)

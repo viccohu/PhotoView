@@ -280,13 +280,13 @@ public class ThumbnailService : IThumbnailService
                 _thumbnailCacheLru.AddLast(node);
                 var entry = node.Value;
                 result = new DecodeResult(entry.Width, entry.Height, entry.ImageSource);
-                System.Diagnostics.Debug.WriteLine($"[ThumbnailService] Cache hit: {key.Path}, size={key.LongSidePixels}");
+                // System.Diagnostics.Debug.WriteLine($"[ThumbnailService] Cache hit: {key.Path}, size={key.LongSidePixels}");
                 return true;
             }
         }
 
         result = null!;
-        System.Diagnostics.Debug.WriteLine($"[ThumbnailService] Cache miss: {key.Path}, size={key.LongSidePixels}");
+        // System.Diagnostics.Debug.WriteLine($"[ThumbnailService] Cache miss: {key.Path}, size={key.LongSidePixels}");
         return false;
     }
 
@@ -316,7 +316,7 @@ public class ThumbnailService : IThumbnailService
                 if (oldest == null)
                     break;
 
-                System.Diagnostics.Debug.WriteLine($"[ThumbnailService] Cache evict: {oldest.Value.Key.Path}, size={oldest.Value.Key.LongSidePixels}");
+                // System.Diagnostics.Debug.WriteLine($"[ThumbnailService] Cache evict: {oldest.Value.Key.Path}, size={oldest.Value.Key.LongSidePixels}");
                 _thumbnailCache.Remove(oldest.Value.Key);
                 _cachedThumbnailPixels = Math.Max(0, _cachedThumbnailPixels - oldest.Value.PixelCount);
                 _thumbnailCacheLru.RemoveFirst();
@@ -391,7 +391,7 @@ public class ThumbnailService : IThumbnailService
 
             if (thumbnail.Type != ThumbnailType.Image)
             {
-                System.Diagnostics.Debug.WriteLine($"[ThumbnailService] Ignore system thumbnail {thumbnail.Type} for {file.Name}, continue decode fallback");
+                // System.Diagnostics.Debug.WriteLine($"[ThumbnailService] Ignore system thumbnail {thumbnail.Type} for {file.Name}, continue decode fallback");
                 return null;
             }
             
@@ -445,7 +445,7 @@ public class ThumbnailService : IThumbnailService
                     }
                 }))
             {
-                System.Diagnostics.Debug.WriteLine($"[ThumbnailService] Skip RAW preview enqueue for {file.Name}");
+                // System.Diagnostics.Debug.WriteLine($"[ThumbnailService] Skip RAW preview enqueue for {file.Name}");
                 return null;
             }
             
@@ -551,7 +551,7 @@ public class ThumbnailService : IThumbnailService
                 }
             }))
         {
-            System.Diagnostics.Debug.WriteLine("[ThumbnailService] Skip thumbnail creation enqueue");
+            // System.Diagnostics.Debug.WriteLine("[ThumbnailService] Skip thumbnail creation enqueue");
             return null;
         }
 

@@ -66,12 +66,12 @@ public sealed partial class MainPage : Page
 
     public MainPage()
     {
-        System.Diagnostics.Debug.WriteLine($"[MainPage] 构造函数开始");
+        // System.Diagnostics.Debug.WriteLine($"[MainPage] 构造函数开始");
         
         ViewModel = App.GetService<MainViewModel>();
         _settingsService = App.GetService<ISettingsService>();
         _shellToolbarService = App.GetService<ShellToolbarService>();
-        System.Diagnostics.Debug.WriteLine($"[MainPage] ViewModel 已获取, FolderTree.Count={ViewModel.FolderTree.Count}");
+        // System.Diagnostics.Debug.WriteLine($"[MainPage] ViewModel 已获取, FolderTree.Count={ViewModel.FolderTree.Count}");
         
         NavigationCacheMode = NavigationCacheMode.Enabled;
         InitializeComponent();
@@ -106,16 +106,16 @@ public sealed partial class MainPage : Page
         PreviewKeyDown += MainPage_PreviewKeyDown;
         Unloaded += MainPage_Unloaded;
         
-        System.Diagnostics.Debug.WriteLine($"[MainPage] 事件已订阅, FolderTree.Count={ViewModel.FolderTree.Count}");
+        // System.Diagnostics.Debug.WriteLine($"[MainPage] 事件已订阅, FolderTree.Count={ViewModel.FolderTree.Count}");
         
         // 如果 FolderTree 已经加载完成（事件在订阅前已触发），直接调用恢复逻辑
         if (ViewModel.FolderTree.Count > 0)
         {
-            System.Diagnostics.Debug.WriteLine($"[MainPage] 构造函数中检测到 FolderTree 已加载, Count={ViewModel.FolderTree.Count}");
+            // System.Diagnostics.Debug.WriteLine($"[MainPage] 构造函数中检测到 FolderTree 已加载, Count={ViewModel.FolderTree.Count}");
             _ = TryRestoreLastFolderAsync();
         }
         
-        System.Diagnostics.Debug.WriteLine($"[MainPage] 构造函数结束");
+        // System.Diagnostics.Debug.WriteLine($"[MainPage] 构造函数结束");
     }
 
     private void MainPage_Loaded(object sender, RoutedEventArgs e)
@@ -192,7 +192,7 @@ public sealed partial class MainPage : Page
 
     private void ViewModel_RatingUpdated(object? sender, (ImageFileInfo Image, uint Rating) e)
     {
-        System.Diagnostics.Debug.WriteLine($"[MainPage] ViewModel_RatingUpdated: 图片 {e.Image.ImageName} 评级已更新为 {e.Rating}");
+        // System.Diagnostics.Debug.WriteLine($"[MainPage] ViewModel_RatingUpdated: 图片 {e.Image.ImageName} 评级已更新为 {e.Rating}");
     }
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -416,7 +416,7 @@ public sealed partial class MainPage : Page
 
     private async void ViewModel_FolderTreeLoaded(object? sender, EventArgs e)
     {
-        System.Diagnostics.Debug.WriteLine($"[MainPage] FolderTreeLoaded 事件触发");
+        // System.Diagnostics.Debug.WriteLine($"[MainPage] FolderTreeLoaded 事件触发");
         await TryRestoreLastFolderAsync();
     }
 
@@ -425,7 +425,7 @@ public sealed partial class MainPage : Page
         if (_isUnloaded || AppLifetime.IsShuttingDown || node == null)
             return;
 
-        System.Diagnostics.Debug.WriteLine($"[MainPage] SelectedFolderChanged 事件触发, 节点: {node.Name}");
+        // System.Diagnostics.Debug.WriteLine($"[MainPage] SelectedFolderChanged 事件触发, 节点: {node.Name}");
         await ExpandTreeViewPathAsync(node);
     }
 
@@ -449,7 +449,7 @@ public sealed partial class MainPage : Page
             // 如果 RememberLastFolder 为 false 且已经等待过一轮，说明设置已加载且未启用
             if (!settingsService.RememberLastFolder && waitCount > 0)
             {
-                System.Diagnostics.Debug.WriteLine($"[MainPage] 未启用记住上次路径，跳过恢复");
+                // System.Diagnostics.Debug.WriteLine($"[MainPage] 未启用记住上次路径，跳过恢复");
                 return;
             }
             
@@ -457,11 +457,11 @@ public sealed partial class MainPage : Page
             waitCount++;
         }
         
-        System.Diagnostics.Debug.WriteLine($"[MainPage] FolderTreeLoaded 触发, RememberLastFolder={settingsService.RememberLastFolder}, LastFolderPath={settingsService.LastFolderPath}, 等待次数={waitCount}");
+        // System.Diagnostics.Debug.WriteLine($"[MainPage] FolderTreeLoaded 触发, RememberLastFolder={settingsService.RememberLastFolder}, LastFolderPath={settingsService.LastFolderPath}, 等待次数={waitCount}");
         
         if (!settingsService.RememberLastFolder || string.IsNullOrEmpty(settingsService.LastFolderPath))
         {
-            System.Diagnostics.Debug.WriteLine($"[MainPage] 路径为空或未启用，跳过恢复");
+            // System.Diagnostics.Debug.WriteLine($"[MainPage] 路径为空或未启用，跳过恢复");
             return;
         }
 
@@ -469,7 +469,7 @@ public sealed partial class MainPage : Page
         if (_isUnloaded || AppLifetime.IsShuttingDown)
             return;
 
-        System.Diagnostics.Debug.WriteLine($"[MainPage] 尝试恢复上次路径: {settingsService.LastFolderPath}");
+        // System.Diagnostics.Debug.WriteLine($"[MainPage] 尝试恢复上次路径: {settingsService.LastFolderPath}");
 
         var targetNode = await TryFindAndLoadNodeByPathAsync(settingsService.LastFolderPath);
         if (targetNode != null)
@@ -481,14 +481,14 @@ public sealed partial class MainPage : Page
         }
         else
         {
-            System.Diagnostics.Debug.WriteLine($"[MainPage] 未找到上次路径: {settingsService.LastFolderPath}");
+            // System.Diagnostics.Debug.WriteLine($"[MainPage] 未找到上次路径: {settingsService.LastFolderPath}");
         }
     }
 
     private async System.Threading.Tasks.Task<FolderNode?> TryFindAndLoadNodeByPathAsync(string targetPath)
     {
         targetPath = targetPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        System.Diagnostics.Debug.WriteLine($"[TryFindAndLoadNodeByPathAsync] 目标路径: {targetPath}");
+        // System.Diagnostics.Debug.WriteLine($"[TryFindAndLoadNodeByPathAsync] 目标路径: {targetPath}");
 
         var foundNode = ViewModel.FindNodeByPath(targetPath);
         if (foundNode != null)
@@ -555,7 +555,7 @@ public sealed partial class MainPage : Page
             currentNode = nextNode;
         }
 
-        System.Diagnostics.Debug.WriteLine($"[TryFindAndLoadNodeByPathAsync] 最终找到节点: {currentNode.Name}, 完整路径: {currentNode.FullPath}");
+        // System.Diagnostics.Debug.WriteLine($"[TryFindAndLoadNodeByPathAsync] 最终找到节点: {currentNode.Name}, 完整路径: {currentNode.FullPath}");
         return currentNode;
     }
 
@@ -673,7 +673,7 @@ public sealed partial class MainPage : Page
 
         _imageItemsWrapGrid.ItemWidth = tileSize;
         _imageItemsWrapGrid.ItemHeight = tileSize;
-        System.Diagnostics.Debug.WriteLine($"[MainPage] Tile size updated: size={tileSize:F0}, columns={columnCount}, width={availableWidth:F0}");
+        // System.Diagnostics.Debug.WriteLine($"[MainPage] Tile size updated: size={tileSize:F0}, columns={columnCount}, width={availableWidth:F0}");
 
         QueueVisibleThumbnailLoad("tile-size-changed");
     }
@@ -868,7 +868,7 @@ public sealed partial class MainPage : Page
         _isFolderDrawerExpanded = expanded;
         if (changed)
         {
-            System.Diagnostics.Debug.WriteLine($"[MainPage] Folder drawer {(expanded ? "expanded" : "collapsed")}, reason={reason}");
+            // System.Diagnostics.Debug.WriteLine($"[MainPage] Folder drawer {(expanded ? "expanded" : "collapsed")}, reason={reason}");
         }
 
         UpdateFolderDrawerState(animate);
@@ -905,6 +905,7 @@ public sealed partial class MainPage : Page
         if (showContent)
         {
             FolderDrawerContentHost.Visibility = Visibility.Visible;
+            FolderDrawerContentHost.MaxHeight = FolderDrawerExpandedMaxHeight;
             SubFolderGridView.Visibility = Visibility.Visible;
         }
 
@@ -912,16 +913,6 @@ public sealed partial class MainPage : Page
         {
             EasingMode = showContent ? EasingMode.EaseOut : EasingMode.EaseInOut
         };
-
-        var heightAnimation = new DoubleAnimation
-        {
-            From = FolderDrawerContentHost.MaxHeight,
-            To = showContent ? FolderDrawerExpandedMaxHeight : 0d,
-            Duration = new Duration(TimeSpan.FromMilliseconds(FolderDrawerAnimationDurationMs)),
-            EasingFunction = easing
-        };
-        Storyboard.SetTarget(heightAnimation, FolderDrawerContentHost);
-        Storyboard.SetTargetProperty(heightAnimation, "MaxHeight");
 
         var opacityAnimation = new DoubleAnimation
         {
@@ -944,7 +935,6 @@ public sealed partial class MainPage : Page
         Storyboard.SetTargetProperty(translateAnimation, "Y");
 
         var storyboard = new Storyboard();
-        storyboard.Children.Add(heightAnimation);
         storyboard.Children.Add(opacityAnimation);
         storyboard.Children.Add(translateAnimation);
         storyboard.Completed += (_, _) =>
@@ -1032,18 +1022,18 @@ public sealed partial class MainPage : Page
                 return;
             }
 
-            System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] 开始展开, 目标节点: {targetNode.Name}, 路径: {targetNode.FullPath}");
+            // System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] 开始展开, 目标节点: {targetNode.Name}, 路径: {targetNode.FullPath}");
 
             var path = new List<FolderNode>();
             var current = targetNode;
             while (current != null)
             {
                 path.Insert(0, current);
-                System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] 路径节点: {current.Name}, NodeType={current.NodeType}, Parent={current.Parent?.Name ?? "null"}");
+                // System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] 路径节点: {current.Name}, NodeType={current.NodeType}, Parent={current.Parent?.Name ?? "null"}");
                 current = current.Parent;
             }
 
-            System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] 路径长度: {path.Count}");
+            // System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] 路径长度: {path.Count}");
 
             if (path.Count == 0)
             {
@@ -1055,13 +1045,13 @@ public sealed partial class MainPage : Page
             {
                 var node = path[i];
                 lastNode = node;
-                System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] 处理节点 {i}: {node.Name}, IsLoaded={node.IsLoaded}, IsExpanded={node.IsExpanded}, Children.Count={node.Children.Count}");
+                // System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] 处理节点 {i}: {node.Name}, IsLoaded={node.IsLoaded}, IsExpanded={node.IsExpanded}, Children.Count={node.Children.Count}");
 
                 if (i < path.Count - 1)
                 {
                     if (!node.IsLoaded)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] 加载子节点: {node.Name}");
+                        // System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] 加载子节点: {node.Name}");
                         await ViewModel.LoadChildrenAsync(node);
                         if (_isUnloaded || AppLifetime.IsShuttingDown)
                         {
@@ -1071,19 +1061,19 @@ public sealed partial class MainPage : Page
 
                     if (!node.IsExpanded)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] 展开节点: {node.Name}");
+                        // System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] 展开节点: {node.Name}");
                         node.IsExpanded = true;
                         await System.Threading.Tasks.Task.Delay(50);
                     }
                 }
 
                 var treeViewItem = FolderTreeView.ContainerFromItem(node) as TreeViewItem;
-                System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] TreeViewItem for {node.Name}: {(treeViewItem != null ? "found" : "null")}");
+                // System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] TreeViewItem for {node.Name}: {(treeViewItem != null ? "found" : "null")}");
             }
 
             if (lastNode != null)
             {
-                System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] 设置选中节点: {lastNode.Name}");
+                // System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] 设置选中节点: {lastNode.Name}");
                 FolderTreeView.SelectedItem = lastNode;
                 await System.Threading.Tasks.Task.Delay(100);
                 if (_isUnloaded || AppLifetime.IsShuttingDown)
@@ -1124,7 +1114,7 @@ public sealed partial class MainPage : Page
         {
             if (ViewModel.Images.Count == 0)
             {
-                System.Diagnostics.Debug.WriteLine("[MainPage] ImagesChanged -> clearing transient grid state for empty collection");
+                // System.Diagnostics.Debug.WriteLine("[MainPage] ImagesChanged -> clearing transient grid state for empty collection");
                 ClearGridViewSelection();
                 _pendingVisibleThumbnailLoads.Clear();
                 _realizedImageItems.Clear();
@@ -1230,7 +1220,7 @@ public sealed partial class MainPage : Page
 
         _pendingVisibleThumbnailLoads.Remove(imageInfo);
         _immediateVisibleThumbnailStartCount++;
-        System.Diagnostics.Debug.WriteLine($"[MainPage] Immediate thumbnail start reason={reason}, item={imageInfo.ImageName}, count={_immediateVisibleThumbnailStartCount}");
+        // System.Diagnostics.Debug.WriteLine($"[MainPage] Immediate thumbnail start reason={reason}, item={imageInfo.ImageName}, count={_immediateVisibleThumbnailStartCount}");
         _ = imageInfo.EnsureThumbnailAsync(ViewModel.ThumbnailSize);
     }
 
@@ -1384,7 +1374,7 @@ public sealed partial class MainPage : Page
             if (addedItem is ImageFileInfo imageInfo && _selectedImageState.Add(imageInfo))
             {
                 imageInfo.IsSelected = true;
-                System.Diagnostics.Debug.WriteLine($"[Selected] {imageInfo.ImageName}, Rating: {imageInfo.Rating}, Source: {imageInfo.RatingSource}, Dimensions: {imageInfo.Width}x{imageInfo.Height}, DisplaySize: {imageInfo.DisplayWidth:F0}x{imageInfo.DisplayHeight:F0}");
+                // System.Diagnostics.Debug.WriteLine($"[Selected] {imageInfo.ImageName}, Rating: {imageInfo.Rating}, Source: {imageInfo.RatingSource}, Dimensions: {imageInfo.Width}x{imageInfo.Height}, DisplaySize: {imageInfo.DisplayWidth:F0}x{imageInfo.DisplayHeight:F0}");
             }
         }
 
@@ -1575,28 +1565,28 @@ public sealed partial class MainPage : Page
 
     private void MainPage_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_PreviewKeyDown: 按键={e.Key}, _currentViewer={( _currentViewer == null ? "null" : "not null" )}, e.Handled初始值={e.Handled}");
+        // System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_PreviewKeyDown: 按键={e.Key}, _currentViewer={( _currentViewer == null ? "null" : "not null" )}, e.Handled初始值={e.Handled}");
         
         if (_currentViewer != null)
         {
-            System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_PreviewKeyDown: _currentViewer 存在，进入预览模式处理");
+            // System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_PreviewKeyDown: _currentViewer 存在，进入预览模式处理");
             
             if (e.Key == VirtualKey.Escape)
             {
-                System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_PreviewKeyDown: 处理了Escape键");
+                // System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_PreviewKeyDown: 处理了Escape键");
                 _currentViewer.PrepareCloseAnimation();
                 e.Handled = true;
             }
             else if (e.Key == VirtualKey.Left || e.Key == VirtualKey.Right ||
                      e.Key == VirtualKey.Up || e.Key == VirtualKey.Down)
             {
-                System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_PreviewKeyDown: 阻止了方向键 {e.Key}");
+                // System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_PreviewKeyDown: 阻止了方向键 {e.Key}");
                 e.Handled = true;
             }
             else if (e.Key >= VirtualKey.Number0 && e.Key <= VirtualKey.Number5)
             {
                 // 处理数字键评级，传递给 ImageViewerControl
-                System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_PreviewKeyDown: 处理数字键评级 {e.Key}");
+                // System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_PreviewKeyDown: 处理数字键评级 {e.Key}");
                 e.Handled = true;
                 
                 // 调用 ImageViewerControl 的 HandleRatingKey 方法
@@ -1604,37 +1594,37 @@ public sealed partial class MainPage : Page
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_PreviewKeyDown: 未处理的按键 {e.Key}");
+                // System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_PreviewKeyDown: 未处理的按键 {e.Key}");
             }
             
-            System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_PreviewKeyDown: 预览模式处理完成，e.Handled最终值={e.Handled}");
+            // System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_PreviewKeyDown: 预览模式处理完成，e.Handled最终值={e.Handled}");
         }
     }
 
     private void MainPage_KeyDown(object sender, KeyRoutedEventArgs e)
     {
-        System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_KeyDown: 按键={e.Key}, _currentViewer={( _currentViewer == null ? "null" : "not null" )}, e.Handled初始值={e.Handled}");
+        // System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_KeyDown: 按键={e.Key}, _currentViewer={( _currentViewer == null ? "null" : "not null" )}, e.Handled初始值={e.Handled}");
         
         if (_currentViewer != null)
         {
-            System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_KeyDown: _currentViewer 存在，进入预览模式处理");
+            // System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_KeyDown: _currentViewer 存在，进入预览模式处理");
             
             if (e.Key == VirtualKey.Escape)
             {
-                System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_KeyDown: 处理了Escape键");
+                // System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_KeyDown: 处理了Escape键");
                 _currentViewer.PrepareCloseAnimation();
                 e.Handled = true;
             }
             else if (e.Key == VirtualKey.Left || e.Key == VirtualKey.Right ||
                      e.Key == VirtualKey.Up || e.Key == VirtualKey.Down)
             {
-                System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_KeyDown: 阻止了方向键 {e.Key}");
+                // System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_KeyDown: 阻止了方向键 {e.Key}");
                 e.Handled = true;
             }
             else if (e.Key >= VirtualKey.Number0 && e.Key <= VirtualKey.Number5)
             {
                 // 处理数字键评级，传递给 ImageViewerControl
-                System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_KeyDown: 处理数字键评级 {e.Key}");
+                // System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_KeyDown: 处理数字键评级 {e.Key}");
                 e.Handled = true;
                 
                 // 调用 ImageViewerControl 的 HandleRatingKey 方法
@@ -1642,10 +1632,10 @@ public sealed partial class MainPage : Page
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_KeyDown: 未处理的按键 {e.Key}");
+                // System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_KeyDown: 未处理的按键 {e.Key}");
             }
             
-            System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_KeyDown: 预览模式处理完成，e.Handled最终值={e.Handled}");
+            // System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_KeyDown: 预览模式处理完成，e.Handled最终值={e.Handled}");
             return;
         }
 
@@ -2138,7 +2128,7 @@ public sealed partial class MainPage : Page
             return;
 
         if (!_isUserScrollInProgress)
-            System.Diagnostics.Debug.WriteLine("[MainPage] User scroll started");
+            // System.Diagnostics.Debug.WriteLine("[MainPage] User scroll started");
 
         _isUserScrollInProgress = true;
         HandleFolderDrawerScrollIntent(e.NextView.VerticalOffset, "view-changing");
@@ -2241,11 +2231,11 @@ public sealed partial class MainPage : Page
 
         if (_isProgrammaticScrollActive)
         {
-            System.Diagnostics.Debug.WriteLine("[MainPage] Programmatic scroll settled");
+            // System.Diagnostics.Debug.WriteLine("[MainPage] Programmatic scroll settled");
         }
         else if (_isUserScrollInProgress)
         {
-            System.Diagnostics.Debug.WriteLine("[MainPage] User scroll settled");
+            // System.Diagnostics.Debug.WriteLine("[MainPage] User scroll settled");
         }
 
         _isUserScrollInProgress = false;
@@ -2301,7 +2291,7 @@ public sealed partial class MainPage : Page
         if (_pendingVisibleThumbnailLoads.Count == 0)
             return;
 
-        System.Diagnostics.Debug.WriteLine($"[MainPage] QueueVisibleThumbnailLoad reason={reason}, count={_pendingVisibleThumbnailLoads.Count}");
+        // System.Diagnostics.Debug.WriteLine($"[MainPage] QueueVisibleThumbnailLoad reason={reason}, count={_pendingVisibleThumbnailLoads.Count}");
         _visibleThumbnailLoadTimer.Stop();
         _visibleThumbnailLoadTimer.Start();
     }
@@ -2312,7 +2302,7 @@ public sealed partial class MainPage : Page
             return;
 
         _pendingVisibleThumbnailLoads.Add(imageInfo);
-        System.Diagnostics.Debug.WriteLine($"[MainPage] QueueVisibleThumbnailLoad reason={reason}, item={imageInfo.ImageName}");
+        // System.Diagnostics.Debug.WriteLine($"[MainPage] QueueVisibleThumbnailLoad reason={reason}, item={imageInfo.ImageName}");
         _visibleThumbnailLoadTimer.Stop();
         _visibleThumbnailLoadTimer.Start();
     }
@@ -2334,7 +2324,7 @@ public sealed partial class MainPage : Page
 
         AttachImageGridScrollViewer();
 
-        System.Diagnostics.Debug.WriteLine($"[MainPage] ScrollIntoView reason={reason}, item={imageInfo.ImageName}");
+        // System.Diagnostics.Debug.WriteLine($"[MainPage] ScrollIntoView reason={reason}, item={imageInfo.ImageName}");
 
         _isProgrammaticScrollActive = true;
         try

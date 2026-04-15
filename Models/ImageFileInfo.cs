@@ -130,7 +130,7 @@ public class ImageFileInfo : INotifyPropertyChanged
                     }
                 }))
                 {
-                    System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Skip thumbnail enqueue for {ImageName}");
+                    // System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Skip thumbnail enqueue for {ImageName}");
                     return null;
                 }
 
@@ -164,7 +164,7 @@ public class ImageFileInfo : INotifyPropertyChanged
             cancellationToken);
         if (cachedThumbnail?.ImageSource != null)
         {
-            System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Thumbnail cache hit for {ImageName}, size={optimalSize}");
+            // System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Thumbnail cache hit for {ImageName}, size={optimalSize}");
             return cachedThumbnail.ImageSource;
         }
 
@@ -187,12 +187,12 @@ public class ImageFileInfo : INotifyPropertyChanged
                     forceFullDecode: false,
                     CreateDecodeResult(bitmap),
                     cancellationToken);
-                System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] System thumbnail image used for {ImageName}, size={optimalSize}");
+                // System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] System thumbnail image used for {ImageName}, size={optimalSize}");
                 return bitmap;
             }
             else if (thumbnail != null && thumbnail.Type != ThumbnailType.Image)
             {
-                System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Ignore system thumbnail {thumbnail.Type} for {ImageName}");
+                // System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Ignore system thumbnail {thumbnail.Type} for {ImageName}");
             }
         }
         catch (OperationCanceledException)
@@ -208,11 +208,11 @@ public class ImageFileInfo : INotifyPropertyChanged
         // local fallback for first-screen responsiveness, then retry the system API only as a last resort.
         try
         {
-            System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Fallback thumbnail decode start for {ImageName}, size={optimalSize}");
+            // System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Fallback thumbnail decode start for {ImageName}, size={optimalSize}");
             var imageSource = await thumbnailService.GetThumbnailByLongSideAsync(ImageFile, optimalSize, cancellationToken);
             if (imageSource != null)
             {
-                System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Fallback thumbnail decode used for {ImageName}, size={optimalSize}");
+                // System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Fallback thumbnail decode used for {ImageName}, size={optimalSize}");
                 return imageSource;
             }
         }
@@ -244,12 +244,12 @@ public class ImageFileInfo : INotifyPropertyChanged
                     forceFullDecode: false,
                     CreateDecodeResult(bitmap),
                     cancellationToken);
-                System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Retried system thumbnail image used for {ImageName}, size={optimalSize}");
+                // System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Retried system thumbnail image used for {ImageName}, size={optimalSize}");
                 return bitmap;
             }
             else if (thumbnail != null && thumbnail.Type != ThumbnailType.Image)
             {
-                System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Ignore retried system thumbnail {thumbnail.Type} for {ImageName}");
+                // System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Ignore retried system thumbnail {thumbnail.Type} for {ImageName}");
             }
         }
         catch (OperationCanceledException)
@@ -379,7 +379,7 @@ public class ImageFileInfo : INotifyPropertyChanged
                         _loadedThumbnailSize = size;
                         IsThumbnailLoading = false;
                         IsThumbnailFailed = result == null;
-                        System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Thumbnail commit for {ImageName}, size={size}, success={result != null}");
+                        // System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Thumbnail commit for {ImageName}, size={size}, success={result != null}");
                     }
                 }
                 else
@@ -401,11 +401,11 @@ public class ImageFileInfo : INotifyPropertyChanged
                             _loadedThumbnailSize = size;
                             IsThumbnailLoading = false;
                             IsThumbnailFailed = result == null;
-                            System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Thumbnail commit for {ImageName}, size={size}, success={result != null}");
+                            // System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Thumbnail commit for {ImageName}, size={size}, success={result != null}");
                         }
                     }))
                     {
-                        System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Skip thumbnail commit enqueue for {ImageName}");
+                        // System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Skip thumbnail commit enqueue for {ImageName}");
                         ClearThumbnailLoadingIfCurrent(localVersion, size);
                         return;
                     }
@@ -807,7 +807,7 @@ public class ImageFileInfo : INotifyPropertyChanged
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
             }))
             {
-                System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Skip PropertyChanged enqueue for {propertyName} on {ImageName}");
+                // System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Skip PropertyChanged enqueue for {propertyName} on {ImageName}");
                 return;
             }
         }

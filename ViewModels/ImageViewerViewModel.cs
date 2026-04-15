@@ -216,9 +216,9 @@ public partial class ImageViewerViewModel : ObservableRecipient
 
         try
         {
-            Debug.WriteLine($"[ImageViewerViewModel] 开始读取EXIF: {file.Name}");
+            // Debug.WriteLine($"[ImageViewerViewModel] 开始读取EXIF: {file.Name}");
             var exifData = await _exifService.GetExifDataAsync(file);
-            Debug.WriteLine($"[ImageViewerViewModel] EXIF读取完成");
+            // Debug.WriteLine($"[ImageViewerViewModel] EXIF读取完成");
 
             if (exifData.DateTaken.HasValue)
             {
@@ -229,7 +229,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
                 CaptureMonth = $"{exifData.DateTaken.Value:M月}";
                 CaptureDay = $"{exifData.DateTaken.Value:d日}";
                 CaptureTimeOfDay = $"{exifData.DateTaken.Value:HH:mm}";
-                Debug.WriteLine($"[ImageViewerViewModel] 日期时间: {FormattedDateTime}");
+                // Debug.WriteLine($"[ImageViewerViewModel] 日期时间: {FormattedDateTime}");
             }
             else
             {
@@ -238,7 +238,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
                 CaptureMonth = "----";
                 CaptureDay = "----";
                 CaptureTimeOfDay = "----";
-                Debug.WriteLine($"[ImageViewerViewModel] 日期时间: 未找到");
+                // Debug.WriteLine($"[ImageViewerViewModel] 日期时间: 未找到");
             }
 
             if (exifData.DpiX.HasValue && exifData.DpiY.HasValue)
@@ -268,7 +268,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
         finally
         {
             IsLoadingExif = false;
-            Debug.WriteLine($"[ImageViewerViewModel] IsLoadingExif = false");
+            // Debug.WriteLine($"[ImageViewerViewModel] IsLoadingExif = false");
         }
     }
 
@@ -281,13 +281,13 @@ public partial class ImageViewerViewModel : ObservableRecipient
         if (!string.IsNullOrEmpty(exifData.CameraManufacturer))
         {
             deviceInfoList.Add(exifData.CameraManufacturer);
-            Debug.WriteLine($"[ImageViewerViewModel] CameraManufacturer: {exifData.CameraManufacturer}");
+            // Debug.WriteLine($"[ImageViewerViewModel] CameraManufacturer: {exifData.CameraManufacturer}");
         }
 
         if (!string.IsNullOrEmpty(exifData.CameraModel))
         {
             deviceInfoList.Add(exifData.CameraModel);
-            Debug.WriteLine($"[ImageViewerViewModel] CameraModel: {exifData.CameraModel}");
+            // Debug.WriteLine($"[ImageViewerViewModel] CameraModel: {exifData.CameraModel}");
         }
 
         foreach (var info in deviceInfoList)
@@ -300,12 +300,12 @@ public partial class ImageViewerViewModel : ObservableRecipient
         if (!string.IsNullOrEmpty(exifData.LensModel))
         {
             LensModel = exifData.LensModel;
-            Debug.WriteLine($"[ImageViewerViewModel] LensModel: {exifData.LensModel}");
+            // Debug.WriteLine($"[ImageViewerViewModel] LensModel: {exifData.LensModel}");
         }
         else
         {
             LensModel = "----";
-            Debug.WriteLine($"[ImageViewerViewModel] LensModel: 未找到");
+            // Debug.WriteLine($"[ImageViewerViewModel] LensModel: 未找到");
         }
 
         if (exifData.FocalLength.HasValue)
@@ -319,45 +319,45 @@ public partial class ImageViewerViewModel : ObservableRecipient
             {
                 FocalLength = focalLength;
             }
-            Debug.WriteLine($"[ImageViewerViewModel] FocalLength: {FocalLength}");
+            // Debug.WriteLine($"[ImageViewerViewModel] FocalLength: {FocalLength}");
         }
         else
         {
             FocalLength = "----";
-            Debug.WriteLine($"[ImageViewerViewModel] FocalLength: 未找到");
+            // Debug.WriteLine($"[ImageViewerViewModel] FocalLength: 未找到");
         }
 
         if (exifData.ExposureTime.HasValue)
         {
             ExposureTime = exifData.GetFormattedExposureTime();
-            Debug.WriteLine($"[ImageViewerViewModel] ExposureTime: {ExposureTime}");
+            // Debug.WriteLine($"[ImageViewerViewModel] ExposureTime: {ExposureTime}");
         }
         else
         {
             ExposureTime = "----";
-            Debug.WriteLine($"[ImageViewerViewModel] ExposureTime: 未找到");
+            // Debug.WriteLine($"[ImageViewerViewModel] ExposureTime: 未找到");
         }
 
         if (exifData.FNumber.HasValue)
         {
             FNumber = exifData.GetFormattedFNumber();
-            Debug.WriteLine($"[ImageViewerViewModel] FNumber: {FNumber}");
+            // Debug.WriteLine($"[ImageViewerViewModel] FNumber: {FNumber}");
         }
         else
         {
             FNumber = "----";
-            Debug.WriteLine($"[ImageViewerViewModel] FNumber: 未找到");
+            // Debug.WriteLine($"[ImageViewerViewModel] FNumber: 未找到");
         }
 
         if (exifData.ISOSpeed.HasValue)
         {
             Iso = $"ISO {exifData.ISOSpeed.Value}";
-            Debug.WriteLine($"[ImageViewerViewModel] ISO: {Iso}");
+            // Debug.WriteLine($"[ImageViewerViewModel] ISO: {Iso}");
         }
         else
         {
             Iso = "----";
-            Debug.WriteLine($"[ImageViewerViewModel] ISO: 未找到");
+            // Debug.WriteLine($"[ImageViewerViewModel] ISO: 未找到");
         }
 
         if (exifData.ExposureProgram.HasValue)
@@ -412,7 +412,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
                 continue;
 
             var ext = System.IO.Path.GetExtension(file.ImageName).ToLowerInvariant();
-            System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] LoadFilePaths: 文件名={file.ImageName}, 扩展名={ext}");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] LoadFilePaths: 文件名={file.ImageName}, 扩展名={ext}");
             
             var fileFormat = ext switch
             {
@@ -444,7 +444,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
                 _ => new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Gray)
             };
             
-            System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] LoadFilePaths: 格式={fileFormat}, 背景Brush已创建");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] LoadFilePaths: 格式={fileFormat}, 背景Brush已创建");
 
             var filePathItem = new FilePathItem
             {
@@ -466,43 +466,43 @@ public partial class ImageViewerViewModel : ObservableRecipient
     [RelayCommand]
     private async Task SetRatingAsync(int rating)
     {
-        System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 开始执行");
-        System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: _currentImage={( _currentImage == null ? "null" : _currentImage.ImageName )}, newRatingStars={rating}");
+        // System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 开始执行");
+        // System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: _currentImage={( _currentImage == null ? "null" : _currentImage.ImageName )}, newRatingStars={rating}");
         
         if (_currentImage == null)
         {
-            System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: _currentImage 为 null，退出");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: _currentImage 为 null，退出");
             return;
         }
 
         var rawRating = StarsToRating(rating);
         
-        System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 更新 ViewModel.Rating 从 {Rating} 到 {rating} (stars), raw={rawRating}");
+        // System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 更新 ViewModel.Rating 从 {Rating} 到 {rating} (stars), raw={rawRating}");
         Rating = rating;
-        System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 更新 _currentImage.Rating 从 {_currentImage.Rating} 到 {rawRating}");
+        // System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 更新 _currentImage.Rating 从 {_currentImage.Rating} 到 {rawRating}");
         _currentImage.Rating = rawRating;
         
         if (_currentImage.ImageFile != null)
         {
-            System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 准备调用 RatingService.SetRatingAsync, 文件={_currentImage.ImageFile.Path}, rawRating={rawRating}");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 准备调用 RatingService.SetRatingAsync, 文件={_currentImage.ImageFile.Path}, rawRating={rawRating}");
             await _ratingService.SetRatingAsync(_currentImage.ImageFile, rawRating);
-            System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: RatingService.SetRatingAsync 完成");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: RatingService.SetRatingAsync 完成");
             
-            System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 更新 _currentImage.RatingSource 为 WinRT");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 更新 _currentImage.RatingSource 为 WinRT");
             _currentImage.RatingSource = Services.RatingSource.WinRT;
-            System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 更新 ViewModel.RatingSource 为 WinRT");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 更新 ViewModel.RatingSource 为 WinRT");
             RatingSource = Services.RatingSource.WinRT.ToString();
         }
         else
         {
-            System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: _currentImage.ImageFile 为 null，跳过 RatingService 调用");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: _currentImage.ImageFile 为 null，跳过 RatingService 调用");
         }
         
         // 触发评级更新事件，通知其他组件（如 MainViewModel）
         RatingUpdated?.Invoke(this, (_currentImage, rawRating));
-        System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 已触发 RatingUpdated 事件, rawRating={rawRating}");
+        // System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 已触发 RatingUpdated 事件, rawRating={rawRating}");
         
-        System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 执行完成");
+        // System.Diagnostics.Debug.WriteLine($"[ImageViewerViewModel] SetRatingAsync: 执行完成");
     }
 
     public async Task OpenInExplorerAsync(string path)

@@ -232,7 +232,7 @@ public sealed partial class ImageViewerControl : UserControl
     {
         if (_hasPrepared)
         {
-            System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareContent: 已准备过，跳过重复调用");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareContent: 已准备过，跳过重复调用");
             return;
         }
 
@@ -242,7 +242,7 @@ public sealed partial class ImageViewerControl : UserControl
         _isViewerLayerReady = false;
         _hasPrepared = true;
 
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareContent: 已设置动画层缩略图, 文件名={imageFileInfo.ImageName}");
+        // System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareContent: 已设置动画层缩略图, 文件名={imageFileInfo.ImageName}");
 
         AnimationImage.Source = imageFileInfo.Thumbnail;
 
@@ -251,7 +251,7 @@ public sealed partial class ImageViewerControl : UserControl
 
     public Task PrepareForAnimationAsync()
     {
-        System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareForAnimationAsync: 完成");
+        // System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareForAnimationAsync: 完成");
         return Task.CompletedTask;
     }
 
@@ -263,7 +263,7 @@ public sealed partial class ImageViewerControl : UserControl
             var screenWidth = displayInfo.ScreenWidthInRawPixels;
             var screenHeight = displayInfo.ScreenHeightInRawPixels;
             var monitorLongSide = (uint)Math.Max(screenWidth, screenHeight);
-            System.Diagnostics.Debug.WriteLine($"[ImageViewer] GetMonitorLongSide: 显示器分辨率={screenWidth}x{screenHeight}, 最长边={monitorLongSide}");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewer] GetMonitorLongSide: 显示器分辨率={screenWidth}x{screenHeight}, 最长边={monitorLongSide}");
             return monitorLongSide;
         }
         catch (Exception ex)
@@ -282,14 +282,14 @@ public sealed partial class ImageViewerControl : UserControl
         {
             var containerLongSide = Math.Max(ImageContainer.ActualWidth, ImageContainer.ActualHeight);
             var targetSize = (uint)(containerLongSide * scaleFactor);
-            System.Diagnostics.Debug.WriteLine($"[ImageViewer] GetTargetDecodeLongSide: 视窗尺寸={ImageContainer.ActualWidth}x{ImageContainer.ActualHeight}, 系数={scaleFactor}, 解码尺寸={targetSize}");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewer] GetTargetDecodeLongSide: 视窗尺寸={ImageContainer.ActualWidth}x{ImageContainer.ActualHeight}, 系数={scaleFactor}, 解码尺寸={targetSize}");
             return targetSize;
         }
         else
         {
             var fallbackSize = 1080u;
             var targetSize = (uint)(fallbackSize * scaleFactor);
-            System.Diagnostics.Debug.WriteLine($"[ImageViewer] GetTargetDecodeLongSide: 视窗未布局，使用兜底尺寸={fallbackSize}, 系数={scaleFactor}, 解码尺寸={targetSize}");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewer] GetTargetDecodeLongSide: 视窗未布局，使用兜底尺寸={fallbackSize}, 系数={scaleFactor}, 解码尺寸={targetSize}");
             return targetSize;
         }
     }
@@ -298,13 +298,13 @@ public sealed partial class ImageViewerControl : UserControl
     {
         if (_hasShown)
         {
-            System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 已显示过，跳过重复调用");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 已显示过，跳过重复调用");
             return;
         }
 
         if (_isClosing)
         {
-            System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 控件正在关闭，跳过");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 控件正在关闭，跳过");
             return;
         }
 
@@ -339,15 +339,15 @@ public sealed partial class ImageViewerControl : UserControl
 
             if (!_isLoaded || _isClosing)
             {
-                System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 动画后控件已关闭，停止切换查看层");
+                // System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 动画后控件已关闭，停止切换查看层");
                 return;
             }
 
-            System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 动画完成");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 动画完成");
 
             // 获取焦点，确保键盘事件能够被正确处理
             this.Focus(FocusState.Programmatic);
-            System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 已设置焦点");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewer] ShowAfterAnimationAsync: 已设置焦点");
 
             _hasShown = true;
             await SwitchToViewerLayerAsync();
@@ -362,7 +362,7 @@ public sealed partial class ImageViewerControl : UserControl
     {
         if (_isViewerLayerReady || _isClosing)
         {
-            System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 已切换过，跳过");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 已切换过，跳过");
             return;
         }
 
@@ -375,7 +375,7 @@ public sealed partial class ImageViewerControl : UserControl
 
                 if (!_isLoaded || _isClosing)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 等待布局时控件已关闭，停止");
+                    // System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 等待布局时控件已关闭，停止");
                     return;
                 }
 
@@ -385,17 +385,17 @@ public sealed partial class ImageViewerControl : UserControl
 
             if (ImageContainer.ActualWidth <= 0 || ImageContainer.ActualHeight <= 0)
             {
-                System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 布局未完成，使用兜底尺寸继续");
+                // System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 布局未完成，使用兜底尺寸继续");
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 布局完成, ContainerWidth={ImageContainer.ActualWidth}, ContainerHeight={ImageContainer.ActualHeight}");
+                // System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 布局完成, ContainerWidth={ImageContainer.ActualWidth}, ContainerHeight={ImageContainer.ActualHeight}");
             }
 
             _isViewerLayerReady = true;
 
             _targetDecodeLongSide = GetTargetDecodeLongSide();
-            System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 解码最长边={_targetDecodeLongSide}");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 解码最长边={_targetDecodeLongSide}");
 
             StopPhysics();
             MainImage.Source = _imageFileInfo?.Thumbnail;
@@ -405,12 +405,12 @@ public sealed partial class ImageViewerControl : UserControl
                 StartPhysics();
             }
 
-            System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 使用缩略图");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 使用缩略图");
 
             AnimationImage.Opacity = 0;
             ImageContainer.Opacity = 1;
 
-            System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 已切换到查看层");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewer] SwitchToViewerLayerAsync: 已切换到查看层");
 
             ResetViewer();
 
@@ -481,7 +481,7 @@ public sealed partial class ImageViewerControl : UserControl
                     {
                         StopPhysics();
                         MainImage.Source = highResResult.ImageSource;
-                        System.Diagnostics.Debug.WriteLine($"[ImageViewer] WaitForHighResAndReplaceAsync: 高清图渐进式替换完成");
+                        // System.Diagnostics.Debug.WriteLine($"[ImageViewer] WaitForHighResAndReplaceAsync: 高清图渐进式替换完成");
                         _isLoadingHighRes = false;
                         if (!_isClosing)
                         {
@@ -504,7 +504,7 @@ public sealed partial class ImageViewerControl : UserControl
                 if (!enqueued)
                 {
                     _isLoadingHighRes = false;
-                    System.Diagnostics.Debug.WriteLine($"[ImageViewer] WaitForHighResAndReplaceAsync: DispatcherQueue 已关闭，丢弃高清结果");
+                    // System.Diagnostics.Debug.WriteLine($"[ImageViewer] WaitForHighResAndReplaceAsync: DispatcherQueue 已关闭，丢弃高清结果");
                 }
             }
             else
@@ -529,14 +529,14 @@ public sealed partial class ImageViewerControl : UserControl
             var imageFile = _imageFileInfo.ImageFile;
             var targetDecodeLongSide = _targetDecodeLongSide;
             var forceFullDecodeRaw = IsRawFile(imageFile.FileType) && App.GetService<ISettingsService>().AlwaysDecodeRaw;
-            System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 开始加载高清图, 解码最长边={targetDecodeLongSide}, forceFullDecodeRaw={forceFullDecodeRaw}, version={loadVersion}");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 开始加载高清图, 解码最长边={targetDecodeLongSide}, forceFullDecodeRaw={forceFullDecodeRaw}, version={loadVersion}");
 
             var thumbnailService = App.GetService<IThumbnailService>();
             var decodeResult = await thumbnailService.GetThumbnailWithSizeAsync(imageFile, targetDecodeLongSide, forceFullDecodeRaw, cancellationToken);
 
             if (decodeResult?.ImageSource != null && loadVersion == _highResLoadVersion && !cancellationToken.IsCancellationRequested)
             {
-                System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 高清图加载完成, 实际解码尺寸={decodeResult.Width}x{decodeResult.Height}");
+                // System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadHighResolutionImageAsync: 高清图加载完成, 实际解码尺寸={decodeResult.Width}x{decodeResult.Height}");
                 return decodeResult;
             }
             else
@@ -608,37 +608,37 @@ public sealed partial class ImageViewerControl : UserControl
 
     public void HandleRatingKey(Windows.System.VirtualKey key)
     {
-        System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] HandleRatingKey: 处理数字键 {key}");
+        // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] HandleRatingKey: 处理数字键 {key}");
         
         if (key >= Windows.System.VirtualKey.Number1 && key <= Windows.System.VirtualKey.Number5)
         {
             // 处理数字键评级
             int rating = (int)(key - Windows.System.VirtualKey.Number1 + 1);
-            System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] HandleRatingKey: 数字键评级, rating={rating}");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] HandleRatingKey: 数字键评级, rating={rating}");
             
             if (ViewModel != null)
             {
                 _ = ViewModel.SetRatingCommand.ExecuteAsync(rating);
-                System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] HandleRatingKey: 执行了评级命令");
+                // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] HandleRatingKey: 执行了评级命令");
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] HandleRatingKey: ViewModel 为 null，无法执行评级");
+                // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] HandleRatingKey: ViewModel 为 null，无法执行评级");
             }
         }
         else if (key == Windows.System.VirtualKey.Number0)
         {
             // 数字0清除评级
-            System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] HandleRatingKey: 数字键清除评级");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] HandleRatingKey: 数字键清除评级");
             
             if (ViewModel != null)
             {
                 _ = ViewModel.SetRatingCommand.ExecuteAsync(-1);
-                System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] HandleRatingKey: 执行了清除评级命令");
+                // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] HandleRatingKey: 执行了清除评级命令");
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] HandleRatingKey: ViewModel 为 null，无法清除评级");
+                // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] HandleRatingKey: ViewModel 为 null，无法清除评级");
             }
         }
     }
@@ -701,7 +701,7 @@ public sealed partial class ImageViewerControl : UserControl
 
     private void BackgroundOverlay_Tapped(object sender, TappedRoutedEventArgs e)
     {
-        System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] BackgroundOverlay_Tapped: 被点击，准备关闭");
+        // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] BackgroundOverlay_Tapped: 被点击，准备关闭");
         PrepareCloseAnimation();
     }
 
@@ -710,7 +710,7 @@ public sealed partial class ImageViewerControl : UserControl
         e.Handled = true;
         // 确保控件保持焦点，这样ESC键才能正常工作
         this.Focus(FocusState.Programmatic);
-        System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageContainer_Tapped: 重新设置焦点");
+        // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageContainer_Tapped: 重新设置焦点");
     }
 
     private void InfoPanel_Tapped(object sender, TappedRoutedEventArgs e)
@@ -718,7 +718,7 @@ public sealed partial class ImageViewerControl : UserControl
         e.Handled = true;
         // 确保控件保持焦点，这样ESC键才能正常工作
         this.Focus(FocusState.Programmatic);
-        System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] InfoPanel_Tapped: 重新设置焦点");
+        // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] InfoPanel_Tapped: 重新设置焦点");
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
@@ -746,51 +746,51 @@ public sealed partial class ImageViewerControl : UserControl
     {
         try
         {
-            System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 按键={e.Key}, e.Handled={e.Handled}");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 按键={e.Key}, e.Handled={e.Handled}");
             
             if (e.Key == Windows.System.VirtualKey.Escape)
             {
                 PrepareCloseAnimation();
                 e.Handled = true;
-                System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 处理了Escape键");
+                // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 处理了Escape键");
             }
             else if (e.Key == Windows.System.VirtualKey.Left || e.Key == Windows.System.VirtualKey.Right ||
                      e.Key == Windows.System.VirtualKey.Up || e.Key == Windows.System.VirtualKey.Down)
             {
                 e.Handled = true;
-                System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 阻止了方向键 {e.Key}");
+                // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 阻止了方向键 {e.Key}");
             }
             else if (e.Key >= Windows.System.VirtualKey.Number1 && e.Key <= Windows.System.VirtualKey.Number5)
             {
                 // 处理数字键评级
                 uint rating = (uint)(e.Key - Windows.System.VirtualKey.Number1 + 1);
-                System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 数字键评级, rating={rating}");
+                // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 数字键评级, rating={rating}");
                 
                 if (ViewModel != null)
                 {
                     _ = ViewModel.SetRatingCommand.ExecuteAsync(rating);
                     e.Handled = true;
-                    System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 执行了评级命令");
+                    // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 执行了评级命令");
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: ViewModel 为 null，无法执行评级");
+                    // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: ViewModel 为 null，无法执行评级");
                 }
             }
             else if (e.Key == Windows.System.VirtualKey.Number0)
             {
                 // 数字0清除评级
-                System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 数字键清除评级");
+                // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 数字键清除评级");
                 
                 if (ViewModel != null)
                 {
                     _ = ViewModel.SetRatingCommand.ExecuteAsync(0);
                     e.Handled = true;
-                    System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 执行了清除评级命令");
+                    // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 执行了清除评级命令");
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: ViewModel 为 null，无法清除评级");
+                    // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: ViewModel 为 null，无法清除评级");
                 }
             }
             base.OnKeyDown(e);
@@ -1373,17 +1373,17 @@ public sealed partial class ImageViewerControl : UserControl
     {
         try
         {
-            System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged: 触发事件");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged: 触发事件");
             
             if (ViewModel == null)
             {
-                System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged: ViewModel 为 null，退出");
+                // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged: ViewModel 为 null，退出");
                 return;
             }
             
             double senderValue = sender.Value;
             int viewModelRating = ViewModel.Rating;
-            System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged: sender.Value={senderValue}, ViewModel.Rating={viewModelRating}");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged: sender.Value={senderValue}, ViewModel.Rating={viewModelRating}");
             
             int newRating;
             if (senderValue < 0)
@@ -1395,11 +1395,11 @@ public sealed partial class ImageViewerControl : UserControl
                 newRating = (int)Math.Round(senderValue, MidpointRounding.AwayFromZero);
                 newRating = Math.Clamp(newRating, 0, 5);
             }
-            System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged: 准备执行 SetRatingCommand, newRating={newRating}");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged: 准备执行 SetRatingCommand, newRating={newRating}");
             
             // 无论值是否变化都执行命令，确保评级操作能够成功
             _ = ViewModel.SetRatingCommand.ExecuteAsync(newRating);
-            System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged: 执行了 SetRatingCommand");
+            // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] ImageRatingControl_ValueChanged: 执行了 SetRatingCommand");
         }
         catch (Exception ex)
         {

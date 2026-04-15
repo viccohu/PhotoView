@@ -20,7 +20,7 @@ namespace PhotoView.Views;
 public sealed partial class CollectPage : Page
 {
     private const double LoadDrawerExpandedWidth = 292;
-    private const double LoadDrawerCollapsedWidth = 30;
+    private const double LoadDrawerCollapsedWidth = 25;
     private const int VisibleThumbnailStartBudgetPerTick = 16;
     private const int VisibleThumbnailPrefetchItemCount = 12;
     private readonly DispatcherTimer _visibleThumbnailLoadTimer;

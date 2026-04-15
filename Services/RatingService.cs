@@ -76,20 +76,20 @@ public class RatingService
 
     public async Task SetRatingAsync(StorageFile file, uint rating)
     {
-        System.Diagnostics.Debug.WriteLine($"[RatingService] SetRatingAsync: 开始, 文件={file.Path}, 扩展名={file.FileType}, rating={rating}");
+        // System.Diagnostics.Debug.WriteLine($"[RatingService] SetRatingAsync: 开始, 文件={file.Path}, 扩展名={file.FileType}, rating={rating}");
         await _concurrencyLimiter.WaitAsync();
         try
         {
             if (IsWinRTRatingSupported(file.FileType))
             {
-                System.Diagnostics.Debug.WriteLine($"[RatingService] SetRatingAsync: 支持WinRT评级, 尝试写入");
+                // System.Diagnostics.Debug.WriteLine($"[RatingService] SetRatingAsync: 支持WinRT评级, 尝试写入");
                 try
                 {
                     var properties = await file.Properties.GetImagePropertiesAsync();
-                    System.Diagnostics.Debug.WriteLine($"[RatingService] SetRatingAsync: 读取旧rating={properties.Rating}, 准备写入新rating={rating}");
+                    // System.Diagnostics.Debug.WriteLine($"[RatingService] SetRatingAsync: 读取旧rating={properties.Rating}, 准备写入新rating={rating}");
                     properties.Rating = rating;
                     await properties.SavePropertiesAsync();
-                    System.Diagnostics.Debug.WriteLine($"[RatingService] SetRatingAsync: WinRT写入成功");
+                    // System.Diagnostics.Debug.WriteLine($"[RatingService] SetRatingAsync: WinRT写入成功");
                 }
                 catch (Exception ex)
                 {
@@ -98,17 +98,17 @@ public class RatingService
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine($"[RatingService] SetRatingAsync: 不支持WinRT评级, 仅写入缓存");
+                // System.Diagnostics.Debug.WriteLine($"[RatingService] SetRatingAsync: 不支持WinRT评级, 仅写入缓存");
             }
 
-            System.Diagnostics.Debug.WriteLine($"[RatingService] SetRatingAsync: 准备写入缓存");
+            // System.Diagnostics.Debug.WriteLine($"[RatingService] SetRatingAsync: 准备写入缓存");
             await _cacheService.SetRatingAsync(file.Path, rating);
-            System.Diagnostics.Debug.WriteLine($"[RatingService] SetRatingAsync: 缓存写入成功");
+            // System.Diagnostics.Debug.WriteLine($"[RatingService] SetRatingAsync: 缓存写入成功");
         }
         finally
         {
             _concurrencyLimiter.Release();
-            System.Diagnostics.Debug.WriteLine($"[RatingService] SetRatingAsync: 完成");
+            // System.Diagnostics.Debug.WriteLine($"[RatingService] SetRatingAsync: 完成");
         }
     }
 }

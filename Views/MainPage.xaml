@@ -452,15 +452,15 @@
                         <TranslateTransform x:Name="FolderDrawerContentTransform" Y="-8"/>
                     </Grid.RenderTransform>
                     <GridView
-                    x:Name="SubFolderGridView"
-                    ItemsSource="{x:Bind ViewModel.CurrentSubFolders}"
-                    SelectionMode="Single"
-                    DoubleTapped="SubFolderGridView_DoubleTapped"
-                    Visibility="Visible"
-                    MaxHeight="150"
-                    Opacity="1"
-                    Padding="0"
-                    Margin="0">
+                        x:Name="SubFolderGridView"
+                        ItemsSource="{x:Bind ViewModel.CurrentSubFolders}"
+                        SelectionMode="Single"
+                        DoubleTapped="SubFolderGridView_DoubleTapped"
+                        Visibility="Visible"
+                        MaxHeight="150"
+                        Opacity="1"
+                        Padding="0"
+                        Margin="0">
                     <GridView.ItemContainerTransitions>
                         <TransitionCollection/>
                     </GridView.ItemContainerTransitions>
