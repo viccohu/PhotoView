@@ -77,6 +77,11 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     [ObservableProperty]
     private ImageFileInfo? _selectedImage;
 
+    partial void OnSelectedImageChanged(ImageFileInfo? value)
+    {
+        DebugSelection($"SelectedImage changed to {GetDebugName(value)}");
+    }
+
     [ObservableProperty]
     private ThumbnailSize _thumbnailSize = ThumbnailSize.Medium;
 
@@ -596,6 +601,22 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     private static string NormalizePath(string path)
     {
         return path.Trim().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+    }
+
+    private static string GetDebugName(ImageFileInfo? imageInfo)
+    {
+        if (imageInfo == null)
+            return "<null>";
+
+        return string.IsNullOrWhiteSpace(imageInfo.ImageFile?.Name)
+            ? imageInfo.ImageName
+            : imageInfo.ImageFile.Name;
+    }
+
+    [System.Diagnostics.Conditional("DEBUG")]
+    private static void DebugSelection(string message)
+    {
+        System.Diagnostics.Debug.WriteLine($"[CollectSelection] {DateTime.Now:HH:mm:ss.fff} {message}");
     }
 
     private sealed class SourceLoadState

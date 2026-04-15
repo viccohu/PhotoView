@@ -221,29 +221,51 @@ public class ThumbnailService : IThumbnailService
 
     public async Task<DecodeResult?> GetThumbnailWithSizeAsync(StorageFile file, uint longSidePixels, bool forceFullDecode, CancellationToken cancellationToken)
     {
+        DebugDecode($"GetWithSize begin file={file.Name} longSide={longSidePixels} forceFullDecode={forceFullDecode}");
         var key = IsCacheEligible(longSidePixels)
             ? await TryCreateCacheKeyAsync(file, longSidePixels, forceFullDecode, cancellationToken)
             : (ThumbnailCacheKey?)null;
         if (key.HasValue && TryGetCachedThumbnail(key.Value, out var cachedResult))
+        {
+            DebugDecode($"GetWithSize cache hit before gate file={file.Name} result={cachedResult.Width}x{cachedResult.Height}");
             return cachedResult;
+        }
 
         var gate = _decodeGate;
+        DebugDecode($"GetWithSize wait gate file={file.Name} longSide={longSidePixels}");
         await gate.WaitAsync(cancellationToken);
         try
         {
             if (key.HasValue && TryGetCachedThumbnail(key.Value, out cachedResult))
+            {
+                DebugDecode($"GetWithSize cache hit after gate file={file.Name} result={cachedResult.Width}x{cachedResult.Height}");
                 return cachedResult;
+            }
 
+            DebugDecode($"GetWithSize decode call file={file.Name} longSide={longSidePixels} forceFullDecode={forceFullDecode}");
             var result = await DecodeThumbnailAsync(file, longSidePixels, forceFullDecode, cancellationToken);
+            DebugDecode($"GetWithSize decode return file={file.Name} result={(result?.ImageSource != null ? $"{result.Width}x{result.Height}" : "null")}");
             if (key.HasValue)
             {
                 StoreCachedThumbnail(key.Value, result);
+                DebugDecode($"GetWithSize stored cache file={file.Name} hasResult={result?.ImageSource != null}");
             }
             return result;
+        }
+        catch (OperationCanceledException)
+        {
+            DebugDecode($"GetWithSize canceled file={file.Name} longSide={longSidePixels} forceFullDecode={forceFullDecode}");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            DebugDecode($"GetWithSize exception file={file.Name} longSide={longSidePixels} forceFullDecode={forceFullDecode} error={ex}");
+            throw;
         }
         finally
         {
             gate.Release();
+            DebugDecode($"GetWithSize release gate file={file.Name} longSide={longSidePixels}");
         }
     }
 
@@ -681,17 +703,23 @@ public class ThumbnailService : IThumbnailService
         CancellationToken cancellationToken)
     {
         var extension = file.FileType.ToLowerInvariant();
+        DebugDecode($"Decode begin file={file.Name} longSide={longSidePixels} forceRaw={forceFullDecodeRaw} ext={extension}");
         
         if (IsRawFile(extension) && !forceFullDecodeRaw)
         {
+            DebugDecode($"Decode try RAW embedded preview file={file.Name} longSide={longSidePixels}");
             var previewResult = await TryGetRawEmbeddedPreviewAsync(file, longSidePixels, cancellationToken);
             if (previewResult != null)
             {
+                DebugDecode($"Decode RAW embedded preview hit file={file.Name} result={previewResult.Width}x{previewResult.Height}");
                 return previewResult;
             }
+            DebugDecode($"Decode RAW embedded preview miss file={file.Name}");
         }
         
+        DebugDecode($"Decode open stream file={file.Name}");
         using var stream = await file.OpenReadAsync().AsTask(cancellationToken);
+        DebugDecode($"Decode create decoder file={file.Name}");
         var decoder = await BitmapDecoder.CreateAsync(stream).AsTask(cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -699,6 +727,7 @@ public class ThumbnailService : IThumbnailService
         var decodeLongSidePixels = sourceLongSide > 0
             ? Math.Min(longSidePixels, sourceLongSide)
             : longSidePixels;
+        DebugDecode($"Decode source file={file.Name} source={decoder.PixelWidth}x{decoder.PixelHeight} decodeLongSide={decodeLongSidePixels}");
 
         uint scaledWidth, scaledHeight;
         if (decoder.PixelWidth >= decoder.PixelHeight)
@@ -721,6 +750,7 @@ public class ThumbnailService : IThumbnailService
             InterpolationMode = BitmapInterpolationMode.Fant
         };
 
+        DebugDecode($"Decode get software bitmap file={file.Name} scaled={scaledWidth}x{scaledHeight}");
         var softwareBitmap = await decoder.GetSoftwareBitmapAsync(
             BitmapPixelFormat.Bgra8,
             BitmapAlphaMode.Premultiplied,
@@ -729,7 +759,9 @@ public class ThumbnailService : IThumbnailService
             ColorManagementMode.ColorManageToSRgb).AsTask(cancellationToken);
 
         cancellationToken.ThrowIfCancellationRequested();
+        DebugDecode($"Decode create image source file={file.Name} scaled={scaledWidth}x{scaledHeight}");
         var imageSource = await CreateSoftwareBitmapSourceAsync(softwareBitmap, cancellationToken);
+        DebugDecode($"Decode complete file={file.Name} scaled={scaledWidth}x{scaledHeight} hasSource={imageSource != null}");
 
         return imageSource != null ? new DecodeResult(scaledWidth, scaledHeight, imageSource) : null;
     }
@@ -778,5 +810,11 @@ public class ThumbnailService : IThumbnailService
         }
 
         return await tcs.Task;
+    }
+
+    [System.Diagnostics.Conditional("DEBUG")]
+    private static void DebugDecode(string message)
+    {
+        System.Diagnostics.Debug.WriteLine($"[ThumbnailDecode] {DateTime.Now:HH:mm:ss.fff} {message}");
     }
 }

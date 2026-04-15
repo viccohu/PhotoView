@@ -364,7 +364,7 @@
                     x:Name="PreviewThumbnailGridView"
                     ItemsSource="{x:Bind ViewModel.Images}"
                     SelectionMode="Extended"
-                    SelectedItem="{x:Bind ViewModel.SelectedImage, Mode=TwoWay}"
+                    SelectedItem="{x:Bind ViewModel.SelectedImage, Mode=OneWay}"
                     SelectionChanged="PreviewThumbnailGridView_SelectionChanged"
                     ContainerContentChanging="PreviewThumbnailGridView_ContainerContentChanging"
                     ScrollViewer.HorizontalScrollBarVisibility="Auto"

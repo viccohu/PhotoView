@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Media;
 using PhotoView.Contracts.Services;
 using PhotoView.Models;
 using System;
+using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -20,6 +21,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
     private const int LayoutReadyRetryCount = 30;
     private const int FitImageLoadTimeoutSeconds = 30;
     private const int MaxFitImageLoadRetries = 3;
+    private const uint PlaceholderMetadataLongSide = 200;
 
     private ImageFileInfo? _imageFileInfo;
     private CancellationTokenSource? _loadCts;
@@ -67,7 +69,18 @@ public sealed partial class PreviewImageCanvasControl : UserControl
             if (ReferenceEquals(_imageFileInfo, value))
                 return;
 
+            DebugPreview($"CurrentImage change old={GetDebugName(_imageFileInfo)} new={GetDebugName(value)}");
+            if (_imageFileInfo != null)
+            {
+                _imageFileInfo.PropertyChanged -= ImageFileInfo_PropertyChanged;
+            }
+
             _imageFileInfo = value;
+            if (_imageFileInfo != null)
+            {
+                _imageFileInfo.PropertyChanged += ImageFileInfo_PropertyChanged;
+            }
+
             _ = LoadImageAsync(value);
         }
     }
@@ -119,6 +132,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
     private void PreviewImageCanvasControl_Loaded(object sender, RoutedEventArgs e)
     {
         _isLoaded = true;
+        DebugPreview($"Loaded image={GetDebugName(_imageFileInfo)} size={ImageContainer.ActualWidth:0}x{ImageContainer.ActualHeight:0}");
         if (_imageFileInfo != null)
         {
             _reloadImageOnLoaded = false;
@@ -131,6 +145,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
 
     private void PreviewImageCanvasControl_Unloaded(object sender, RoutedEventArgs e)
     {
+        DebugPreview($"Unloaded image={GetDebugName(_imageFileInfo)} loadVersion={_loadVersion}");
         _isLoaded = false;
         _reloadImageOnLoaded = _imageFileInfo != null;
         _isDragging = false;
@@ -144,11 +159,35 @@ public sealed partial class PreviewImageCanvasControl : UserControl
         CompositionTarget.Rendering -= OnRendering;
     }
 
+    private void ImageFileInfo_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is not (nameof(ImageFileInfo.Width) or nameof(ImageFileInfo.Height)) ||
+            sender is not ImageFileInfo imageInfo ||
+            !ReferenceEquals(_imageFileInfo, imageInfo) ||
+            !_isLoaded ||
+            _isLoadingHighRes ||
+            _isOriginalImageLoaded)
+        {
+            return;
+        }
+
+        var targetLongSide = GetTargetDecodeLongSide();
+        if (targetLongSide <= _activeDecodeLongSide + 32)
+        {
+            DebugPreview($"Metadata changed but no reload needed image={GetDebugName(imageInfo)} targetLongSide={targetLongSide} activeLongSide={_activeDecodeLongSide}");
+            return;
+        }
+
+        DebugPreview($"Metadata changed, reload fit image={GetDebugName(imageInfo)} width={imageInfo.Width} height={imageInfo.Height} targetLongSide={targetLongSide} activeLongSide={_activeDecodeLongSide}");
+        _ = LoadImageAsync(imageInfo);
+    }
+
     private async Task LoadImageAsync(ImageFileInfo? imageFileInfo)
     {
         _loadVersion++;
         _originalImageLoadVersion++;
         _fitImageLoadRetryCount = 0;
+        DebugPreview($"LoadImage start image={GetDebugName(imageFileInfo)} version={_loadVersion} isLoaded={_isLoaded} thumb={(imageFileInfo?.Thumbnail != null)}");
         _loadCts?.Cancel();
         _originalImageLoadCts?.Cancel();
         _loadCts = null;
@@ -157,6 +196,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
 
         if (imageFileInfo == null)
         {
+            DebugPreview("LoadImage empty image");
             MainImage.Source = null;
             EmptyText.Visibility = Visibility.Visible;
             ZoomPercentChanged?.Invoke(this, 100d);
@@ -166,6 +206,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
         EmptyText.Visibility = Visibility.Collapsed;
         if (!_isLoaded)
         {
+            DebugPreview($"LoadImage deferred because control is not loaded image={GetDebugName(imageFileInfo)}");
             if (imageFileInfo.Thumbnail != null)
             {
                 MainImage.Source = imageFileInfo.Thumbnail;
@@ -192,6 +233,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
         var cts = new CancellationTokenSource();
         cts.CancelAfter(TimeSpan.FromSeconds(FitImageLoadTimeoutSeconds));
         _loadCts = cts;
+        DebugPreview($"Fit load begin image={GetDebugName(imageFileInfo)} version={localVersion} retry={_fitImageLoadRetryCount}");
 
         try
         {
@@ -202,11 +244,13 @@ public sealed partial class PreviewImageCanvasControl : UserControl
                 cts.IsCancellationRequested ||
                 !ReferenceEquals(_imageFileInfo, imageFileInfo))
             {
+                DebugPreview($"Fit load aborted before target image={GetDebugName(imageFileInfo)} local={localVersion} current={_loadVersion} loaded={_isLoaded} canceled={cts.IsCancellationRequested} same={ReferenceEquals(_imageFileInfo, imageFileInfo)}");
                 return;
             }
 
             var targetLongSide = GetTargetDecodeLongSide();
             var forceFullDecodeRaw = IsRawFile(imageFileInfo.FileType) && App.GetService<ISettingsService>().AlwaysDecodeRaw;
+            DebugPreview($"Fit target image={GetDebugName(imageFileInfo)} targetLongSide={targetLongSide} viewport={ImageContainer.ActualWidth:0}x{ImageContainer.ActualHeight:0} raster={XamlRoot?.RasterizationScale ?? 1d:0.##} originalLongSide={GetOriginalLongSide()} forceRaw={forceFullDecodeRaw}");
 
             var cachedResult = await thumbnailService.TryGetCachedThumbnailAsync(
                 imageFileInfo.ImageFile,
@@ -216,16 +260,19 @@ public sealed partial class PreviewImageCanvasControl : UserControl
 
             if (cachedResult?.ImageSource != null)
             {
+                DebugPreview($"Fit cache hit image={GetDebugName(imageFileInfo)} result={cachedResult.Width}x{cachedResult.Height}");
                 ApplyLoadedImageResult(imageFileInfo, cachedResult, localVersion, cts);
                 return;
             }
 
             if (imageFileInfo.Thumbnail != null)
             {
+                DebugPreview($"Fit no cache, keep thumbnail while decoding image={GetDebugName(imageFileInfo)}");
                 MainImage.Source = imageFileInfo.Thumbnail;
             }
 
             _isLoadingHighRes = true;
+            DebugPreview($"Fit decode start image={GetDebugName(imageFileInfo)} targetLongSide={targetLongSide}");
             var result = await thumbnailService.GetThumbnailWithSizeAsync(
                 imageFileInfo.ImageFile,
                 targetLongSide,
@@ -237,25 +284,29 @@ public sealed partial class PreviewImageCanvasControl : UserControl
                 cts.IsCancellationRequested ||
                 !ReferenceEquals(_imageFileInfo, imageFileInfo))
             {
+                DebugPreview($"Fit decode result ignored image={GetDebugName(imageFileInfo)} local={localVersion} current={_loadVersion} loaded={_isLoaded} canceled={cts.IsCancellationRequested} same={ReferenceEquals(_imageFileInfo, imageFileInfo)} result={(result?.ImageSource != null ? $"{result.Width}x{result.Height}" : "null")}");
                 return;
             }
 
             if (result?.ImageSource == null)
             {
+                DebugPreview($"Fit decode returned null image={GetDebugName(imageFileInfo)}");
                 ScheduleFitImageRetry(imageFileInfo, localVersion);
                 return;
             }
 
+            DebugPreview($"Fit decode complete image={GetDebugName(imageFileInfo)} result={result.Width}x{result.Height}");
             DispatcherQueue.TryEnqueue(() =>
                 ApplyLoadedImageResult(imageFileInfo, result, localVersion, cts));
         }
         catch (OperationCanceledException)
         {
+            DebugPreview($"Fit load canceled image={GetDebugName(imageFileInfo)} version={localVersion} ctsCanceled={cts.IsCancellationRequested}");
             ScheduleFitImageRetry(imageFileInfo, localVersion);
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[PreviewImageCanvas] high-res load failed: {ex.Message}");
+            DebugPreview($"Fit load exception image={GetDebugName(imageFileInfo)} version={localVersion} error={ex}");
             ScheduleFitImageRetry(imageFileInfo, localVersion);
         }
         finally
@@ -272,11 +323,13 @@ public sealed partial class PreviewImageCanvasControl : UserControl
             loadVersion != _loadVersion ||
             _fitImageLoadRetryCount >= MaxFitImageLoadRetries)
         {
+            DebugPreview($"Fit retry skipped image={GetDebugName(imageFileInfo)} loadVersion={loadVersion} current={_loadVersion} loaded={_isLoaded} originalLoaded={_isOriginalImageLoaded} same={ReferenceEquals(_imageFileInfo, imageFileInfo)} retry={_fitImageLoadRetryCount}/{MaxFitImageLoadRetries}");
             return;
         }
 
         _fitImageLoadRetryCount++;
         var delayMs = 250 * _fitImageLoadRetryCount;
+        DebugPreview($"Fit retry scheduled image={GetDebugName(imageFileInfo)} loadVersion={loadVersion} retry={_fitImageLoadRetryCount}/{MaxFitImageLoadRetries} delay={delayMs}ms");
         _ = RetryFitImageLoadAsync(imageFileInfo, loadVersion, delayMs);
     }
 
@@ -291,9 +344,11 @@ public sealed partial class PreviewImageCanvasControl : UserControl
                 !ReferenceEquals(_imageFileInfo, imageFileInfo) ||
                 loadVersion != _loadVersion)
             {
+                DebugPreview($"Fit retry aborted image={GetDebugName(imageFileInfo)} loadVersion={loadVersion} current={_loadVersion} loaded={_isLoaded} loading={_isLoadingHighRes} originalLoaded={_isOriginalImageLoaded} same={ReferenceEquals(_imageFileInfo, imageFileInfo)}");
                 return;
             }
 
+            DebugPreview($"Fit retry run image={GetDebugName(imageFileInfo)} loadVersion={loadVersion}");
             await LoadFitImageAsync(imageFileInfo, loadVersion);
         }
         catch (OperationCanceledException)
@@ -313,6 +368,8 @@ public sealed partial class PreviewImageCanvasControl : UserControl
             await Task.Delay(16, cancellationToken);
             retryCount++;
         }
+
+        DebugPreview($"Layout wait done version={loadVersion} retries={retryCount} size={ImageContainer.ActualWidth:0}x{ImageContainer.ActualHeight:0} loaded={_isLoaded} current={_loadVersion}");
     }
 
     private void ApplyLoadedImageResult(
@@ -327,12 +384,18 @@ public sealed partial class PreviewImageCanvasControl : UserControl
             !ReferenceEquals(_imageFileInfo, imageFileInfo) ||
             result.ImageSource == null)
         {
+            DebugPreview($"Fit apply skipped image={GetDebugName(imageFileInfo)} loadVersion={loadVersion} current={_loadVersion} loaded={_isLoaded} canceled={cts.IsCancellationRequested} same={ReferenceEquals(_imageFileInfo, imageFileInfo)} hasSource={result.ImageSource != null}");
             return;
         }
 
         if (!_isOriginalImageLoaded)
         {
+            DebugPreview($"Fit apply image={GetDebugName(imageFileInfo)} result={result.Width}x{result.Height}");
             SetMainImageSource(result);
+        }
+        else
+        {
+            DebugPreview($"Fit apply skipped because original already loaded image={GetDebugName(imageFileInfo)} result={result.Width}x{result.Height}");
         }
 
         _isLoadingHighRes = false;
@@ -638,7 +701,8 @@ public sealed partial class PreviewImageCanvasControl : UserControl
         if (_imageFileInfo == null)
             return 0;
 
-        return (uint)Math.Max(0, Math.Max(_imageFileInfo.Width, _imageFileInfo.Height));
+        var longSide = (uint)Math.Max(0, Math.Max(_imageFileInfo.Width, _imageFileInfo.Height));
+        return longSide <= PlaceholderMetadataLongSide ? 0 : longSide;
     }
 
     private uint ClampDecodeLongSideToOriginal(uint longSidePixels)
@@ -657,31 +721,44 @@ public sealed partial class PreviewImageCanvasControl : UserControl
         {
             _isOriginalImageLoaded = true;
         }
+
+        DebugPreview($"Set source result={result.Width}x{result.Height} activeLongSide={_activeDecodeLongSide} originalLongSide={originalLongSide} originalLoaded={_isOriginalImageLoaded}");
     }
 
     private void TryStartOriginalImageLoad()
     {
         if (_imageFileInfo?.ImageFile == null || _isOriginalImageLoaded)
+        {
+            DebugOriginal($"Skip start image={GetDebugName(_imageFileInfo)} hasFile={_imageFileInfo?.ImageFile != null} originalLoaded={_isOriginalImageLoaded}");
             return;
+        }
 
         var originalLongSide = GetOriginalLongSide();
         if (originalLongSide == 0 || _activeDecodeLongSide >= originalLongSide)
         {
             _isOriginalImageLoaded = originalLongSide > 0;
+            DebugOriginal($"Skip start because already enough image={GetDebugName(_imageFileInfo)} activeLongSide={_activeDecodeLongSide} originalLongSide={originalLongSide}");
             return;
         }
 
         if (GetTargetZoomPercent() < OriginalDecodeZoomPercentThreshold)
+        {
+            DebugOriginal($"Skip start because zoom below threshold image={GetDebugName(_imageFileInfo)} zoom={GetTargetZoomPercent():0.#}% threshold={OriginalDecodeZoomPercentThreshold}%");
             return;
+        }
 
         var currentCts = _originalImageLoadCts;
         if (currentCts != null && !currentCts.IsCancellationRequested)
+        {
+            DebugOriginal($"Skip start because existing load is running image={GetDebugName(_imageFileInfo)}");
             return;
+        }
 
         var version = ++_originalImageLoadVersion;
         var cts = new CancellationTokenSource();
         cts.CancelAfter(TimeSpan.FromSeconds(30));
         _originalImageLoadCts = cts;
+        DebugOriginal($"Start image={GetDebugName(_imageFileInfo)} version={version} originalLongSide={originalLongSide} zoom={GetTargetZoomPercent():0.#}%");
         _ = LoadOriginalImageAsync(_imageFileInfo, originalLongSide, version, cts.Token);
     }
 
@@ -695,6 +772,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
         {
             var thumbnailService = App.GetService<IThumbnailService>();
             var forceFullDecodeRaw = IsRawFile(imageInfo.ImageFile.FileType) && App.GetService<ISettingsService>().AlwaysDecodeRaw;
+            DebugOriginal($"Decode start image={GetDebugName(imageInfo)} version={version} originalLongSide={originalLongSide} forceRaw={forceFullDecodeRaw}");
             var result = await thumbnailService.GetThumbnailWithSizeAsync(
                 imageInfo.ImageFile,
                 originalLongSide,
@@ -706,9 +784,11 @@ public sealed partial class PreviewImageCanvasControl : UserControl
                 version != _originalImageLoadVersion ||
                 !ReferenceEquals(_imageFileInfo, imageInfo))
             {
+                DebugOriginal($"Decode result ignored image={GetDebugName(imageInfo)} version={version} current={_originalImageLoadVersion} canceled={cancellationToken.IsCancellationRequested} same={ReferenceEquals(_imageFileInfo, imageInfo)} result={(result?.ImageSource != null ? $"{result.Width}x{result.Height}" : "null")}");
                 return;
             }
 
+            DebugOriginal($"Decode complete image={GetDebugName(imageInfo)} version={version} result={result.Width}x{result.Height}");
             DispatcherQueue.TryEnqueue(() =>
             {
                 if (!_isLoaded ||
@@ -716,6 +796,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
                     !ReferenceEquals(_imageFileInfo, imageInfo) ||
                     result.ImageSource == null)
                 {
+                    DebugOriginal($"Apply skipped image={GetDebugName(imageInfo)} version={version} current={_originalImageLoadVersion} loaded={_isLoaded} same={ReferenceEquals(_imageFileInfo, imageInfo)} hasSource={result.ImageSource != null}");
                     return;
                 }
 
@@ -724,10 +805,11 @@ public sealed partial class PreviewImageCanvasControl : UserControl
         }
         catch (OperationCanceledException)
         {
+            DebugOriginal($"Decode canceled image={GetDebugName(imageInfo)} version={version}");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[PreviewImageCanvas] original image load failed: {ex.Message}");
+            DebugOriginal($"Decode exception image={GetDebugName(imageInfo)} version={version} error={ex}");
         }
     }
 
@@ -735,6 +817,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
     {
         try
         {
+            DebugOriginal($"Apply image={GetDebugName(_imageFileInfo)} result={result.Width}x{result.Height}");
             SetMainImageSource(result);
             ApplyTransform();
             ZoomPercentChanged?.Invoke(this, GetCurrentZoomPercent());
@@ -768,5 +851,27 @@ public sealed partial class PreviewImageCanvasControl : UserControl
                extension.Equals(".dng", StringComparison.OrdinalIgnoreCase) ||
                extension.Equals(".srw", StringComparison.OrdinalIgnoreCase) ||
                extension.Equals(".raw", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetDebugName(ImageFileInfo? imageInfo)
+    {
+        if (imageInfo == null)
+            return "<null>";
+
+        return string.IsNullOrWhiteSpace(imageInfo.ImageFile?.Name)
+            ? imageInfo.ImageName
+            : imageInfo.ImageFile.Name;
+    }
+
+    [System.Diagnostics.Conditional("DEBUG")]
+    private static void DebugPreview(string message)
+    {
+        System.Diagnostics.Debug.WriteLine($"[PreviewFitHighRes] {DateTime.Now:HH:mm:ss.fff} {message}");
+    }
+
+    [System.Diagnostics.Conditional("DEBUG")]
+    private static void DebugOriginal(string message)
+    {
+        System.Diagnostics.Debug.WriteLine($"[PreviewOriginal] {DateTime.Now:HH:mm:ss.fff} {message}");
     }
 }
