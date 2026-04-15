@@ -78,14 +78,16 @@
         </Grid.RowDefinitions>
 
         <TreeView
+
             Grid.Column="0"
+
             Grid.Row="0"
             Grid.RowSpan="3"
             x:Name="FolderTreeView"
             ItemsSource="{x:Bind ViewModel.FolderTree}"
             Expanding="FolderTreeView_Expanding"
             ItemInvoked="FolderTreeView_ItemInvoked"
-            Margin="4,20,4,4">
+            Margin="0,20,6,6">
 
             <TreeView.ItemTemplate>
                 <DataTemplate x:DataType="models:FolderNode">
@@ -630,11 +632,13 @@
                             Visibility="{x:Bind IsPendingDelete, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                             <Grid.Resources>
                                 <LinearGradientBrush x:Key="DeleteGradient" StartPoint="0.658,0.321" EndPoint="-0.359,1.315">
-                                    <GradientStop Offset="0" Color="#FFFFFF"/>
-                                    <GradientStop Offset="1" Color="#BFBFBF"/>
+                                    <GradientStop Offset="0" Color="#c23c49"/>
+                                    <GradientStop Offset="1" Color="#ff99a4"/>
+                                    
                                 </LinearGradientBrush>
                             </Grid.Resources>
-                            
+                            <!--<GradientStop Offset="0" Color="#850303"/>
+                            <GradientStop Offset="1" Color="#e02f2f"/> -->
                             <!-- 第一个 path：带圆角的三角形（渐变填充） -->
                             <Path
                                 Width="50"
@@ -648,7 +652,7 @@
                                 Width="50"
                                 Height="50"
                                 Stretch="Uniform"
-                                Fill="#f95656"
+                                Fill="#272923"
                                 Data="M50,0 L0,0 L50,50 Z"/>
                         </Grid>
                         
@@ -661,16 +665,20 @@
                             Margin="16,0,16,12"
                             Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}"
                             CornerRadius="10">
-                            <Grid>
-                                <RatingControl
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center"
-                                    Value="{x:Bind RatingValue, Mode=TwoWay}"
-                                    IsReadOnly="False"
-                                    IsClearEnabled="True"
-                                    MaxRating="5"
-                                    Loaded="RatingControl_Loaded"/>
-                            </Grid>
+                            <controls:ShimmerControl IsLoading="{x:Bind IsRatingLoading, Mode=OneWay}">
+                                <controls:ShimmerControl.Content>
+                                    <Grid>
+                                        <RatingControl
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Value="{x:Bind RatingValue, Mode=TwoWay}"
+                                            IsReadOnly="False"
+                                            IsClearEnabled="True"
+                                            MaxRating="5"
+                                            Loaded="RatingControl_Loaded"/>
+                                    </Grid>
+                                </controls:ShimmerControl.Content>
+                            </controls:ShimmerControl>
                         </Border>
                     </Grid>
                 </DataTemplate>

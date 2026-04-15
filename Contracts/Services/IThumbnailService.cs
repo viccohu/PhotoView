@@ -8,6 +8,9 @@ namespace PhotoView.Contracts.Services;
 
 public interface IThumbnailService
 {
+    Task<DecodeResult?> GetFastPreviewAsync(StorageFile file, uint longSidePixels, CancellationToken cancellationToken);
+    Task<DecodeResult?> GetTargetThumbnailAsync(StorageFile file, uint longSidePixels, CancellationToken cancellationToken);
+    Task WarmFastPreviewAsync(StorageFile file, uint longSidePixels, CancellationToken cancellationToken);
     Task<ImageSource?> GetThumbnailAsync(StorageFile file, ThumbnailSize size, CancellationToken cancellationToken);
     Task<ImageSource?> GetThumbnailByLongSideAsync(StorageFile file, uint longSidePixels, CancellationToken cancellationToken);
     Task<DecodeResult?> GetThumbnailWithSizeAsync(StorageFile file, uint longSidePixels, CancellationToken cancellationToken);

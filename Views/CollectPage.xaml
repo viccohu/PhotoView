@@ -33,7 +33,7 @@
             x:Name="LoadDrawerRoot"
             Grid.Column="0"
             Width="292"
-            Margin="0,12,0,12"
+            Margin="0,6,0,6"
             RowSpacing="0"
             HorizontalAlignment="Left"
             PointerEntered="LoadDrawerRoot_PointerEntered"
@@ -231,7 +231,7 @@
 
         <Grid
             Grid.Column="1"
-            Margin="4,12,0,12"
+            Margin="4,6,0,6 "
             RowSpacing="0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
@@ -247,7 +247,7 @@
             <Border
                 Grid.Row="0"
                 Grid.Column="0"
-                Background="{ThemeResource SmokeFillColorDefaultBrush}"
+                
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                 BorderThickness="1"
                 Margin="0,0,6,0"
@@ -548,8 +548,8 @@
                                     Visibility="{x:Bind IsPendingDelete, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <Grid.Resources>
                                         <LinearGradientBrush x:Key="DeleteGradient" StartPoint="0.658,0.321" EndPoint="-0.359,1.315">
-                                            <GradientStop Offset="0" Color="#FFFFFF"/>
-                                            <GradientStop Offset="1" Color="#BFBFBF"/>
+                                            <GradientStop Offset="0" Color="#c23c49"/>
+                                            <GradientStop Offset="1" Color="#ff99a4"/>
                                         </LinearGradientBrush>
                                     </Grid.Resources>
                                     <Path
@@ -562,7 +562,7 @@
                                         Width="30"
                                         Height="30"
                                         Stretch="Uniform"
-                                        Fill="#f95656"
+                                        Fill="#303332"
                                         Data="M50,0 L0,0 L50,50 Z"/>
                                 </Grid>
                             </Grid>

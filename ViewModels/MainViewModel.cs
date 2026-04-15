@@ -69,11 +69,18 @@ public partial class MainViewModel : ObservableRecipient
     private const uint PageSize = 100;
     private const uint InitialFileEnumerationBatchSize = 30;
     private const int DeferredImageInfoLoadDelayMs = 400;
+    private const int RatingPreloadCommitBatchSize = 75;
     private CancellationTokenSource? _loadImagesCts;
+    private CancellationTokenSource? _ratingPreloadCts;
     private readonly Stack<FolderNode> _navigationHistory = new();
     private int _pendingDeleteCount;
     private readonly List<ImageFileInfo> _allImages = new();
     private readonly SemaphoreSlim _metadataHydrationGate = new(2);
+    private readonly object _ratingPreloadLock = new();
+    private readonly Queue<RatingPreloadRequest> _pendingRatingPreloadItems = new();
+    private readonly HashSet<string> _queuedRatingPreloadPaths = new(StringComparer.OrdinalIgnoreCase);
+    private bool _isRatingPreloadRunning;
+    private int _ratingPreloadVersion;
     public FilterViewModel Filter { get; }
 
     public event EventHandler? ImagesChanged;
@@ -248,6 +255,7 @@ public partial class MainViewModel : ObservableRecipient
         _loadImagesCts?.Cancel();
         _loadImagesCts = new CancellationTokenSource();
         var cancellationToken = _loadImagesCts.Token;
+        ResetRatingPreload(cancellationToken);
 
         if (folderNode != null && folderNode != SelectedFolder)
         {
@@ -262,6 +270,7 @@ public partial class MainViewModel : ObservableRecipient
         // 加载目录前确认当前设置的缩略图尺寸
         ThumbnailSize = _settingsService.ThumbnailSize;
 
+        CancelCurrentImageWork();
         _allImages.Clear();
         Images.Clear();
         ImagesChanged?.Invoke(this, EventArgs.Empty);
@@ -485,7 +494,241 @@ public partial class MainViewModel : ObservableRecipient
         if (addedAny)
         {
             ImagesChanged?.Invoke(this, EventArgs.Empty);
+            QueueRatingPreloadForCurrentImages(cancellationToken);
         }
+    }
+
+    private readonly record struct RatingPreloadResult(
+        ImageFileInfo ImageInfo,
+        uint Rating,
+        RatingSource Source,
+        int EditVersion);
+
+    private readonly record struct RatingPreloadRequest(
+        ImageFileInfo ImageInfo,
+        int EditVersion);
+
+    private void ResetRatingPreload(CancellationToken loadCancellationToken)
+    {
+        CancelRatingPreload();
+        _ratingPreloadCts = CancellationTokenSource.CreateLinkedTokenSource(loadCancellationToken);
+        Interlocked.Increment(ref _ratingPreloadVersion);
+
+        lock (_ratingPreloadLock)
+        {
+            _pendingRatingPreloadItems.Clear();
+            _queuedRatingPreloadPaths.Clear();
+            _isRatingPreloadRunning = false;
+        }
+    }
+
+    private void CancelRatingPreload()
+    {
+        _ratingPreloadCts?.Cancel();
+        Interlocked.Increment(ref _ratingPreloadVersion);
+
+        lock (_ratingPreloadLock)
+        {
+            _pendingRatingPreloadItems.Clear();
+            _queuedRatingPreloadPaths.Clear();
+            _isRatingPreloadRunning = false;
+        }
+    }
+
+    private void QueueRatingPreloadForCurrentImages(CancellationToken loadCancellationToken)
+    {
+        if (loadCancellationToken.IsCancellationRequested)
+            return;
+
+        var preloadToken = _ratingPreloadCts?.Token;
+        if (preloadToken == null || preloadToken.Value.IsCancellationRequested)
+            return;
+
+        var preloadVersion = Volatile.Read(ref _ratingPreloadVersion);
+        var shouldStartWorker = false;
+
+        lock (_ratingPreloadLock)
+        {
+            foreach (var image in Images)
+            {
+                var path = image.ImageFile.Path;
+                if (_queuedRatingPreloadPaths.Add(path))
+                {
+                    var editVersion = image.BeginRatingPreload();
+                    if (editVersion >= 0)
+                    {
+                        _pendingRatingPreloadItems.Enqueue(new RatingPreloadRequest(image, editVersion));
+                    }
+                    else
+                    {
+                        _queuedRatingPreloadPaths.Remove(path);
+                    }
+                }
+            }
+
+            if (!_isRatingPreloadRunning && _pendingRatingPreloadItems.Count > 0)
+            {
+                _isRatingPreloadRunning = true;
+                shouldStartWorker = true;
+            }
+        }
+
+        if (shouldStartWorker)
+        {
+            _ = Task.Run(() => RunRatingPreloadAsync(preloadVersion, preloadToken.Value));
+        }
+    }
+
+    private async Task RunRatingPreloadAsync(int preloadVersion, CancellationToken cancellationToken)
+    {
+        var commitBatch = new List<RatingPreloadResult>(RatingPreloadCommitBatchSize);
+
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested &&
+                   preloadVersion == Volatile.Read(ref _ratingPreloadVersion))
+            {
+                var request = DequeueRatingPreloadItem(preloadVersion, cancellationToken);
+                if (request == null)
+                    break;
+
+                var imageInfo = request.Value.ImageInfo;
+
+                try
+                {
+                    var (rating, source) = await _ratingService.GetRatingAsync(imageInfo.ImageFile).ConfigureAwait(false);
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    if (preloadVersion != Volatile.Read(ref _ratingPreloadVersion))
+                        break;
+
+                    commitBatch.Add(new RatingPreloadResult(imageInfo, rating, source, request.Value.EditVersion));
+                    if (commitBatch.Count >= RatingPreloadCommitBatchSize)
+                    {
+                        await CommitRatingPreloadBatchAsync(commitBatch, preloadVersion, cancellationToken).ConfigureAwait(false);
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    await CancelRatingPreloadOnUIThreadAsync(imageInfo, request.Value.EditVersion).ConfigureAwait(false);
+                    System.Diagnostics.Debug.WriteLine($"[RatingPreload] failed for {imageInfo.ImageName}: {ex.Message}");
+                }
+            }
+
+            if (commitBatch.Count > 0 &&
+                !cancellationToken.IsCancellationRequested &&
+                preloadVersion == Volatile.Read(ref _ratingPreloadVersion))
+            {
+                await CommitRatingPreloadBatchAsync(commitBatch, preloadVersion, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            var shouldRestart = false;
+            lock (_ratingPreloadLock)
+            {
+                if (preloadVersion == Volatile.Read(ref _ratingPreloadVersion))
+                {
+                    _isRatingPreloadRunning = false;
+                    shouldRestart = !cancellationToken.IsCancellationRequested && _pendingRatingPreloadItems.Count > 0;
+                    if (shouldRestart)
+                    {
+                        _isRatingPreloadRunning = true;
+                    }
+                }
+            }
+
+            if (shouldRestart)
+            {
+                _ = Task.Run(() => RunRatingPreloadAsync(preloadVersion, cancellationToken));
+            }
+        }
+    }
+
+    private RatingPreloadRequest? DequeueRatingPreloadItem(int preloadVersion, CancellationToken cancellationToken)
+    {
+        lock (_ratingPreloadLock)
+        {
+            while (!cancellationToken.IsCancellationRequested &&
+                   preloadVersion == Volatile.Read(ref _ratingPreloadVersion) &&
+                   _pendingRatingPreloadItems.Count > 0)
+            {
+                var request = _pendingRatingPreloadItems.Dequeue();
+                _queuedRatingPreloadPaths.Remove(request.ImageInfo.ImageFile.Path);
+
+                if (!request.ImageInfo.IsRatingLoaded)
+                    return request;
+            }
+        }
+
+        return null;
+    }
+
+    private async Task CancelRatingPreloadOnUIThreadAsync(ImageFileInfo imageInfo, int editVersion)
+    {
+        var dispatcher = App.MainWindow.DispatcherQueue;
+        var tcs = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!dispatcher.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+        {
+            imageInfo.CancelRatingPreload(editVersion);
+            tcs.TrySetResult(null);
+        }))
+        {
+            return;
+        }
+
+        await tcs.Task.ConfigureAwait(false);
+    }
+
+    private async Task CommitRatingPreloadBatchAsync(
+        List<RatingPreloadResult> commitBatch,
+        int preloadVersion,
+        CancellationToken cancellationToken)
+    {
+        if (commitBatch.Count == 0)
+            return;
+
+        var batch = commitBatch.ToArray();
+        commitBatch.Clear();
+
+        var dispatcher = App.MainWindow.DispatcherQueue;
+        var tcs = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!dispatcher.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+        {
+            try
+            {
+                if (!cancellationToken.IsCancellationRequested &&
+                    preloadVersion == Volatile.Read(ref _ratingPreloadVersion))
+                {
+                    foreach (var result in batch)
+                    {
+                        result.ImageInfo.ApplyLoadedRating(result.Rating, result.Source, result.EditVersion);
+                    }
+                }
+
+                tcs.TrySetResult(null);
+            }
+            catch (Exception ex)
+            {
+                tcs.TrySetException(ex);
+            }
+        }))
+        {
+            foreach (var result in batch)
+            {
+                result.ImageInfo.CancelRatingPreload(result.EditVersion);
+            }
+            return;
+        }
+
+        await tcs.Task.ConfigureAwait(false);
     }
 
     private static ImageFileInfo CreatePlaceholderImageInfo(StorageFile file)
@@ -520,10 +763,6 @@ public partial class MainViewModel : ObservableRecipient
                 _metadataHydrationGate.Release();
             }
 
-            if (!cancellationToken.IsCancellationRequested)
-            {
-                await imageInfo.LoadRatingAsync(_ratingService);
-            }
         }
         catch (OperationCanceledException)
         {
@@ -616,46 +855,6 @@ public partial class MainViewModel : ObservableRecipient
             System.Diagnostics.Debug.WriteLine($"[LoadImageMetadataAsync] Properties failed for {file.Name}: {ex.Message}");
         }
 
-        if (width == 200 && height == 200)
-        {
-            try
-            {
-                using var stream = await file.OpenReadAsync().AsTask(cancellationToken);
-                var decoder = await Windows.Graphics.Imaging.BitmapDecoder.CreateAsync(stream).AsTask(cancellationToken);
-                width = (int)decoder.PixelWidth;
-                height = (int)decoder.PixelHeight;
-
-                try
-                {
-                    var properties = await decoder.BitmapProperties.GetPropertiesAsync(new[] { "System.Photo.Orientation" }).AsTask(cancellationToken);
-                    if (properties.TryGetValue("System.Photo.Orientation", out var orientationValue))
-                    {
-                        var exifOrientation = Convert.ToUInt16(orientationValue.Value);
-                        if (exifOrientation == 6 || exifOrientation == 8 || exifOrientation == 5 || exifOrientation == 7)
-                        {
-                            (width, height) = (height, width);
-                        }
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[LoadImageMetadataAsync] Orientation failed for {file.Name}: {ex.Message}");
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[LoadImageMetadataAsync] Decoder failed for {file.Name}: {ex.Message}");
-            }
-        }
-
         return (width, height, title);
     }
 
@@ -743,8 +942,6 @@ public partial class MainViewModel : ObservableRecipient
                 file.DisplayName,
                 file.FileType);
 
-            _ = imageInfo.LoadRatingAsync(_ratingService);
-
             return imageInfo;
         }
         catch (Exception ex)
@@ -756,6 +953,7 @@ public partial class MainViewModel : ObservableRecipient
     public void Dispose()
     {
         _loadImagesCts?.Cancel();
+        CancelRatingPreload();
 
         foreach (var image in Images)
         {
@@ -795,6 +993,8 @@ public partial class MainViewModel : ObservableRecipient
         
         SelectedFolder = null;
         currentFolder.IsLoaded = false;
+        CancelRatingPreload();
+        CancelCurrentImageWork();
         Images.Clear();
         ImagesChanged?.Invoke(this, EventArgs.Empty);
         
@@ -806,6 +1006,7 @@ public partial class MainViewModel : ObservableRecipient
         _loadImagesCts?.Cancel();
         _loadImagesCts = new CancellationTokenSource();
         var cancellationToken = _loadImagesCts.Token;
+        ResetRatingPreload(cancellationToken);
 
         SelectedFolder = folderNode;
         UpdateBreadcrumbPath(folderNode);
@@ -814,6 +1015,7 @@ public partial class MainViewModel : ObservableRecipient
         // 加载目录前确认当前设置的缩略图尺寸
         ThumbnailSize = _settingsService.ThumbnailSize;
 
+        CancelCurrentImageWork();
         _allImages.Clear();
         Images.Clear();
         ImagesChanged?.Invoke(this, EventArgs.Empty);
@@ -912,6 +1114,14 @@ public partial class MainViewModel : ObservableRecipient
         }
         catch (Exception ex)
         {
+        }
+    }
+
+    private void CancelCurrentImageWork()
+    {
+        foreach (var image in Images)
+        {
+            image.CancelThumbnailLoad();
         }
     }
 
@@ -1045,4 +1255,3 @@ public partial class MainViewModel : ObservableRecipient
         return true;
     }
 }
-

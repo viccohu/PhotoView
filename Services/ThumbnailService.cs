@@ -17,9 +17,10 @@ namespace PhotoView.Services;
 
 public class ThumbnailService : IThumbnailService
 {
-    private const int MaxCachedThumbnails = 400;
+    private const int MaxCachedThumbnails = 2000;
     private const uint MaxCachedThumbnailLongSidePixels = 1024;
-    private const long MaxCachedThumbnailPixels = 64_000_000;
+    private const long MaxCachedThumbnailPixels = 160_000_000;
+    private const uint FastPreviewFallbackLongSidePixels = 160;
 
     private readonly ISettingsService _settingsService;
     private readonly object _thumbnailCacheLock = new();
@@ -47,6 +48,90 @@ public class ThumbnailService : IThumbnailService
     {
         var newCount = GetConcurrencyCount();
         _decodeGate = new SemaphoreSlim(newCount, newCount);
+    }
+
+    public async Task<DecodeResult?> GetFastPreviewAsync(
+        StorageFile file,
+        uint longSidePixels,
+        CancellationToken cancellationToken)
+    {
+        var previewLongSidePixels = Math.Max(1u, Math.Min(longSidePixels, FastPreviewFallbackLongSidePixels));
+        var key = IsCacheEligible(previewLongSidePixels)
+            ? await TryCreateCacheKeyAsync(file, previewLongSidePixels, forceFullDecodeRaw: false, cancellationToken)
+            : (ThumbnailCacheKey?)null;
+        if (key.HasValue && TryGetCachedThumbnail(key.Value, out var cachedResult))
+            return cachedResult;
+
+        var result = await TryGetShellThumbnailAsync(
+            file,
+            previewLongSidePixels,
+            ThumbnailOptions.ReturnOnlyIfCached | ThumbnailOptions.UseCurrentScale,
+            cancellationToken);
+
+        result ??= await TryGetEmbeddedPreviewAsync(file, previewLongSidePixels, cancellationToken);
+
+        result ??= await TryGetShellThumbnailAsync(
+            file,
+            previewLongSidePixels,
+            ThumbnailOptions.UseCurrentScale,
+            cancellationToken);
+
+        if (key.HasValue)
+        {
+            StoreCachedThumbnail(key.Value, result);
+        }
+
+        return result;
+    }
+
+    public async Task<DecodeResult?> GetTargetThumbnailAsync(
+        StorageFile file,
+        uint longSidePixels,
+        CancellationToken cancellationToken)
+    {
+        var key = IsCacheEligible(longSidePixels)
+            ? await TryCreateCacheKeyAsync(file, longSidePixels, forceFullDecodeRaw: false, cancellationToken)
+            : (ThumbnailCacheKey?)null;
+        if (key.HasValue && TryGetCachedThumbnail(key.Value, out var cachedResult))
+            return cachedResult;
+
+        var result = await TryGetShellThumbnailAsync(
+            file,
+            longSidePixels,
+            ThumbnailOptions.UseCurrentScale,
+            cancellationToken);
+
+        if (result == null)
+        {
+            var gate = _decodeGate;
+            await gate.WaitAsync(cancellationToken);
+            try
+            {
+                if (key.HasValue && TryGetCachedThumbnail(key.Value, out cachedResult))
+                    return cachedResult;
+
+                result = await DecodeThumbnailAsync(file, longSidePixels, forceFullDecodeRaw: false, cancellationToken);
+            }
+            finally
+            {
+                gate.Release();
+            }
+        }
+
+        if (key.HasValue)
+        {
+            StoreCachedThumbnail(key.Value, result);
+        }
+
+        return result;
+    }
+
+    public async Task WarmFastPreviewAsync(
+        StorageFile file,
+        uint longSidePixels,
+        CancellationToken cancellationToken)
+    {
+        _ = await GetFastPreviewAsync(file, longSidePixels, cancellationToken);
     }
 
     public async Task<ImageSource?> GetThumbnailAsync(StorageFile file, ThumbnailSize size, CancellationToken cancellationToken)
@@ -455,6 +540,138 @@ public class ThumbnailService : IThumbnailService
         {
             return null;
         }
+    }
+
+    private static async Task<DecodeResult?> TryGetShellThumbnailAsync(
+        StorageFile file,
+        uint targetLongSide,
+        ThumbnailOptions options,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var thumbnail = await file.GetThumbnailAsync(
+                ThumbnailMode.SingleItem,
+                targetLongSide,
+                options).AsTask(cancellationToken);
+
+            if (thumbnail == null || thumbnail.Size == 0)
+                return null;
+
+            using (thumbnail)
+            {
+                if (thumbnail.Type != ThumbnailType.Image)
+                    return null;
+
+                return await CreateBitmapImageResultAsync(thumbnail, targetLongSide, cancellationToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ThumbnailService] Shell thumbnail failed for {file.Name}: {ex.Message}");
+            return null;
+        }
+    }
+
+    private static async Task<DecodeResult?> TryGetEmbeddedPreviewAsync(
+        StorageFile file,
+        uint targetLongSide,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var stream = await file.OpenReadAsync().AsTask(cancellationToken);
+            var decoder = await BitmapDecoder.CreateAsync(stream).AsTask(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            using var previewStream = await decoder.GetPreviewAsync().AsTask(cancellationToken);
+            if (previewStream == null || previewStream.Size == 0)
+                return null;
+
+            return await CreateBitmapImageResultAsync(previewStream, targetLongSide, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ThumbnailService] Embedded preview failed for {file.Name}: {ex.Message}");
+            return null;
+        }
+    }
+
+    private static async Task<DecodeResult?> CreateBitmapImageResultAsync(
+        Windows.Storage.Streams.IRandomAccessStream stream,
+        uint targetLongSide,
+        CancellationToken cancellationToken)
+    {
+        var dispatcherQueue = App.MainWindow.DispatcherQueue;
+        if (dispatcherQueue == null || dispatcherQueue.HasThreadAccess)
+        {
+            return await CreateBitmapImageResultOnUIThreadAsync(stream, targetLongSide, cancellationToken);
+        }
+
+        var tcs = new TaskCompletionSource<DecodeResult?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, async () =>
+            {
+                try
+                {
+                    if (cancellationToken.IsCancellationRequested || AppLifetime.IsShuttingDown)
+                    {
+                        tcs.TrySetResult(null);
+                        return;
+                    }
+
+                    var result = await CreateBitmapImageResultOnUIThreadAsync(stream, targetLongSide, cancellationToken);
+                    tcs.TrySetResult(result);
+                }
+                catch (OperationCanceledException)
+                {
+                    tcs.TrySetResult(null);
+                }
+                catch (Exception ex)
+                {
+                    tcs.TrySetException(ex);
+                }
+            }))
+        {
+            return null;
+        }
+
+        return await tcs.Task;
+    }
+
+    private static async Task<DecodeResult?> CreateBitmapImageResultOnUIThreadAsync(
+        Windows.Storage.Streams.IRandomAccessStream stream,
+        uint targetLongSide,
+        CancellationToken cancellationToken)
+    {
+        if (cancellationToken.IsCancellationRequested || AppLifetime.IsShuttingDown)
+            return null;
+
+        try
+        {
+            stream.Seek(0);
+        }
+        catch
+        {
+        }
+
+        var bitmap = new BitmapImage
+        {
+            DecodePixelWidth = (int)Math.Min(int.MaxValue, targetLongSide)
+        };
+
+        await bitmap.SetSourceAsync(stream).AsTask(cancellationToken);
+        return new DecodeResult(
+            (uint)Math.Max(0, bitmap.PixelWidth),
+            (uint)Math.Max(0, bitmap.PixelHeight),
+            bitmap);
     }
 
     private async Task<DecodeResult?> DecodeThumbnailAsync(

@@ -22,10 +22,14 @@ namespace PhotoView.Models;
 public class ImageFileInfo : INotifyPropertyChanged
 {
     private static readonly SemaphoreSlim _globalThumbnailLoadSemaphore = new(8);
+    private const uint FastPreviewLongSidePixels = 160;
     
     private ImageSource? _thumbnail;
-    private int _loadVersion;
-    private CancellationTokenSource? _thumbnailLoadCts;
+    private ImageSource? _fastPreviewThumbnail;
+    private int _fastPreviewLoadVersion;
+    private int _targetThumbnailLoadVersion;
+    private CancellationTokenSource? _fastPreviewLoadCts;
+    private CancellationTokenSource? _targetThumbnailLoadCts;
     private bool _isSelected;
     private bool _isPendingDelete;
     private bool _isThumbnailLoading;
@@ -36,12 +40,17 @@ public class ImageFileInfo : INotifyPropertyChanged
     private double _displayWidth;
     private double _displayHeight;
     private readonly object _thumbnailLoadLock = new();
-    private ThumbnailSize? _loadedThumbnailSize;
-    private ThumbnailSize? _requestedThumbnailSize;
+    private ThumbnailSize? _loadedTargetThumbnailSize;
+    private ThumbnailSize? _requestedFastPreviewSize;
+    private ThumbnailSize? _requestedTargetThumbnailSize;
+    private ThumbnailLoadStage _thumbnailStage = ThumbnailLoadStage.None;
     private ImageGroup? _group;
     private bool _isPrimary;
     private uint _rating;
     private bool _isRatingLoading = true;
+    private bool _isRatingLoaded;
+    private bool _isRatingLoadRequested;
+    private int _ratingEditVersion;
     private RatingSource _ratingSource = RatingSource.Unknown;
     private ObservableCollection<FormatTag> _formatTags = new();
 
@@ -98,55 +107,26 @@ public class ImageFileInfo : INotifyPropertyChanged
 
     public StorageFile ImageFile { get; }
 
-    private async Task<ImageSource?> GetThumbnailAsync(ThumbnailSize size, CancellationToken cancellationToken)
+    private async Task<ImageSource?> RequestFastPreviewAsync(ThumbnailSize size, CancellationToken cancellationToken)
     {
-        try
-        {
-            var requestedSize = (uint)size;
-            var optimalSize = GetOptimalThumbnailSize(requestedSize);
-            var dispatcher = App.MainWindow.DispatcherQueue;
+        var thumbnailService = App.GetService<Contracts.Services.IThumbnailService>();
+        var result = await thumbnailService.GetFastPreviewAsync(
+            ImageFile,
+            FastPreviewLongSidePixels,
+            cancellationToken);
+        return result?.ImageSource;
+    }
 
-            if (dispatcher.HasThreadAccess)
-            {
-                return await GetThumbnailOnUIThreadAsync(optimalSize, cancellationToken);
-            }
-            else
-            {
-                var tcs = new TaskCompletionSource<ImageSource?>(TaskCreationOptions.RunContinuationsAsynchronously);
-                if (!dispatcher.TryEnqueue(async () =>
-                {
-                    try
-                    {
-                        var thumbnail = await GetThumbnailOnUIThreadAsync(optimalSize, cancellationToken);
-                        tcs.TrySetResult(thumbnail);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        tcs.TrySetResult(null);
-                    }
-                    catch (Exception ex)
-                    {
-                        tcs.TrySetException(ex);
-                    }
-                }))
-                {
-                    // System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Skip thumbnail enqueue for {ImageName}");
-                    return null;
-                }
-
-                return await tcs.Task;
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Thumbnail request canceled for {ImageName}");
-            throw;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Thumbnail request failed for {ImageName}: {ex.Message}");
-            return null;
-        }
+    private async Task<ImageSource?> RequestTargetThumbnailAsync(ThumbnailSize size, CancellationToken cancellationToken)
+    {
+        var requestedSize = (uint)size;
+        var optimalSize = GetOptimalThumbnailSize(requestedSize);
+        var thumbnailService = App.GetService<Contracts.Services.IThumbnailService>();
+        var result = await thumbnailService.GetTargetThumbnailAsync(
+            ImageFile,
+            optimalSize,
+            cancellationToken);
+        return result?.ImageSource;
     }
 
     private async Task<ImageSource?> GetThumbnailOnUIThreadAsync(
@@ -291,6 +271,28 @@ public class ImageFileInfo : INotifyPropertyChanged
         private set => SetProperty(ref _isThumbnailFailed, value);
     }
 
+    public bool HasFastPreview
+    {
+        get
+        {
+            lock (_thumbnailLoadLock)
+            {
+                return _thumbnailStage >= ThumbnailLoadStage.FastPreview;
+            }
+        }
+    }
+
+    public bool HasTargetThumbnail
+    {
+        get
+        {
+            lock (_thumbnailLoadLock)
+            {
+                return _thumbnailStage == ThumbnailLoadStage.Target;
+            }
+        }
+    }
+
     public bool IsSelected
     {
         get => _isSelected;
@@ -315,19 +317,19 @@ public class ImageFileInfo : INotifyPropertyChanged
         private set => SetProperty(ref _displayHeight, value);
     }
 
-    public async Task EnsureThumbnailAsync(ThumbnailSize size)
+    public async Task EnsureFastPreviewAsync(ThumbnailSize size)
     {
         if (AppLifetime.IsShuttingDown)
             return;
 
         lock (_thumbnailLoadLock)
         {
-            if (Thumbnail != null && _loadedThumbnailSize == size)
+            if (Thumbnail != null && _thumbnailStage >= ThumbnailLoadStage.FastPreview)
                 return;
 
-            if (_thumbnailLoadCts != null &&
-                !_thumbnailLoadCts.IsCancellationRequested &&
-                _requestedThumbnailSize == size)
+            if (_fastPreviewLoadCts != null &&
+                !_fastPreviewLoadCts.IsCancellationRequested &&
+                _requestedFastPreviewSize == size)
             {
                 return;
             }
@@ -338,11 +340,74 @@ public class ImageFileInfo : INotifyPropertyChanged
 
         lock (_thumbnailLoadLock)
         {
-            _thumbnailLoadCts?.Cancel();
-            _thumbnailLoadCts = new CancellationTokenSource();
-            localCts = _thumbnailLoadCts;
-            localVersion = ++_loadVersion;
-            _requestedThumbnailSize = size;
+            _fastPreviewLoadCts?.Cancel();
+            _fastPreviewLoadCts = new CancellationTokenSource();
+            localCts = _fastPreviewLoadCts;
+            localVersion = ++_fastPreviewLoadVersion;
+            _requestedFastPreviewSize = size;
+            IsThumbnailLoading = Thumbnail == null;
+            IsThumbnailFailed = false;
+        }
+
+        var cancellationToken = localCts.Token;
+
+        try
+        {
+            await _globalThumbnailLoadSemaphore.WaitAsync(cancellationToken);
+            try
+            {
+                var result = await RequestFastPreviewAsync(size, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+                CommitThumbnailResult(localVersion, size, result, ThumbnailLoadStage.FastPreview, cancellationToken);
+            }
+            finally
+            {
+                _globalThumbnailLoadSemaphore.Release();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            ClearThumbnailLoadingIfCurrent(ThumbnailLoadStage.FastPreview, localVersion, size);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] EnsureFastPreviewAsync failed for {ImageName}: {ex.Message}");
+            ClearThumbnailLoadingIfCurrent(ThumbnailLoadStage.FastPreview, localVersion, size);
+        }
+    }
+
+    public async Task EnsureThumbnailAsync(ThumbnailSize size)
+    {
+        if (AppLifetime.IsShuttingDown)
+            return;
+
+        lock (_thumbnailLoadLock)
+        {
+            if (Thumbnail != null &&
+                _thumbnailStage == ThumbnailLoadStage.Target &&
+                _loadedTargetThumbnailSize == size)
+            {
+                return;
+            }
+
+            if (_targetThumbnailLoadCts != null &&
+                !_targetThumbnailLoadCts.IsCancellationRequested &&
+                _requestedTargetThumbnailSize == size)
+            {
+                return;
+            }
+        }
+
+        CancellationTokenSource localCts;
+        int localVersion;
+
+        lock (_thumbnailLoadLock)
+        {
+            _targetThumbnailLoadCts?.Cancel();
+            _targetThumbnailLoadCts = new CancellationTokenSource();
+            localCts = _targetThumbnailLoadCts;
+            localVersion = ++_targetThumbnailLoadVersion;
+            _requestedTargetThumbnailSize = size;
             IsThumbnailLoading = true;
             IsThumbnailFailed = false;
         }
@@ -352,64 +417,11 @@ public class ImageFileInfo : INotifyPropertyChanged
         try
         {
             await _globalThumbnailLoadSemaphore.WaitAsync(cancellationToken);
-            
             try
             {
-                if (AppLifetime.IsShuttingDown)
-                {
-                    ClearThumbnailLoadingIfCurrent(localVersion, size);
-                    return;
-                }
-
-                var result = await GetThumbnailAsync(size, cancellationToken);
+                var result = await RequestTargetThumbnailAsync(size, cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
-
-                var dispatcher = App.MainWindow.DispatcherQueue;
-                if (dispatcher.HasThreadAccess)
-                {
-                    lock (_thumbnailLoadLock)
-                    {
-                        if (localVersion != _loadVersion ||
-                            cancellationToken.IsCancellationRequested ||
-                            AppLifetime.IsShuttingDown ||
-                            _requestedThumbnailSize != size)
-                            return;
-
-                        Thumbnail = result;
-                        _loadedThumbnailSize = size;
-                        IsThumbnailLoading = false;
-                        IsThumbnailFailed = result == null;
-                        // System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Thumbnail commit for {ImageName}, size={size}, success={result != null}");
-                    }
-                }
-                else
-                {
-                    if (!dispatcher.TryEnqueue(() =>
-                    {
-                        if (AppLifetime.IsShuttingDown)
-                            return;
-
-                        lock (_thumbnailLoadLock)
-                        {
-                            if (localVersion != _loadVersion ||
-                                cancellationToken.IsCancellationRequested ||
-                                _requestedThumbnailSize != size ||
-                                AppLifetime.IsShuttingDown)
-                                return;
-
-                            Thumbnail = result;
-                            _loadedThumbnailSize = size;
-                            IsThumbnailLoading = false;
-                            IsThumbnailFailed = result == null;
-                            // System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Thumbnail commit for {ImageName}, size={size}, success={result != null}");
-                        }
-                    }))
-                    {
-                        // System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] Skip thumbnail commit enqueue for {ImageName}");
-                        ClearThumbnailLoadingIfCurrent(localVersion, size);
-                        return;
-                    }
-                }
+                CommitThumbnailResult(localVersion, size, result, ThumbnailLoadStage.Target, cancellationToken);
             }
             finally
             {
@@ -418,21 +430,110 @@ public class ImageFileInfo : INotifyPropertyChanged
         }
         catch (OperationCanceledException)
         {
-            System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] EnsureThumbnailAsync canceled for {ImageName}");
-            ClearThumbnailLoadingIfCurrent(localVersion, size);
+            ClearThumbnailLoadingIfCurrent(ThumbnailLoadStage.Target, localVersion, size);
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[ImageFileInfo] EnsureThumbnailAsync failed for {ImageName}: {ex.Message}");
-            ClearThumbnailLoadingIfCurrent(localVersion, size);
+            ClearThumbnailLoadingIfCurrent(ThumbnailLoadStage.Target, localVersion, size);
         }
     }
 
-    private void ClearThumbnailLoadingIfCurrent(int loadVersion, ThumbnailSize size)
+    private void CommitThumbnailResult(
+        int loadVersion,
+        ThumbnailSize size,
+        ImageSource? result,
+        ThumbnailLoadStage resultStage,
+        CancellationToken cancellationToken)
+    {
+        var dispatcher = App.MainWindow.DispatcherQueue;
+        if (dispatcher.HasThreadAccess)
+        {
+            CommitThumbnailResultOnUIThread(loadVersion, size, result, resultStage, cancellationToken);
+            return;
+        }
+
+        if (!dispatcher.TryEnqueue(() =>
+            CommitThumbnailResultOnUIThread(loadVersion, size, result, resultStage, cancellationToken)))
+        {
+            ClearThumbnailLoadingIfCurrent(resultStage, loadVersion, size);
+        }
+    }
+
+    private void CommitThumbnailResultOnUIThread(
+        int loadVersion,
+        ThumbnailSize size,
+        ImageSource? result,
+        ThumbnailLoadStage resultStage,
+        CancellationToken cancellationToken)
+    {
+        if (AppLifetime.IsShuttingDown)
+            return;
+
+        lock (_thumbnailLoadLock)
+        {
+            if (cancellationToken.IsCancellationRequested || !IsCurrentThumbnailRequest(resultStage, loadVersion, size))
+                return;
+
+            if (result != null && resultStage >= _thumbnailStage)
+            {
+                var previousStage = _thumbnailStage;
+                if (resultStage == ThumbnailLoadStage.FastPreview)
+                {
+                    _fastPreviewThumbnail = result;
+                }
+
+                Thumbnail = result;
+                _thumbnailStage = resultStage;
+                if (resultStage == ThumbnailLoadStage.Target)
+                {
+                    _loadedTargetThumbnailSize = size;
+                }
+
+                if (previousStage != _thumbnailStage)
+                {
+                    OnPropertyChanged(nameof(HasFastPreview));
+                    OnPropertyChanged(nameof(HasTargetThumbnail));
+                }
+            }
+
+            if (resultStage == ThumbnailLoadStage.FastPreview)
+            {
+                _requestedFastPreviewSize = null;
+            }
+
+            if (resultStage == ThumbnailLoadStage.Target)
+            {
+                _requestedTargetThumbnailSize = null;
+                IsThumbnailLoading = false;
+                IsThumbnailFailed = result == null && Thumbnail == null;
+            }
+            else if (_requestedTargetThumbnailSize == null)
+            {
+                IsThumbnailLoading = false;
+                IsThumbnailFailed = result == null && Thumbnail == null;
+            }
+        }
+    }
+
+    private bool IsCurrentThumbnailRequest(ThumbnailLoadStage stage, int loadVersion, ThumbnailSize size)
+    {
+        return stage switch
+        {
+            ThumbnailLoadStage.FastPreview => loadVersion == _fastPreviewLoadVersion && _requestedFastPreviewSize == size,
+            ThumbnailLoadStage.Target => loadVersion == _targetThumbnailLoadVersion && _requestedTargetThumbnailSize == size,
+            _ => false
+        };
+    }
+
+    private void ClearThumbnailLoadingIfCurrent(ThumbnailLoadStage stage, int loadVersion, ThumbnailSize size)
     {
         lock (_thumbnailLoadLock)
         {
-            if (loadVersion == _loadVersion && _requestedThumbnailSize == size)
+            if (!IsCurrentThumbnailRequest(stage, loadVersion, size))
+                return;
+
+            if (stage == ThumbnailLoadStage.Target || _requestedTargetThumbnailSize == null)
             {
                 IsThumbnailLoading = false;
             }
@@ -443,9 +544,24 @@ public class ImageFileInfo : INotifyPropertyChanged
     {
         lock (_thumbnailLoadLock)
         {
-            _thumbnailLoadCts?.Cancel();
-            _loadVersion++;
-            _requestedThumbnailSize = null;
+            _fastPreviewLoadCts?.Cancel();
+            _targetThumbnailLoadCts?.Cancel();
+            _fastPreviewLoadVersion++;
+            _targetThumbnailLoadVersion++;
+            _requestedFastPreviewSize = null;
+            _requestedTargetThumbnailSize = null;
+            IsThumbnailLoading = false;
+            IsThumbnailFailed = false;
+        }
+    }
+
+    public void CancelTargetThumbnailLoad()
+    {
+        lock (_thumbnailLoadLock)
+        {
+            _targetThumbnailLoadCts?.Cancel();
+            _targetThumbnailLoadVersion++;
+            _requestedTargetThumbnailSize = null;
             IsThumbnailLoading = false;
             IsThumbnailFailed = false;
         }
@@ -455,13 +571,40 @@ public class ImageFileInfo : INotifyPropertyChanged
     {
         lock (_thumbnailLoadLock)
         {
-            _thumbnailLoadCts?.Cancel();
-            _loadVersion++;
+            _fastPreviewLoadCts?.Cancel();
+            _targetThumbnailLoadCts?.Cancel();
+            _fastPreviewLoadVersion++;
+            _targetThumbnailLoadVersion++;
             Thumbnail = null;
-            _loadedThumbnailSize = null;
-            _requestedThumbnailSize = null;
+            _fastPreviewThumbnail = null;
+            _thumbnailStage = ThumbnailLoadStage.None;
+            _loadedTargetThumbnailSize = null;
+            _requestedFastPreviewSize = null;
+            _requestedTargetThumbnailSize = null;
             IsThumbnailLoading = false;
             IsThumbnailFailed = false;
+            OnPropertyChanged(nameof(HasFastPreview));
+            OnPropertyChanged(nameof(HasTargetThumbnail));
+        }
+    }
+
+    public void DowngradeToFastPreview()
+    {
+        lock (_thumbnailLoadLock)
+        {
+            _targetThumbnailLoadCts?.Cancel();
+            _targetThumbnailLoadVersion++;
+            _loadedTargetThumbnailSize = null;
+            _requestedTargetThumbnailSize = null;
+
+            if (_thumbnailStage == ThumbnailLoadStage.Target && _fastPreviewThumbnail != null)
+            {
+                Thumbnail = _fastPreviewThumbnail;
+                _thumbnailStage = ThumbnailLoadStage.FastPreview;
+                IsThumbnailLoading = false;
+                IsThumbnailFailed = false;
+                OnPropertyChanged(nameof(HasTargetThumbnail));
+            }
         }
     }
 
@@ -528,9 +671,13 @@ public class ImageFileInfo : INotifyPropertyChanged
         get => _rating;
         set
         {
-            if (SetProperty(ref _rating, value))
+            lock (_thumbnailLoadLock)
             {
-                OnPropertyChanged(nameof(RatingValue));
+                _ratingEditVersion++;
+                SetRatingCore(value);
+                IsRatingLoaded = true;
+                IsRatingLoading = false;
+                _isRatingLoadRequested = false;
             }
         }
     }
@@ -602,28 +749,115 @@ public class ImageFileInfo : INotifyPropertyChanged
         set => SetProperty(ref _isRatingLoading, value);
     }
 
+    public bool IsRatingLoaded
+    {
+        get => _isRatingLoaded;
+        private set => SetProperty(ref _isRatingLoaded, value);
+    }
+
+    public async Task EnsureRatingAsync(RatingService ratingService)
+    {
+        var editVersion = BeginRatingPreload();
+        if (editVersion < 0)
+            return;
+
+        await LoadRatingAsync(ratingService, editVersion);
+    }
+
     public async Task LoadRatingAsync(RatingService ratingService)
     {
-        IsRatingLoading = true;
+        var editVersion = BeginRatingPreload();
+        if (editVersion < 0)
+            return;
+
+        await LoadRatingAsync(ratingService, editVersion);
+    }
+
+    private async Task LoadRatingAsync(RatingService ratingService, int editVersion)
+    {
         try
         {
             var (rating, source) = await ratingService.GetRatingAsync(ImageFile);
-            Rating = rating;
-            RatingSource = source;
+            ApplyLoadedRating(rating, source, editVersion);
         }
-        finally
+        catch
         {
+            CancelRatingPreload(editVersion);
+            throw;
+        }
+    }
+
+    internal int BeginRatingPreload()
+    {
+        if (AppLifetime.IsShuttingDown || IsRatingLoaded)
+            return -1;
+
+        lock (_thumbnailLoadLock)
+        {
+            if (_isRatingLoadRequested || _isRatingLoaded)
+                return -1;
+
+            _isRatingLoadRequested = true;
+            IsRatingLoading = true;
+            return _ratingEditVersion;
+        }
+    }
+
+    internal void ApplyLoadedRating(uint rating, RatingSource source, int expectedEditVersion)
+    {
+        lock (_thumbnailLoadLock)
+        {
+            if (_ratingEditVersion == expectedEditVersion)
+            {
+                SetRatingCore(rating);
+                RatingSource = source;
+                IsRatingLoaded = true;
+            }
+
             IsRatingLoading = false;
+            _isRatingLoadRequested = false;
+        }
+    }
+
+    internal void CancelRatingPreload(int expectedEditVersion)
+    {
+        lock (_thumbnailLoadLock)
+        {
+            if (_ratingEditVersion != expectedEditVersion)
+                return;
+
+            IsRatingLoading = false;
+            _isRatingLoadRequested = false;
+        }
+    }
+
+    private void SetRatingCore(uint rating)
+    {
+        if (SetProperty(ref _rating, rating))
+        {
+            OnPropertyChanged(nameof(RatingValue));
         }
     }
 
     public async Task SetRatingAsync(RatingService ratingService, uint newRating)
     {
+        var source = ratingService.IsWinRTRatingSupported(ImageFile.FileType)
+            ? RatingSource.WinRT
+            : RatingSource.Cache;
+
+        lock (_thumbnailLoadLock)
+        {
+            _ratingEditVersion++;
+            SetRatingCore(newRating);
+            RatingSource = source;
+            IsRatingLoaded = true;
+            IsRatingLoading = false;
+            _isRatingLoadRequested = false;
+        }
+
         try
         {
             await ratingService.SetRatingAsync(ImageFile, newRating);
-            Rating = newRating;
-            RatingSource = ratingService.IsWinRTRatingSupported(ImageFile.FileType) ? RatingSource.WinRT : RatingSource.Cache;
         }
         catch (Exception ex)
         {

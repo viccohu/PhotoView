@@ -35,9 +35,9 @@
             <Rectangle.Fill>
                 <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
                     <GradientStop Color="Transparent" Offset="0"/>
-                    <GradientStop Color="#30FFFFFF" Offset="0.3"/>
-                    <GradientStop Color="#50FFFFFF" Offset="0.5"/>
-                    <GradientStop Color="#30FFFFFF" Offset="0.7"/>
+                    <GradientStop Color="#0DFFFFFF" Offset="0.3"/>
+                    <GradientStop Color="#1AFFFFFF" Offset="0.5"/>
+                    <GradientStop Color="#0DFFFFFF" Offset="0.7"/>
                     <GradientStop Color="Transparent" Offset="1"/>
                 </LinearGradientBrush>
             </Rectangle.Fill>

@@ -16,6 +16,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.System;
@@ -31,9 +32,14 @@ public sealed partial class MainPage : Page
     private readonly DispatcherTimer _visibleThumbnailLoadTimer;
     private readonly ISettingsService _settingsService;
     private readonly ShellToolbarService _shellToolbarService;
-    private readonly HashSet<ImageFileInfo> _pendingVisibleThumbnailLoads = new();
+    private readonly IThumbnailService _thumbnailService;
+    private readonly HashSet<ImageFileInfo> _pendingFastPreviewLoads = new();
+    private readonly HashSet<ImageFileInfo> _pendingTargetThumbnailLoads = new();
+    private readonly List<ImageFileInfo> _pendingWarmPreviewLoads = new();
+    private readonly HashSet<ImageFileInfo> _queuedWarmPreviewLoads = new();
     private readonly HashSet<ImageFileInfo> _realizedImageItems = new();
     private readonly HashSet<ImageFileInfo> _immediateVisibleThumbnailLoads = new();
+    private readonly HashSet<ImageFileInfo> _targetThumbnailRetainedItems = new();
     private readonly HashSet<ImageFileInfo> _selectedImageState = new();
     private const double GridViewItemMargin = 4d;
     private const double GridViewItemGap = GridViewItemMargin * 2d;
@@ -41,8 +47,14 @@ public sealed partial class MainPage : Page
     private const double FolderDrawerCollapsedOffsetY = -8d;
     private const double ImageGridTopScrollTolerance = 1d;
     private const int FolderDrawerAnimationDurationMs = 220;
-    private const int VisibleThumbnailStartBudgetPerTick = 16;
-    private const int VisibleThumbnailPrefetchItemCount = 12;
+    private const int FastPreviewStartBudgetPerTick = 24;
+    private const int TargetThumbnailStartBudgetPerTick = 8;
+    private const int FastPreviewPrefetchScreenCount = 8;
+    private const int TargetThumbnailPrefetchItemCount = 4;
+    private const int WarmPreviewIdleBudgetPerTick = 3;
+    private const int WarmPreviewScrollBudgetPerTick = 1;
+    private const int MaxActiveWarmPreviewLoads = 2;
+    private const uint WarmPreviewLongSidePixels = 160;
     private readonly PointerEventHandler _imageGridPointerWheelHandler;
     private FolderNode? _pendingLoadNode;
     private ScrollViewer? _imageGridScrollViewer;
@@ -57,6 +69,9 @@ public sealed partial class MainPage : Page
     private double _lastImageGridVerticalOffset;
     private int _immediateVisibleThumbnailStartCount;
     private int _folderDrawerAnimationVersion;
+    private int _thumbnailQueueVersion;
+    private int _activeWarmPreviewLoads;
+    private CancellationTokenSource _warmPreviewCts = new();
     private Storyboard? _folderDrawerStoryboard;
     private (ImageFileInfo Image, uint Rating)? _pendingRatingUpdate;
     private ImageFileInfo? _storedImageFileInfo;
@@ -71,6 +86,7 @@ public sealed partial class MainPage : Page
         ViewModel = App.GetService<MainViewModel>();
         _settingsService = App.GetService<ISettingsService>();
         _shellToolbarService = App.GetService<ShellToolbarService>();
+        _thumbnailService = App.GetService<IThumbnailService>();
         // System.Diagnostics.Debug.WriteLine($"[MainPage] ViewModel 已获取, FolderTree.Count={ViewModel.FolderTree.Count}");
         
         NavigationCacheMode = NavigationCacheMode.Enabled;
@@ -579,7 +595,7 @@ public sealed partial class MainPage : Page
         _ratingDebounceTimer.Stop();
         _visibleThumbnailLoadTimer.Stop();
         _pendingRatingUpdate = null;
-        _pendingVisibleThumbnailLoads.Clear();
+        ClearThumbnailQueues();
         _realizedImageItems.Clear();
         _selectedImageState.Clear();
         DetachImageGridPointerWheel();
@@ -621,7 +637,7 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        ResetImmediateVisibleThumbnailLoadState();
+        ClearThumbnailQueues();
         UpdateImageGridTileSize();
         TriggerVisibleItemsThumbnailLoad();
     }
@@ -1116,10 +1132,14 @@ public sealed partial class MainPage : Page
             {
                 // System.Diagnostics.Debug.WriteLine("[MainPage] ImagesChanged -> clearing transient grid state for empty collection");
                 ClearGridViewSelection();
-                _pendingVisibleThumbnailLoads.Clear();
+                ClearThumbnailQueues();
                 _realizedImageItems.Clear();
                 ResetImmediateVisibleThumbnailLoadState();
                 ClearSelectedImageState();
+            }
+            else
+            {
+                QueueBackgroundPreviewWarmup(0, ViewModel.Images.Count - 1, prioritize: false);
             }
 
             QueueVisibleThumbnailLoad("images-changed");
@@ -1133,8 +1153,9 @@ public sealed partial class MainPage : Page
 
         if (args.InRecycleQueue)
         {
-            imageInfo.CancelThumbnailLoad();
-            _pendingVisibleThumbnailLoads.Remove(imageInfo);
+            imageInfo.CancelTargetThumbnailLoad();
+            _pendingFastPreviewLoads.Remove(imageInfo);
+            _pendingTargetThumbnailLoads.Remove(imageInfo);
             _realizedImageItems.Remove(imageInfo);
             _immediateVisibleThumbnailLoads.Remove(imageInfo);
             return;
@@ -1147,7 +1168,7 @@ public sealed partial class MainPage : Page
         else if (args.Phase == 1)
         {
             _realizedImageItems.Add(imageInfo);
-            TryStartImmediateVisibleThumbnailLoad(imageInfo, "container-phase1");
+            TryStartImmediateFastPreviewLoad(imageInfo, "container-phase1");
             QueueVisibleThumbnailLoad("container-phase1");
         }
     }
@@ -1168,46 +1189,71 @@ public sealed partial class MainPage : Page
         }
 
         var size = ViewModel.ThumbnailSize;
-        var candidates = _pendingVisibleThumbnailLoads
-            .Select(imageInfo => new
-            {
-                ImageInfo = imageInfo,
-                Index = ViewModel.Images.IndexOf(imageInfo)
-            })
-            .Where(candidate => candidate.Index >= 0)
-            .OrderBy(candidate => candidate.Index)
-            .Select(candidate => candidate.ImageInfo)
-            .ToArray();
-        _pendingVisibleThumbnailLoads.Clear();
+        var fastPreviewCandidates = GetPendingItemsByIndex(_pendingFastPreviewLoads);
+        _pendingFastPreviewLoads.Clear();
 
-        var startedCount = 0;
-        foreach (var imageInfo in candidates)
+        var fastPreviewStartedCount = 0;
+        foreach (var imageInfo in fastPreviewCandidates)
         {
-            if (!IsItemContainerRealized(imageInfo))
+            if (imageInfo.HasFastPreview)
                 continue;
 
-            if (startedCount >= VisibleThumbnailStartBudgetPerTick)
+            if (fastPreviewStartedCount >= FastPreviewStartBudgetPerTick)
             {
-                _pendingVisibleThumbnailLoads.Add(imageInfo);
+                _pendingFastPreviewLoads.Add(imageInfo);
                 continue;
             }
 
-            _ = imageInfo.EnsureThumbnailAsync(size);
-            startedCount++;
+            _ = imageInfo.EnsureFastPreviewAsync(size);
+            fastPreviewStartedCount++;
         }
 
-        if (_pendingVisibleThumbnailLoads.Count > 0)
+        var targetCandidates = GetPendingItemsByIndex(_pendingTargetThumbnailLoads);
+        _pendingTargetThumbnailLoads.Clear();
+
+        var targetStartedCount = 0;
+        if (!_isUserScrollInProgress)
+        {
+            foreach (var imageInfo in targetCandidates)
+            {
+                if (!IsItemContainerRealized(imageInfo) || !IsItemInCurrentTargetRange(imageInfo))
+                    continue;
+
+                if (targetStartedCount >= TargetThumbnailStartBudgetPerTick)
+                {
+                    _pendingTargetThumbnailLoads.Add(imageInfo);
+                    continue;
+                }
+
+                _ = LoadTargetThumbnailAsync(
+                    imageInfo,
+                    size,
+                    Volatile.Read(ref _thumbnailQueueVersion));
+                targetStartedCount++;
+            }
+        }
+        else
+        {
+            foreach (var imageInfo in targetCandidates)
+            {
+                _pendingTargetThumbnailLoads.Add(imageInfo);
+            }
+        }
+
+        StartWarmPreviewLoads(_isUserScrollInProgress ? WarmPreviewScrollBudgetPerTick : WarmPreviewIdleBudgetPerTick);
+
+        if (HasPendingThumbnailWork())
         {
             _visibleThumbnailLoadTimer.Start();
         }
     }
 
-    private void TryStartImmediateVisibleThumbnailLoad(ImageFileInfo imageInfo, string reason)
+    private void TryStartImmediateFastPreviewLoad(ImageFileInfo imageInfo, string reason)
     {
         if (_isUnloaded ||
             AppLifetime.IsShuttingDown ||
             _isProgrammaticScrollActive ||
-            _immediateVisibleThumbnailStartCount >= VisibleThumbnailStartBudgetPerTick)
+            _immediateVisibleThumbnailStartCount >= FastPreviewStartBudgetPerTick)
         {
             return;
         }
@@ -1218,10 +1264,42 @@ public sealed partial class MainPage : Page
         if (!_immediateVisibleThumbnailLoads.Add(imageInfo))
             return;
 
-        _pendingVisibleThumbnailLoads.Remove(imageInfo);
+        _pendingFastPreviewLoads.Remove(imageInfo);
         _immediateVisibleThumbnailStartCount++;
         // System.Diagnostics.Debug.WriteLine($"[MainPage] Immediate thumbnail start reason={reason}, item={imageInfo.ImageName}, count={_immediateVisibleThumbnailStartCount}");
-        _ = imageInfo.EnsureThumbnailAsync(ViewModel.ThumbnailSize);
+        _ = imageInfo.EnsureFastPreviewAsync(ViewModel.ThumbnailSize);
+    }
+
+    private async Task LoadTargetThumbnailAsync(
+        ImageFileInfo imageInfo,
+        ThumbnailSize size,
+        int queueVersion)
+    {
+        try
+        {
+            await imageInfo.EnsureFastPreviewAsync(size);
+            if (queueVersion != Volatile.Read(ref _thumbnailQueueVersion))
+                return;
+
+            await imageInfo.EnsureThumbnailAsync(size);
+            if (queueVersion != Volatile.Read(ref _thumbnailQueueVersion))
+                return;
+
+            if (!_isUnloaded &&
+                !AppLifetime.IsShuttingDown &&
+                queueVersion == Volatile.Read(ref _thumbnailQueueVersion) &&
+                IsItemInCurrentTargetRange(imageInfo))
+            {
+                _targetThumbnailRetainedItems.Add(imageInfo);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainPage] LoadTargetThumbnailAsync failed for {imageInfo.ImageName}: {ex.Message}");
+        }
     }
 
     private bool IsItemInCurrentVisibleRange(ImageFileInfo imageInfo)
@@ -1245,6 +1323,40 @@ public sealed partial class MainPage : Page
         _immediateVisibleThumbnailStartCount = 0;
     }
 
+    private ImageFileInfo[] GetPendingItemsByIndex(HashSet<ImageFileInfo> pendingItems)
+    {
+        return pendingItems
+            .Select(imageInfo => new
+            {
+                ImageInfo = imageInfo,
+                Index = ViewModel.Images.IndexOf(imageInfo)
+            })
+            .Where(candidate => candidate.Index >= 0)
+            .OrderBy(candidate => candidate.Index)
+            .Select(candidate => candidate.ImageInfo)
+            .ToArray();
+    }
+
+    private bool HasPendingThumbnailWork()
+    {
+        return _pendingFastPreviewLoads.Count > 0 ||
+               _pendingTargetThumbnailLoads.Count > 0 ||
+               _pendingWarmPreviewLoads.Count > 0;
+    }
+
+    private void ClearThumbnailQueues()
+    {
+        _warmPreviewCts.Cancel();
+        _warmPreviewCts = new CancellationTokenSource();
+        Interlocked.Increment(ref _thumbnailQueueVersion);
+        _pendingFastPreviewLoads.Clear();
+        _pendingTargetThumbnailLoads.Clear();
+        _pendingWarmPreviewLoads.Clear();
+        _queuedWarmPreviewLoads.Clear();
+        _targetThumbnailRetainedItems.Clear();
+        ResetImmediateVisibleThumbnailLoadState();
+    }
+
     private readonly Dictionary<RatingControl, bool> _ratingControlEventMap = new();
 
     private void RatingControl_Loaded(object sender, RoutedEventArgs e)
@@ -1265,6 +1377,9 @@ public sealed partial class MainPage : Page
 
             var imageInfo = FindImageInfoFromRatingControl(sender);
             if (imageInfo == null)
+                return;
+
+            if (imageInfo.IsRatingLoading && !imageInfo.IsRatingLoaded)
                 return;
 
             double controlValue = sender.Value;
@@ -2250,29 +2365,37 @@ public sealed partial class MainPage : Page
 
         AttachImageItemsWrapGrid();
 
-        if (_imageItemsWrapGrid != null &&
-            _imageItemsWrapGrid.FirstVisibleIndex >= 0 &&
-            _imageItemsWrapGrid.LastVisibleIndex >= _imageItemsWrapGrid.FirstVisibleIndex)
+        if (TryGetVisibleIndexRange(out var firstVisibleIndex, out var lastVisibleIndex))
         {
-            var firstIndex = Math.Max(0, _imageItemsWrapGrid.FirstVisibleIndex - VisibleThumbnailPrefetchItemCount);
-            var lastIndex = Math.Min(ImageGridView.Items.Count - 1, _imageItemsWrapGrid.LastVisibleIndex + VisibleThumbnailPrefetchItemCount);
-            _pendingVisibleThumbnailLoads.RemoveWhere(imageInfo =>
-            {
-                var index = ViewModel.Images.IndexOf(imageInfo);
-                return index < firstIndex || index > lastIndex;
-            });
+            var visibleCount = Math.Max(1, lastVisibleIndex - firstVisibleIndex + 1);
+            var fastPreviewPadding = Math.Max(visibleCount * FastPreviewPrefetchScreenCount, FastPreviewStartBudgetPerTick);
+            var fastPreviewFirstIndex = Math.Max(0, firstVisibleIndex - fastPreviewPadding);
+            var fastPreviewLastIndex = Math.Min(ImageGridView.Items.Count - 1, lastVisibleIndex + fastPreviewPadding);
 
-            for (int i = firstIndex; i <= lastIndex; i++)
+            for (int i = fastPreviewFirstIndex; i <= fastPreviewLastIndex; i++)
             {
-                if (ImageGridView.Items[i] is ImageFileInfo imageInfo)
+                if (ImageGridView.Items[i] is ImageFileInfo imageInfo && !imageInfo.HasFastPreview)
                 {
-                    _pendingVisibleThumbnailLoads.Add(imageInfo);
+                    _pendingFastPreviewLoads.Add(imageInfo);
                 }
             }
+
+            var targetFirstIndex = Math.Max(0, firstVisibleIndex - TargetThumbnailPrefetchItemCount);
+            var targetLastIndex = Math.Min(ImageGridView.Items.Count - 1, lastVisibleIndex + TargetThumbnailPrefetchItemCount);
+            for (int i = targetFirstIndex; i <= targetLastIndex; i++)
+            {
+                if (ImageGridView.Items[i] is ImageFileInfo imageInfo && !imageInfo.HasTargetThumbnail)
+                {
+                    _pendingTargetThumbnailLoads.Add(imageInfo);
+                }
+            }
+            TrimTargetThumbnails(targetFirstIndex, targetLastIndex);
+
+            QueueBackgroundPreviewWarmup(firstVisibleIndex, lastVisibleIndex, prioritize: true);
         }
         else
         {
-            var realizedFallbackLimit = VisibleThumbnailStartBudgetPerTick + VisibleThumbnailPrefetchItemCount;
+            var realizedFallbackLimit = FastPreviewStartBudgetPerTick + TargetThumbnailPrefetchItemCount;
             foreach (var imageInfo in _realizedImageItems
                 .Select(imageInfo => new
                 {
@@ -2284,14 +2407,23 @@ public sealed partial class MainPage : Page
                 .Take(realizedFallbackLimit)
                 .Select(candidate => candidate.ImageInfo))
             {
-                _pendingVisibleThumbnailLoads.Add(imageInfo);
+                if (!imageInfo.HasFastPreview)
+                {
+                    _pendingFastPreviewLoads.Add(imageInfo);
+                }
+
+                if (!imageInfo.HasTargetThumbnail)
+                {
+                    _pendingTargetThumbnailLoads.Add(imageInfo);
+                }
             }
+
+            QueueBackgroundPreviewWarmup(0, Math.Max(0, ImageGridView.Items.Count - 1), prioritize: false);
         }
 
-        if (_pendingVisibleThumbnailLoads.Count == 0)
+        if (!HasPendingThumbnailWork())
             return;
 
-        // System.Diagnostics.Debug.WriteLine($"[MainPage] QueueVisibleThumbnailLoad reason={reason}, count={_pendingVisibleThumbnailLoads.Count}");
         _visibleThumbnailLoadTimer.Stop();
         _visibleThumbnailLoadTimer.Start();
     }
@@ -2301,10 +2433,194 @@ public sealed partial class MainPage : Page
         if (_isUnloaded || AppLifetime.IsShuttingDown)
             return;
 
-        _pendingVisibleThumbnailLoads.Add(imageInfo);
+        if (!imageInfo.HasFastPreview)
+        {
+            _pendingFastPreviewLoads.Add(imageInfo);
+        }
+
+        if (!imageInfo.HasTargetThumbnail)
+        {
+            _pendingTargetThumbnailLoads.Add(imageInfo);
+        }
+
+        QueueBackgroundPreviewWarmup(imageInfo, prioritize: true);
         // System.Diagnostics.Debug.WriteLine($"[MainPage] QueueVisibleThumbnailLoad reason={reason}, item={imageInfo.ImageName}");
         _visibleThumbnailLoadTimer.Stop();
         _visibleThumbnailLoadTimer.Start();
+    }
+
+    private bool TryGetVisibleIndexRange(out int firstVisibleIndex, out int lastVisibleIndex)
+    {
+        AttachImageItemsWrapGrid();
+
+        if (_imageItemsWrapGrid != null &&
+            _imageItemsWrapGrid.FirstVisibleIndex >= 0 &&
+            _imageItemsWrapGrid.LastVisibleIndex >= _imageItemsWrapGrid.FirstVisibleIndex &&
+            ImageGridView.Items.Count > 0)
+        {
+            firstVisibleIndex = Math.Clamp(_imageItemsWrapGrid.FirstVisibleIndex, 0, ImageGridView.Items.Count - 1);
+            lastVisibleIndex = Math.Clamp(_imageItemsWrapGrid.LastVisibleIndex, firstVisibleIndex, ImageGridView.Items.Count - 1);
+            return true;
+        }
+
+        firstVisibleIndex = -1;
+        lastVisibleIndex = -1;
+        return false;
+    }
+
+    private bool IsItemInCurrentTargetRange(ImageFileInfo imageInfo)
+    {
+        if (!TryGetVisibleIndexRange(out var firstVisibleIndex, out var lastVisibleIndex))
+            return IsItemContainerRealized(imageInfo);
+
+        var index = ViewModel.Images.IndexOf(imageInfo);
+        if (index < 0)
+            return false;
+
+        var firstIndex = Math.Max(0, firstVisibleIndex - TargetThumbnailPrefetchItemCount);
+        var lastIndex = Math.Min(ViewModel.Images.Count - 1, lastVisibleIndex + TargetThumbnailPrefetchItemCount);
+        return index >= firstIndex && index <= lastIndex;
+    }
+
+    private void QueueBackgroundPreviewWarmup(int firstVisibleIndex, int lastVisibleIndex, bool prioritize)
+    {
+        var itemCount = ImageGridView.Items.Count;
+        if (itemCount == 0)
+            return;
+
+        if (prioritize)
+        {
+            var visibleCount = Math.Max(1, lastVisibleIndex - firstVisibleIndex + 1);
+            var padding = Math.Max(visibleCount * FastPreviewPrefetchScreenCount, FastPreviewStartBudgetPerTick);
+            var firstIndex = Math.Max(0, firstVisibleIndex - padding);
+            var lastIndex = Math.Min(itemCount - 1, lastVisibleIndex + padding);
+
+            for (int i = firstIndex; i <= lastIndex; i++)
+            {
+                if (ImageGridView.Items[i] is ImageFileInfo imageInfo)
+                {
+                    QueueBackgroundPreviewWarmup(imageInfo, prioritize: true);
+                }
+            }
+        }
+
+        if (!prioritize || _pendingWarmPreviewLoads.Count == 0)
+        {
+            for (int i = 0; i < itemCount; i++)
+            {
+                if (ImageGridView.Items[i] is ImageFileInfo imageInfo)
+                {
+                    QueueBackgroundPreviewWarmup(imageInfo, prioritize: false);
+                }
+            }
+        }
+    }
+
+    private void QueueBackgroundPreviewWarmup(ImageFileInfo imageInfo, bool prioritize)
+    {
+        if (imageInfo.HasFastPreview)
+            return;
+
+        if (_queuedWarmPreviewLoads.Contains(imageInfo))
+        {
+            if (prioritize && _pendingWarmPreviewLoads.Remove(imageInfo))
+            {
+                _pendingWarmPreviewLoads.Insert(0, imageInfo);
+            }
+            return;
+        }
+
+        _queuedWarmPreviewLoads.Add(imageInfo);
+        if (prioritize)
+        {
+            _pendingWarmPreviewLoads.Insert(0, imageInfo);
+        }
+        else
+        {
+            _pendingWarmPreviewLoads.Add(imageInfo);
+        }
+    }
+
+    private void TrimTargetThumbnails(int firstIndex, int lastIndex)
+    {
+        foreach (var imageInfo in _targetThumbnailRetainedItems.ToArray())
+        {
+            var index = ViewModel.Images.IndexOf(imageInfo);
+            if (index >= firstIndex && index <= lastIndex)
+                continue;
+
+            imageInfo.DowngradeToFastPreview();
+            _targetThumbnailRetainedItems.Remove(imageInfo);
+        }
+    }
+
+    private void StartWarmPreviewLoads(int budget)
+    {
+        var startedCount = 0;
+        while (startedCount < budget &&
+               _activeWarmPreviewLoads < MaxActiveWarmPreviewLoads &&
+               _pendingWarmPreviewLoads.Count > 0)
+        {
+            var imageInfo = _pendingWarmPreviewLoads[0];
+            _pendingWarmPreviewLoads.RemoveAt(0);
+            _queuedWarmPreviewLoads.Remove(imageInfo);
+
+            if (imageInfo.HasFastPreview || ViewModel.Images.IndexOf(imageInfo) < 0)
+                continue;
+
+            var queueVersion = Volatile.Read(ref _thumbnailQueueVersion);
+            var cancellationToken = _warmPreviewCts.Token;
+            if (cancellationToken.IsCancellationRequested)
+                break;
+
+            System.Threading.Interlocked.Increment(ref _activeWarmPreviewLoads);
+            _ = WarmFastPreviewAsync(imageInfo, queueVersion, cancellationToken);
+            startedCount++;
+        }
+    }
+
+    private async Task WarmFastPreviewAsync(
+        ImageFileInfo imageInfo,
+        int queueVersion,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _thumbnailService.WarmFastPreviewAsync(
+                imageInfo.ImageFile,
+                WarmPreviewLongSidePixels,
+                cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainPage] WarmFastPreviewAsync failed for {imageInfo.ImageName}: {ex.Message}");
+        }
+        finally
+        {
+            System.Threading.Interlocked.Decrement(ref _activeWarmPreviewLoads);
+            if (!_isUnloaded &&
+                !AppLifetime.IsShuttingDown &&
+                !cancellationToken.IsCancellationRequested &&
+                queueVersion == Volatile.Read(ref _thumbnailQueueVersion) &&
+                HasPendingThumbnailWork())
+            {
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    if (!_isUnloaded &&
+                        !AppLifetime.IsShuttingDown &&
+                        !cancellationToken.IsCancellationRequested &&
+                        queueVersion == Volatile.Read(ref _thumbnailQueueVersion) &&
+                        HasPendingThumbnailWork())
+                    {
+                        _visibleThumbnailLoadTimer.Stop();
+                        _visibleThumbnailLoadTimer.Start();
+                    }
+                });
+            }
+        }
     }
 
     private bool IsItemContainerRealized(ImageFileInfo imageInfo)
