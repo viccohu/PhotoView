@@ -13,9 +13,13 @@ public class NodeTypeToIconConverter : IValueConverter
         {
             return node.NodeType switch
             {
+                NodeType.FavoritesRoot => "\xE734",
+                NodeType.PinnedFolder => "\xE840",
+                NodeType.RecentFolder => "\xE823",
                 NodeType.ThisPC => "\xe977",
                 NodeType.ExternalDevice => "\xE88E",
                 NodeType.Drive => node.IsRemovable ? "\xE88E" : "\xeda2",
+                NodeType.KnownFolder => "\xE8B7",
                 NodeType.Folder => "\xE8B7",
                 _ => "\xE8B7"
             };
@@ -25,9 +29,13 @@ public class NodeTypeToIconConverter : IValueConverter
         {
             return nodeType switch
             {
+                NodeType.FavoritesRoot => "\xE734",
+                NodeType.PinnedFolder => "\xE840",
+                NodeType.RecentFolder => "\xE823",
                 NodeType.ThisPC => "\xE774",
                 NodeType.ExternalDevice => "\xE88E",
                 NodeType.Drive => "\xE8DA",
+                NodeType.KnownFolder => "\xE8B7",
                 NodeType.Folder => "\xE8B7",
                 _ => "\xE8B7"
             };

@@ -7,9 +7,13 @@ namespace PhotoView.Models;
 
 public enum NodeType
 {
+    FavoritesRoot,
+    PinnedFolder,
+    RecentFolder,
     ThisPC,
     ExternalDevice,
     Drive,
+    KnownFolder,
     Folder
 }
 
@@ -66,7 +70,9 @@ public partial class FolderNode : ObservableObject
 
     public void CheckHasSubFolders()
     {
-        if (NodeType == NodeType.ThisPC || NodeType == NodeType.ExternalDevice)
+        if (NodeType == NodeType.FavoritesRoot ||
+            NodeType == NodeType.ThisPC ||
+            NodeType == NodeType.ExternalDevice)
         {
             HasSubFolders = true;
             return;

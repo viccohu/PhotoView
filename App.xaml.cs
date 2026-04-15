@@ -62,6 +62,7 @@ public partial class App : Application
             services.AddSingleton<IThumbnailService, ThumbnailService>();
             services.AddSingleton<IExifService, ExifService>();
             services.AddSingleton<PreviewWorkspaceService>();
+            services.AddSingleton<FolderTreeService>();
             services.AddSingleton<ShellToolbarService>();
 
             services.AddSingleton<IActivationService, ActivationService>();

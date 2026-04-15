@@ -185,6 +185,21 @@ public sealed partial class CollectPage : Page
         ViewModel.AddSource(_rightClickedFolderNode);
     }
 
+    private async void PinFolder_Click(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.PinFolderAsync(_rightClickedFolderNode);
+    }
+
+    private async void UnpinFolder_Click(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.UnpinFolderAsync(_rightClickedFolderNode);
+    }
+
+    private async void RefreshExternalDevices_Click(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.RefreshExternalDevicesAsync();
+    }
+
     private static bool TryGetFolderNode(object sender, out FolderNode? node)
     {
         node = null;

@@ -25,6 +25,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     private readonly PreviewWorkspaceService _workspaceService;
     private readonly ISettingsService _settingsService;
     private readonly RatingService _ratingService;
+    private readonly FolderTreeService _folderTreeService;
     private readonly SemaphoreSlim _metadataHydrationGate = new(2);
     private readonly List<ImageFileInfo> _allImages = new();
     private readonly HashSet<string> _loadedSourcePaths = new(StringComparer.OrdinalIgnoreCase);
@@ -35,11 +36,13 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     public CollectViewModel(
         PreviewWorkspaceService workspaceService,
         ISettingsService settingsService,
-        RatingService ratingService)
+        RatingService ratingService,
+        FolderTreeService folderTreeService)
     {
         _workspaceService = workspaceService;
         _settingsService = settingsService;
         _ratingService = ratingService;
+        _folderTreeService = folderTreeService;
 
         FolderTree = new ObservableCollection<FolderNode>();
         Images = new ObservableCollection<ImageFileInfo>();
@@ -119,6 +122,25 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     public void RemoveSource(PreviewSource source)
     {
         _workspaceService.RemoveSource(source);
+    }
+
+    public async Task PinFolderAsync(FolderNode? node)
+    {
+        await _folderTreeService.PinFolderAsync(node, GetFavoritesRootNode());
+    }
+
+    public async Task UnpinFolderAsync(FolderNode? node)
+    {
+        await _folderTreeService.UnpinFolderAsync(node, GetFavoritesRootNode());
+    }
+
+    public async Task RefreshExternalDevicesAsync()
+    {
+        var externalDevicesRoot = FolderTree.FirstOrDefault(node => node.NodeType == NodeType.ExternalDevice);
+        if (externalDevicesRoot != null)
+        {
+            await _folderTreeService.RefreshExternalDevicesAsync(externalDevicesRoot);
+        }
     }
 
     public async Task LoadPreviewAsync()
@@ -258,69 +280,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
 
     public async Task LoadChildrenAsync(FolderNode node)
     {
-        if (node.IsLoaded || node.IsLoading)
-            return;
-
-        node.IsLoading = true;
-        node.Children.Clear();
-
-        try
-        {
-            if (node.NodeType == NodeType.ThisPC || node.NodeType == NodeType.ExternalDevice)
-            {
-                foreach (var drive in DriveInfo.GetDrives())
-                {
-                    if (!drive.IsReady)
-                        continue;
-
-                    try
-                    {
-                        var storageFolder = await StorageFolder.GetFolderFromPathAsync(drive.Name);
-                        var driveNode = new FolderNode(storageFolder, NodeType.Drive, node)
-                        {
-                            Name = string.IsNullOrWhiteSpace(drive.VolumeLabel)
-                                ? drive.Name
-                                : $"{drive.Name} ({drive.VolumeLabel})",
-                            IsRemovable = drive.DriveType == DriveType.Removable
-                        };
-                        driveNode.CheckHasSubFolders();
-
-                        var isRemovable = drive.DriveType == DriveType.Removable;
-                        if ((node.NodeType == NodeType.ThisPC && !isRemovable) ||
-                            (node.NodeType == NodeType.ExternalDevice && isRemovable))
-                        {
-                            node.Children.Add(driveNode);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[CollectViewModel] Load drive failed: {ex.Message}");
-                    }
-                }
-            }
-            else if (node.Folder != null)
-            {
-                var folders = await node.Folder.GetFoldersAsync();
-                foreach (var folder in folders.OrderBy(folder => folder.Name, StringComparer.CurrentCultureIgnoreCase))
-                {
-                    var childNode = new FolderNode(folder, NodeType.Folder, node);
-                    childNode.CheckHasSubFolders();
-                    node.Children.Add(childNode);
-                }
-            }
-
-            node.IsLoaded = true;
-            node.HasSubFolders = node.Children.Count > 0;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[CollectViewModel] LoadChildrenAsync failed: {ex.Message}");
-        }
-        finally
-        {
-            node.IsLoading = false;
-            node.RefreshExpandableState();
-        }
+        await _folderTreeService.LoadChildrenAsync(node);
     }
 
     public void ApplyFilter()
@@ -353,21 +313,21 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     {
         try
         {
-            FolderTree.Add(new FolderNode(null, NodeType.ThisPC)
-            {
-                Name = "这台电脑",
-                HasSubFolders = true
-            });
-            FolderTree.Add(new FolderNode(null, NodeType.ExternalDevice)
-            {
-                Name = "外接设备",
-                HasSubFolders = true
-            });
+            var roots = await _folderTreeService.CreateRootNodesAsync();
+            FolderTree.Clear();
+            FolderTree.Add(roots.FavoritesRoot);
+            FolderTree.Add(roots.ThisPc);
+            FolderTree.Add(roots.ExternalDevices);
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[CollectViewModel] LoadDrivesAsync failed: {ex.Message}");
         }
+    }
+
+    private FolderNode? GetFavoritesRootNode()
+    {
+        return FolderTree.FirstOrDefault(node => node.NodeType == NodeType.FavoritesRoot);
     }
 
     private async Task<int> LoadSourcesRoundRobinAsync(

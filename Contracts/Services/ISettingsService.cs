@@ -107,6 +107,8 @@ public interface ISettingsService
     Task<bool> LoadDeleteToRecycleBinAsync();
     Task SaveLastFolderPathAsync(string path);
     Task<string> LoadLastFolderPathAsync();
+    Task SaveFolderAccessHistoryAsync(FolderAccessHistory history);
+    Task<FolderAccessHistory> LoadFolderAccessHistoryAsync();
     Task SaveExportLastFolderPathAsync(string path);
     Task<string> LoadExportLastFolderPathAsync();
     Task SaveExportImageEnabledAsync(bool enabled);

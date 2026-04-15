@@ -25,7 +25,7 @@
             Subtitle="1.0.0">
             
             <TitleBar.IconSource>
-                <ImageIconSource ImageSource="/Assets/WindowIcon.ico" />
+                <ImageIconSource ImageSource="/Assets/WindowIcon.png" />
             </TitleBar.IconSource>
 
             <TitleBar.Content>

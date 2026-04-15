@@ -11,7 +11,7 @@ public class SettingsService : ISettingsService
     private int _batchSize = 30;
     private PerformanceMode _performanceMode = PerformanceMode.Smart;
     private ThumbnailSize _thumbnailSize = ThumbnailSize.Medium;
-    private bool _rememberLastFolder = true;
+    private bool _rememberLastFolder = false;
     private bool _deleteToRecycleBin = true;
     private string _lastFolderPath = string.Empty;
     private string _exportLastFolderPath = string.Empty;
@@ -346,6 +346,17 @@ public class SettingsService : ISettingsService
             return path;
         }
         return string.Empty;
+    }
+
+    public async Task SaveFolderAccessHistoryAsync(FolderAccessHistory history)
+    {
+        await _localSettingsService.SaveSettingAsync("FolderAccessHistory", history);
+    }
+
+    public async Task<FolderAccessHistory> LoadFolderAccessHistoryAsync()
+    {
+        var history = await _localSettingsService.ReadSettingAsync<FolderAccessHistory>("FolderAccessHistory");
+        return history ?? new FolderAccessHistory();
     }
 
     public async Task SaveExportLastFolderPathAsync(string path)

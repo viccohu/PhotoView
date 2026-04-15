@@ -68,7 +68,7 @@
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="220"/>
+            <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
@@ -77,52 +77,152 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <TreeView
-
+        <Grid
+            x:Name="NavigationDrawerRoot"
             Grid.Column="0"
-
             Grid.Row="0"
             Grid.RowSpan="3"
-            x:Name="FolderTreeView"
-            ItemsSource="{x:Bind ViewModel.FolderTree}"
-            Expanding="FolderTreeView_Expanding"
-            ItemInvoked="FolderTreeView_ItemInvoked"
-            Margin="0,20,6,6">
+            Width="265"
+            Margin="0,6,0,6"
+            HorizontalAlignment="Left"
+            PointerEntered="NavigationDrawerRoot_PointerEntered"
+            PointerExited="NavigationDrawerRoot_PointerExited">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="25"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
 
-            <TreeView.ItemTemplate>
-                <DataTemplate x:DataType="models:FolderNode">
-                    <TreeViewItem
-                        ItemsSource="{x:Bind Children}"
-                        IsExpanded="{x:Bind IsExpanded, Mode=TwoWay}"
-                        HasUnrealizedChildren="{x:Bind HasExpandableChildren, Mode=OneWay}"
-                        RightTapped="TreeViewItem_RightTapped">
-                        <Grid Tag="{x:Bind}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <FlyoutBase.AttachedFlyout>
-                                <MenuFlyout Placement="Bottom">
-                                    <MenuFlyoutItem Text="放进预览载入区" Icon="Add" Click="AddFolderToPreview_Click"/>
-                                    <MenuFlyoutItem Text="在资源管理器中打开" Icon="OpenFile" Click="OpenFolderInExplorer_Click"/>
-                                </MenuFlyout>
-                            </FlyoutBase.AttachedFlyout>
-                            <FontIcon
-                                Grid.Column="0"
-                                Glyph="{Binding Converter={StaticResource NodeTypeToIconConverter}}"
-                                FontSize="16"
-                                Margin="0,0,4,0"/>
-                            <TextBlock
-                                Grid.Column="1"
-                                Text="{x:Bind Name}"
-                                VerticalAlignment="Center"/>
-                        </Grid>
-                    </TreeViewItem>
-                </DataTemplate>
-            </TreeView.ItemTemplate>
-        </TreeView>
+            <Border
+                Grid.Row="0"
+                Grid.RowSpan="2"
+                Grid.Column="0"
+                Grid.ColumnSpan="2"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="0,8,8,0"/>
 
-        <Grid Grid.Column="1" Grid.Row="0" Margin="12,8,30,8">
+            <Button
+                x:Name="NavigationDrawerToggleButton"
+                Grid.Row="0"
+                Grid.RowSpan="2"
+                Grid.Column="0"
+                Width="25"
+                Padding="0"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Stretch"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                BorderThickness="0"
+                CornerRadius="0"
+                Click="NavigationDrawerToggleButton_Click">
+                <Button.Resources>
+                    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent"/>
+                </Button.Resources>
+                <FontIcon
+                    Glyph="&#xE76C;"
+                    FontFamily="{StaticResource SymbolThemeFontFamily}"
+                    FontSize="16"
+                    Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                    RenderTransformOrigin="0.5,0.5">
+                    <FontIcon.RenderTransform>
+                        <RotateTransform x:Name="NavigationDrawerChevronTransform" Angle="180"/>
+                    </FontIcon.RenderTransform>
+                </FontIcon>
+            </Button>
+
+            <Border
+                x:Name="NavigationDrawerHeader"
+                Grid.Row="0"
+                Grid.Column="1"
+                Padding="12"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                BorderThickness="0"
+                CornerRadius="8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE8B7;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
+                        <TextBlock Text="文件夹" Style="{ThemeResource BodyTextBlockStyle}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border
+                x:Name="NavigationDrawerTree"
+                Grid.Row="1"
+                Grid.Column="1"
+                Padding="6"
+                Background="Transparent"
+                BorderBrush="{ThemeResource ControlAltFillColorTertiaryBrush}"
+                BorderThickness="0,1,0,0"
+                CornerRadius="0">
+                <TreeView
+                    x:Name="FolderTreeView"
+                    ItemsSource="{x:Bind ViewModel.FolderTree}"
+                    Expanding="FolderTreeView_Expanding"
+                    ItemInvoked="FolderTreeView_ItemInvoked">
+                    <TreeView.ItemTemplate>
+                        <DataTemplate x:DataType="models:FolderNode">
+                            <TreeViewItem
+                                ItemsSource="{x:Bind Children}"
+                                IsExpanded="{x:Bind IsExpanded, Mode=TwoWay}"
+                                HasUnrealizedChildren="{x:Bind HasExpandableChildren, Mode=OneWay}"
+                                RightTapped="TreeViewItem_RightTapped">
+                                <Grid Tag="{x:Bind}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <FlyoutBase.AttachedFlyout>
+                                        <MenuFlyout Placement="Bottom">
+                                            <MenuFlyoutItem Text="固定到常用文件夹" Icon="Pin" Click="PinFolder_Click"/>
+                                            <MenuFlyoutItem Text="取消固定" Icon="UnPin" Click="UnpinFolder_Click"/>
+                                            <MenuFlyoutSeparator/>
+                                            <MenuFlyoutItem Text="刷新外接设备" Icon="Refresh" Click="RefreshExternalDevices_Click"/>
+                                            <MenuFlyoutSeparator/>
+                                            <MenuFlyoutItem Text="放进预览载入区" Icon="Add" Click="AddFolderToPreview_Click"/>
+                                            <MenuFlyoutItem Text="在资源管理器中打开" Icon="OpenFile" Click="OpenFolderInExplorer_Click"/>
+                                        </MenuFlyout>
+                                    </FlyoutBase.AttachedFlyout>
+                                    <FontIcon
+                                        Grid.Column="0"
+                                        Glyph="{Binding Converter={StaticResource NodeTypeToIconConverter}}"
+                                        FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                        FontSize="16"
+                                        Margin="0,0,6,0"/>
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        Text="{x:Bind Name}"
+                                        TextTrimming="CharacterEllipsis"
+                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </TreeViewItem>
+                        </DataTemplate>
+                    </TreeView.ItemTemplate>
+                </TreeView>
+            </Border>
+        </Grid>
+
+        <Border
+            Grid.Column="1"
+            Grid.Row="0"
+            Margin="4,6,30,0"
+            Padding="10,8"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1"
+            CornerRadius="8,8,0,0">
+        <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
@@ -312,18 +412,19 @@
                 </DropDownButton>
             </StackPanel>
         </Grid>
+        </Border>
 
 
         <Border
             x:Name="FolderDrawerRoot"
             Grid.Column="1"
             Grid.Row="1"
-            Margin="8,0,30,6"
+            Margin="4,0,30,0"
             Padding="10,8"
             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
             BorderThickness="1"
-            CornerRadius="10"
+            CornerRadius="0,0,8,8"
             Visibility="Visible">
             <StackPanel Spacing="8">
                 <Grid ColumnSpacing="12">
@@ -475,6 +576,11 @@
                                 RightTapped="SubFolderItem_RightTapped">
                                 <FlyoutBase.AttachedFlyout>
                                     <MenuFlyout Placement="Bottom">
+                                        <MenuFlyoutItem Text="固定到常用文件夹" Icon="Pin" Click="PinSubFolder_Click"/>
+                                        <MenuFlyoutItem Text="取消固定" Icon="UnPin" Click="UnpinSubFolder_Click"/>
+                                        <MenuFlyoutSeparator/>
+                                        <MenuFlyoutItem Text="刷新外接设备" Icon="Refresh" Click="RefreshExternalDevices_Click"/>
+                                        <MenuFlyoutSeparator/>
                                         <MenuFlyoutItem Text="放进预览载入区" Icon="Add" Click="AddSubFolderToPreview_Click"/>
                                         <MenuFlyoutItem Text="在资源管理器中打开" Icon="OpenFile" Click="OpenSubFolderInExplorer_Click"/>
                                     </MenuFlyout>
@@ -537,7 +643,7 @@
             SizeChanged="ImageGridView_SizeChanged"
             
             Margin="0,4,0,0"
-            Padding="4">
+            Padding="0,0,4,4">
             <GridView.ItemTemplate>
                 <DataTemplate x:DataType="models:ImageFileInfo">
                     <Grid

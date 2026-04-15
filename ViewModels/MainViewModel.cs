@@ -15,6 +15,7 @@ public partial class MainViewModel : ObservableRecipient
 {
     private readonly ISettingsService _settingsService;
     private readonly RatingService _ratingService;
+    private readonly FolderTreeService _folderTreeService;
     private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         // 常见图片格式
@@ -79,6 +80,9 @@ public partial class MainViewModel : ObservableRecipient
     private readonly object _ratingPreloadLock = new();
     private readonly Queue<RatingPreloadRequest> _pendingRatingPreloadItems = new();
     private readonly HashSet<string> _queuedRatingPreloadPaths = new(StringComparer.OrdinalIgnoreCase);
+    private FolderNode? _favoritesRootNode;
+    private FolderNode? _thisPcNode;
+    private FolderNode? _externalDeviceNode;
     private bool _isRatingPreloadRunning;
     private int _ratingPreloadVersion;
     public FilterViewModel Filter { get; }
@@ -139,10 +143,14 @@ public partial class MainViewModel : ObservableRecipient
         SelectedFolderChanged?.Invoke(this, value);
     }
 
-    public MainViewModel(ISettingsService settingsService, RatingService ratingService)
+    public MainViewModel(
+        ISettingsService settingsService,
+        RatingService ratingService,
+        FolderTreeService folderTreeService)
     {
         _settingsService = settingsService;
         _ratingService = ratingService;
+        _folderTreeService = folderTreeService;
         _thumbnailSize = _settingsService.ThumbnailSize;
         _folderTree = new ObservableCollection<FolderNode>();
         _breadcrumbPath = new ObservableCollection<FolderNode>();
@@ -162,20 +170,15 @@ public partial class MainViewModel : ObservableRecipient
     {
         try
         {
-            var thisPCNode = new FolderNode(null, NodeType.ThisPC)
-            {
-                Name = "这台电脑",
-                HasSubFolders = true
-            };
+            var roots = await _folderTreeService.CreateRootNodesAsync();
+            _favoritesRootNode = roots.FavoritesRoot;
+            _thisPcNode = roots.ThisPc;
+            _externalDeviceNode = roots.ExternalDevices;
 
-            var externalDeviceNode = new FolderNode(null, NodeType.ExternalDevice)
-            {
-                Name = "外接设备",
-                HasSubFolders = true
-            };
-
-            FolderTree.Add(thisPCNode);
-            FolderTree.Add(externalDeviceNode);
+            FolderTree.Clear();
+            FolderTree.Add(_favoritesRootNode);
+            FolderTree.Add(_thisPcNode);
+            FolderTree.Add(_externalDeviceNode);
 
             FolderTreeLoaded?.Invoke(this, EventArgs.Empty);
         }
@@ -186,68 +189,78 @@ public partial class MainViewModel : ObservableRecipient
 
     public async System.Threading.Tasks.Task LoadChildrenAsync(FolderNode node)
     {
-        if (node.IsLoaded || node.IsLoading)
+        await _folderTreeService.LoadChildrenAsync(node);
+    }
+
+    public async Task RefreshFavoriteFoldersAsync()
+    {
+        await _folderTreeService.RefreshFavoriteFoldersAsync(_favoritesRootNode);
+    }
+
+    public bool IsFolderPinned(FolderNode? node)
+    {
+        return _folderTreeService.IsFolderPinned(node);
+    }
+
+    public async Task PinFolderAsync(FolderNode? node)
+    {
+        await _folderTreeService.PinFolderAsync(node, _favoritesRootNode);
+        await SyncCurrentSubFoldersAsync(SelectedFolder, CancellationToken.None);
+    }
+
+    public async Task UnpinFolderAsync(FolderNode? node)
+    {
+        await _folderTreeService.UnpinFolderAsync(node, _favoritesRootNode);
+        await SyncCurrentSubFoldersAsync(SelectedFolder, CancellationToken.None);
+    }
+
+    public async Task RefreshExternalDevicesAsync()
+    {
+        if (_externalDeviceNode == null)
             return;
 
-        node.IsLoading = true;
-        node.Children.Clear();
+        var selectedPath = SelectedFolder?.FullPath;
+        var selectedWasExternal = IsPathUnderAnyChild(selectedPath, _externalDeviceNode);
 
-        try
+        await _folderTreeService.RefreshExternalDevicesAsync(_externalDeviceNode);
+
+        if (selectedWasExternal &&
+            !string.IsNullOrWhiteSpace(selectedPath) &&
+            !IsPathUnderAnyChild(selectedPath, _externalDeviceNode))
         {
-            if (node.NodeType == NodeType.ThisPC || node.NodeType == NodeType.ExternalDevice)
-            {
-                var drives = DriveInfo.GetDrives();
-                foreach (var drive in drives)
-                {
-                    if (!drive.IsReady)
-                        continue;
-
-                    try
-                    {
-                        var storageFolder = await StorageFolder.GetFolderFromPathAsync(drive.Name);
-                        var driveNode = new FolderNode(storageFolder, NodeType.Drive, node)
-                        {
-                            Name = $"{drive.Name} ({drive.VolumeLabel})",
-                            IsRemovable = drive.DriveType == DriveType.Removable
-                        };
-                        driveNode.CheckHasSubFolders();
-
-                        bool isRemovable = drive.DriveType == DriveType.Removable;
-
-                        if ((node.NodeType == NodeType.ThisPC && !isRemovable) ||
-                            (node.NodeType == NodeType.ExternalDevice && isRemovable))
-                        {
-                            node.Children.Add(driveNode);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                    }
-                }
-            }
-            else if (node.Folder != null)
-            {
-                var folders = await node.Folder.GetFoldersAsync();
-                foreach (var folder in folders)
-                {
-                    var childNode = new FolderNode(folder, NodeType.Folder, node);
-                    childNode.CheckHasSubFolders();
-                    node.Children.Add(childNode);
-                }
-            }
-
-            node.IsLoaded = true;
-            node.HasSubFolders = node.Children.Count > 0;
-            node.RefreshExpandableState();
+            SelectedFolder = _externalDeviceNode;
+            BreadcrumbPath.Clear();
+            BreadcrumbPath.Add(_externalDeviceNode);
+            CancelCurrentImageWork();
+            _allImages.Clear();
+            Images.Clear();
+            ImagesChanged?.Invoke(this, EventArgs.Empty);
         }
-        catch (Exception ex)
+
+        await SyncCurrentSubFoldersAsync(SelectedFolder ?? _externalDeviceNode, CancellationToken.None);
+    }
+
+    private static bool IsPathUnderAnyChild(string? path, FolderNode parent)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return false;
+
+        return parent.Children.Any(child =>
+            !string.IsNullOrWhiteSpace(child.FullPath) &&
+            NormalizePath(path).StartsWith(NormalizePath(child.FullPath), StringComparison.OrdinalIgnoreCase));
+    }
+
+    private bool IsNodeUnderFavoritesRoot(FolderNode? node)
+    {
+        while (node != null)
         {
+            if (ReferenceEquals(node, _favoritesRootNode))
+                return true;
+
+            node = node.Parent;
         }
-        finally
-        {
-            node.IsLoading = false;
-            node.RefreshExpandableState();
-        }
+
+        return false;
     }
 
     public async System.Threading.Tasks.Task LoadImagesAsync(FolderNode folderNode)
@@ -280,6 +293,8 @@ public partial class MainViewModel : ObservableRecipient
 
         if (folderNode?.Folder == null)
             return;
+
+        await RecordFolderVisitAsync(folderNode);
 
         try
         {
@@ -430,7 +445,7 @@ public partial class MainViewModel : ObservableRecipient
 
     private async Task SyncCurrentSubFoldersAsync(FolderNode? folderNode, CancellationToken cancellationToken)
     {
-        if (folderNode?.Folder == null)
+        if (folderNode == null)
         {
             CurrentSubFolders.Clear();
             OnPropertyChanged(nameof(SubFolderCount));
@@ -447,7 +462,6 @@ public partial class MainViewModel : ObservableRecipient
 
         var subFolders = folderNode.Children
             .Where(child => child.Folder != null)
-            .OrderBy(child => child.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
 
         CurrentSubFolders.Clear();
@@ -463,6 +477,26 @@ public partial class MainViewModel : ObservableRecipient
     private static bool IsImageFile(StorageFile file)
     {
         return ImageExtensions.Contains(file.FileType);
+    }
+
+    private async Task RecordFolderVisitAsync(FolderNode folderNode)
+    {
+        await _folderTreeService.RecordFolderVisitAsync(
+            folderNode,
+            IsNodeUnderFavoritesRoot(folderNode) ? null : _favoritesRootNode);
+    }
+
+    private static string NormalizePath(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var root = Path.GetPathRoot(fullPath);
+        if (!string.IsNullOrEmpty(root) &&
+            string.Equals(fullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
+        {
+            return root;
+        }
+
+        return fullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
     }
 
     private void AddPlaceholderGroups(
@@ -1025,6 +1059,8 @@ public partial class MainViewModel : ObservableRecipient
 
         if (folderNode?.Folder == null)
             return;
+
+        await RecordFolderVisitAsync(folderNode);
 
         try
         {

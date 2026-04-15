@@ -43,6 +43,8 @@ public sealed partial class MainPage : Page
     private readonly HashSet<ImageFileInfo> _selectedImageState = new();
     private const double GridViewItemMargin = 4d;
     private const double GridViewItemGap = GridViewItemMargin * 2d;
+    private const double NavigationDrawerExpandedWidth = 265d;
+    private const double NavigationDrawerCollapsedWidth = 25d;
     private const double FolderDrawerExpandedMaxHeight = 150d;
     private const double FolderDrawerCollapsedOffsetY = -8d;
     private const double ImageGridTopScrollTolerance = 1d;
@@ -65,6 +67,8 @@ public sealed partial class MainPage : Page
     private bool _hasAttemptedRestoreLastFolder;
     private bool _isFolderDrawerExpanded = true;
     private bool _isFolderDrawerContentVisible;
+    private bool _isNavigationDrawerPinnedCollapsed;
+    private bool _isNavigationDrawerTemporarilyExpanded;
     private bool _isImageGridPointerWheelHandlerAttached;
     private double _lastImageGridVerticalOffset;
     private int _immediateVisibleThumbnailStartCount;
@@ -72,6 +76,7 @@ public sealed partial class MainPage : Page
     private int _thumbnailQueueVersion;
     private int _activeWarmPreviewLoads;
     private CancellationTokenSource _warmPreviewCts = new();
+    private Storyboard? _navigationDrawerStoryboard;
     private Storyboard? _folderDrawerStoryboard;
     private (ImageFileInfo Image, uint Rating)? _pendingRatingUpdate;
     private ImageFileInfo? _storedImageFileInfo;
@@ -146,6 +151,7 @@ public sealed partial class MainPage : Page
         UpdateImageGridTileSize();
         QueueVisibleThumbnailLoad("page-loaded");
         UpdateFilterButtonState();
+        UpdateNavigationDrawerState(animate: false);
         UpdateFolderDrawerState(animate: false);
         ReattachActiveViewerAfterNavigation();
     }
@@ -528,10 +534,26 @@ public sealed partial class MainPage : Page
 
                 foreach (var child in rootNode.Children)
                 {
-                    if (child.FullPath != null && child.FullPath.StartsWith(currentPath, StringComparison.OrdinalIgnoreCase))
+                    if (child.FullPath != null &&
+                        string.Equals(
+                            child.FullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                            currentPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                            StringComparison.OrdinalIgnoreCase))
                     {
                         currentNode = child;
                         break;
+                    }
+                }
+
+                if (currentNode == null)
+                {
+                    foreach (var child in rootNode.Children)
+                    {
+                        if (child.FullPath != null && child.FullPath.StartsWith(currentPath, StringComparison.OrdinalIgnoreCase))
+                        {
+                            currentNode = child;
+                            break;
+                        }
                     }
                 }
 
@@ -594,6 +616,7 @@ public sealed partial class MainPage : Page
         _loadImagesThrottleTimer.Stop();
         _ratingDebounceTimer.Stop();
         _visibleThumbnailLoadTimer.Stop();
+        StopNavigationDrawerAnimation();
         _pendingRatingUpdate = null;
         ClearThumbnailQueues();
         _realizedImageItems.Clear();
@@ -840,6 +863,138 @@ public sealed partial class MainPage : Page
         }
 
         ThrottleLoadImages(node);
+    }
+
+    private void NavigationDrawerToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        _isNavigationDrawerPinnedCollapsed = !_isNavigationDrawerPinnedCollapsed;
+        _isNavigationDrawerTemporarilyExpanded = false;
+        UpdateNavigationDrawerState();
+    }
+
+    private void NavigationDrawerRoot_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_isNavigationDrawerPinnedCollapsed || _isNavigationDrawerTemporarilyExpanded)
+            return;
+
+        _isNavigationDrawerTemporarilyExpanded = true;
+        UpdateNavigationDrawerState();
+    }
+
+    private void NavigationDrawerRoot_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_isNavigationDrawerPinnedCollapsed || !_isNavigationDrawerTemporarilyExpanded)
+            return;
+
+        _isNavigationDrawerTemporarilyExpanded = false;
+        UpdateNavigationDrawerState();
+    }
+
+    private bool IsNavigationDrawerExpanded => !_isNavigationDrawerPinnedCollapsed || _isNavigationDrawerTemporarilyExpanded;
+
+    private void UpdateNavigationDrawerState(bool animate = true)
+    {
+        var isExpanded = IsNavigationDrawerExpanded;
+        var targetWidth = isExpanded ? NavigationDrawerExpandedWidth : NavigationDrawerCollapsedWidth;
+        var targetChevronAngle = isExpanded ? 180d : 0d;
+
+        if (isExpanded)
+        {
+            SetNavigationDrawerContentVisibility(Visibility.Visible);
+        }
+
+        if (!animate)
+        {
+            StopNavigationDrawerAnimation();
+            NavigationDrawerRoot.Width = targetWidth;
+            NavigationDrawerChevronTransform.Angle = targetChevronAngle;
+            if (!isExpanded)
+            {
+                SetNavigationDrawerContentVisibility(Visibility.Collapsed);
+            }
+            return;
+        }
+
+        AnimateNavigationDrawer(targetWidth, targetChevronAngle, isExpanded);
+    }
+
+    private void AnimateNavigationDrawer(double targetWidth, double targetChevronAngle, bool isExpanding)
+    {
+        StopNavigationDrawerAnimation();
+
+        var currentWidth = NavigationDrawerRoot.ActualWidth > 0
+            ? NavigationDrawerRoot.ActualWidth
+            : NavigationDrawerRoot.Width;
+        if (double.IsNaN(currentWidth) || currentWidth <= 0)
+        {
+            currentWidth = isExpanding ? NavigationDrawerCollapsedWidth : NavigationDrawerExpandedWidth;
+        }
+
+        if (Math.Abs(currentWidth - targetWidth) < 0.5)
+        {
+            NavigationDrawerRoot.Width = targetWidth;
+            NavigationDrawerChevronTransform.Angle = targetChevronAngle;
+            if (!IsNavigationDrawerExpanded)
+            {
+                SetNavigationDrawerContentVisibility(Visibility.Collapsed);
+            }
+            return;
+        }
+
+        var widthAnimation = new DoubleAnimation
+        {
+            From = currentWidth,
+            To = targetWidth,
+            Duration = new Duration(TimeSpan.FromMilliseconds(FolderDrawerAnimationDurationMs)),
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
+            EnableDependentAnimation = true
+        };
+        Storyboard.SetTarget(widthAnimation, NavigationDrawerRoot);
+        Storyboard.SetTargetProperty(widthAnimation, "Width");
+
+        var chevronAnimation = new DoubleAnimation
+        {
+            From = NavigationDrawerChevronTransform.Angle,
+            To = targetChevronAngle,
+            Duration = new Duration(TimeSpan.FromMilliseconds(FolderDrawerAnimationDurationMs)),
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
+            EnableDependentAnimation = true
+        };
+        Storyboard.SetTarget(chevronAnimation, NavigationDrawerChevronTransform);
+        Storyboard.SetTargetProperty(chevronAnimation, "Angle");
+
+        var storyboard = new Storyboard();
+        storyboard.Children.Add(widthAnimation);
+        storyboard.Children.Add(chevronAnimation);
+        storyboard.Completed += (_, _) =>
+        {
+            if (!ReferenceEquals(_navigationDrawerStoryboard, storyboard))
+                return;
+
+            NavigationDrawerRoot.Width = targetWidth;
+            NavigationDrawerChevronTransform.Angle = targetChevronAngle;
+            if (!IsNavigationDrawerExpanded)
+            {
+                SetNavigationDrawerContentVisibility(Visibility.Collapsed);
+            }
+            _navigationDrawerStoryboard = null;
+        };
+
+        _navigationDrawerStoryboard = storyboard;
+        storyboard.Begin();
+    }
+
+    private void StopNavigationDrawerAnimation()
+    {
+        var storyboard = _navigationDrawerStoryboard;
+        _navigationDrawerStoryboard = null;
+        storyboard?.Stop();
+    }
+
+    private void SetNavigationDrawerContentVisibility(Visibility visibility)
+    {
+        NavigationDrawerHeader.Visibility = visibility;
+        NavigationDrawerTree.Visibility = visibility;
     }
 
     private void UpdateFolderDrawerState(bool animate = true)
@@ -1572,6 +1727,31 @@ public sealed partial class MainPage : Page
 
     private FolderNode? _rightClickedFolderNode;
     private FolderNode? _rightClickedSubFolderNode;
+
+    private async void PinFolder_Click(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.PinFolderAsync(_rightClickedFolderNode);
+    }
+
+    private async void UnpinFolder_Click(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.UnpinFolderAsync(_rightClickedFolderNode);
+    }
+
+    private async void PinSubFolder_Click(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.PinFolderAsync(_rightClickedSubFolderNode);
+    }
+
+    private async void UnpinSubFolder_Click(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.UnpinFolderAsync(_rightClickedSubFolderNode);
+    }
+
+    private async void RefreshExternalDevices_Click(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.RefreshExternalDevicesAsync();
+    }
 
     private void OpenFolderInExplorer_Click(object sender, RoutedEventArgs e)
     {
