@@ -58,7 +58,7 @@
                 </NavigationViewItem>
                 <NavigationViewItem x:Uid="Shell_Collect" helpers:NavigationHelper.NavigateTo="PhotoView.ViewModels.CollectViewModel">
                     <NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE7F7;" />
+                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="30" Glyph="&#xE7F7;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
                 <!--<NavigationViewItem x:Uid="Shell_FolderPage" Content="文件夹" helpers:NavigationHelper.NavigateTo="PhotoPro.ViewModels.CollectViewModel">

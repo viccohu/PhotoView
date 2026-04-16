@@ -255,6 +255,32 @@ public sealed partial class ImageViewerControl : UserControl
         ViewModel.SetBasicInfo(imageFileInfo);
     }
 
+    public async Task SwitchImageAsync(ImageFileInfo imageFileInfo)
+    {
+        if (_isClosing)
+            return;
+
+        CancelHighResLoad();
+        StopPhysics();
+
+        _imageFileInfo = imageFileInfo;
+        _is1To1Scale = false;
+        _isViewerLayerReady = false;
+        _isOriginalImageLoaded = false;
+        _isLoadingHighRes = false;
+        _hasPrepared = true;
+
+        AnimationImage.Source = imageFileInfo.Thumbnail;
+        MainImage.Source = imageFileInfo.Thumbnail;
+        MainImage.Stretch = Stretch.Uniform;
+        AnimationImage.Opacity = 0;
+        ImageContainer.Opacity = 1;
+
+        ViewModel.SetBasicInfo(imageFileInfo);
+        await SwitchToViewerLayerAsync();
+        Focus(FocusState.Programmatic);
+    }
+
     public Task PrepareForAnimationAsync()
     {
         // System.Diagnostics.Debug.WriteLine($"[ImageViewer] PrepareForAnimationAsync: 完成");

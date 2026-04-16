@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="_图层_1" data-name="图层 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28">
+  <defs>
+    <style>
+      .cls-1 {
+        stroke: #fff;
+      }
+
+      .cls-1, .cls-2 {
+        fill: none;
+        stroke-miterlimit: 10;
+      }
+
+      .cls-2 {
+        stroke: #10b0ff;
+      }
+
+      .cls-3 {
+        fill: #10b0ff;
+      }
+    </style>
+  </defs>
+  <rect class="cls-2" x="1.16" y="2.5" width="11.76" height="24" rx="2.11" ry="2.11"/>
+  <rect class="cls-1" x="15.16" y="2.5" width="11.76" height="11" rx="1.43" ry="1.43"/>
+  <rect class="cls-1" x="15.16" y="15.5" width="11.76" height="10.6" rx="1.4" ry="1.4"/>
+  <circle class="cls-3" cx="10.75" cy="5.68" r=".82"/>
+  <path class="cls-2" d="m1.16,19.57s8.59-1.24,8.59,6.82"/>
+</svg>

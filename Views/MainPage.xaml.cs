@@ -58,6 +58,7 @@ public sealed partial class MainPage : Page
     private const int MaxActiveWarmPreviewLoads = 2;
     private const uint WarmPreviewLongSidePixels = 160;
     private readonly PointerEventHandler _imageGridPointerWheelHandler;
+    private readonly KeyEventHandler _shortcutKeyDownHandler;
     private FolderNode? _pendingLoadNode;
     private ScrollViewer? _imageGridScrollViewer;
     private ItemsWrapGrid? _imageItemsWrapGrid;
@@ -97,6 +98,7 @@ public sealed partial class MainPage : Page
         NavigationCacheMode = NavigationCacheMode.Enabled;
         InitializeComponent();
         _imageGridPointerWheelHandler = ImageGridView_PointerWheelChanged;
+        _shortcutKeyDownHandler = MainPage_KeyDown;
         FolderTreeView.DataContext = ViewModel;
 
         _loadImagesThrottleTimer = new DispatcherTimer
@@ -123,8 +125,7 @@ public sealed partial class MainPage : Page
         ViewModel.SelectedFolderChanged += ViewModel_SelectedFolderChanged;
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         Loaded += MainPage_Loaded;
-        KeyDown += MainPage_KeyDown;
-        PreviewKeyDown += MainPage_PreviewKeyDown;
+        AddHandler(UIElement.KeyDownEvent, _shortcutKeyDownHandler, true);
         Unloaded += MainPage_Unloaded;
         
         // System.Diagnostics.Debug.WriteLine($"[MainPage] 事件已订阅, FolderTree.Count={ViewModel.FolderTree.Count}");
@@ -185,6 +186,7 @@ public sealed partial class MainPage : Page
         }
         finally
         {
+            var imageToFocus = _storedImageFileInfo;
             // 清理资源
             viewer.Closed -= ImageViewer_Closed;
             viewer.ViewModel.RatingUpdated -= ViewModel_RatingUpdated;
@@ -192,6 +194,11 @@ public sealed partial class MainPage : Page
             {
                 ViewerContainer.Content = null;
                 _currentViewer = null;
+            }
+
+            if (imageToFocus != null)
+            {
+                await SelectImageForViewerAsync(imageToFocus, "viewer-close-focus", focusThumbnail: true);
             }
 
             await _settingsService.ResumeAlwaysDecodeRawPersistenceAsync("viewer-close");
@@ -360,40 +367,129 @@ public sealed partial class MainPage : Page
     {
         if (e.OriginalSource is FrameworkElement element && element.DataContext is ImageFileInfo imageFileInfo)
         {
-            _storedImageFileInfo = imageFileInfo;
-
-            // 每次打开图片，都 new 一个新的实例
-            var newViewer = new Controls.ImageViewerControl();
-            ViewerContainer.Content = newViewer;
-            _currentViewer = newViewer;
-            _settingsService.SuspendAlwaysDecodeRawPersistence("viewer-open");
-
-            // 订阅关闭事件
-            newViewer.Closed += ImageViewer_Closed;
-            
-            // 订阅评级更新事件
-            newViewer.ViewModel.RatingUpdated += ViewModel_RatingUpdated;
-
-            newViewer.PrepareContent(imageFileInfo);
-
-            // 等待布局完成并应用初始缩放，然后再启动动画
-            await newViewer.PrepareForAnimationAsync();
-
-            if (ImageGridView.ContainerFromItem(imageFileInfo) is GridViewItem container)
-            {
-                ImageGridView.PrepareConnectedAnimation("ForwardConnectedAnimation", imageFileInfo, "thumbnailImage");
-            }
-
-            var imageAnimation = ConnectedAnimationService.GetForCurrentView().GetAnimation("ForwardConnectedAnimation");
-            if (imageAnimation != null)
-            {
-                imageAnimation.TryStart(newViewer.GetMainImage(), newViewer.GetCoordinatedElements());
-            }
-
-            await newViewer.ShowAfterAnimationAsync();
-
+            await OpenImageViewerAsync(imageFileInfo, useConnectedAnimation: true);
             e.Handled = true;
         }
+    }
+
+    private async Task OpenImageViewerAsync(ImageFileInfo imageFileInfo, bool useConnectedAnimation)
+    {
+        if (_isUnloaded || AppLifetime.IsShuttingDown)
+            return;
+
+        if (_currentViewer != null)
+            return;
+
+        AutoCollapseImageBrowsingChrome("viewer-open");
+        await SelectImageForViewerAsync(imageFileInfo, "viewer-open", focusThumbnail: false);
+        _storedImageFileInfo = imageFileInfo;
+
+        var newViewer = new Controls.ImageViewerControl();
+        ViewerContainer.Content = newViewer;
+        _currentViewer = newViewer;
+        _settingsService.SuspendAlwaysDecodeRawPersistence("viewer-open");
+
+        newViewer.Closed += ImageViewer_Closed;
+        newViewer.ViewModel.RatingUpdated += ViewModel_RatingUpdated;
+
+        newViewer.PrepareContent(imageFileInfo);
+        await newViewer.PrepareForAnimationAsync();
+
+        if (useConnectedAnimation && ImageGridView.ContainerFromItem(imageFileInfo) is GridViewItem)
+        {
+            ImageGridView.PrepareConnectedAnimation("ForwardConnectedAnimation", imageFileInfo, "thumbnailImage");
+        }
+
+        var imageAnimation = ConnectedAnimationService.GetForCurrentView().GetAnimation("ForwardConnectedAnimation");
+        if (imageAnimation != null)
+        {
+            imageAnimation.TryStart(newViewer.GetMainImage(), newViewer.GetCoordinatedElements());
+        }
+
+        await newViewer.ShowAfterAnimationAsync();
+    }
+
+    private async Task ToggleImageViewerForCurrentSelectionAsync()
+    {
+        if (_currentViewer != null)
+        {
+            _currentViewer.PrepareCloseAnimation();
+            return;
+        }
+
+        var currentImage = GetCurrentImageForViewerOrSelection();
+        if (currentImage != null)
+        {
+            await OpenImageViewerAsync(currentImage, useConnectedAnimation: true);
+        }
+    }
+
+    private async Task SwitchViewerImageAsync(int delta)
+    {
+        var viewer = _currentViewer;
+        if (viewer == null)
+            return;
+
+        var currentImage = GetCurrentImageForViewerOrSelection();
+        if (currentImage == null)
+            return;
+
+        var nextImage = GetAdjacentImage(currentImage, delta);
+        if (nextImage == null || ReferenceEquals(nextImage, currentImage))
+            return;
+
+        _storedImageFileInfo = nextImage;
+        await SelectImageForViewerAsync(nextImage, "viewer-key-switch", focusThumbnail: false);
+        await viewer.SwitchImageAsync(nextImage);
+    }
+
+    private async Task SelectImageForViewerAsync(ImageFileInfo imageInfo, string reason, bool focusThumbnail)
+    {
+        if (!ViewModel.Images.Contains(imageInfo))
+            return;
+
+        ExecuteProgrammaticSelectionChange(() =>
+        {
+            ImageGridView.SelectedItems.Clear();
+            ImageGridView.SelectedItem = imageInfo;
+        });
+
+        await ScrollItemIntoViewAsync(imageInfo, reason, ScrollIntoViewAlignment.Default);
+
+        if (focusThumbnail && ImageGridView.ContainerFromItem(imageInfo) is GridViewItem container)
+        {
+            container.Focus(FocusState.Programmatic);
+        }
+    }
+
+    private ImageFileInfo? GetCurrentImageForViewerOrSelection()
+    {
+        if (_currentViewer != null && _storedImageFileInfo != null && ViewModel.Images.Contains(_storedImageFileInfo))
+            return _storedImageFileInfo;
+
+        if (ImageGridView.SelectedItem is ImageFileInfo selectedImage && ViewModel.Images.Contains(selectedImage))
+            return selectedImage;
+
+        var firstSelectedImage = ImageGridView.SelectedItems
+            .OfType<ImageFileInfo>()
+            .FirstOrDefault(ViewModel.Images.Contains);
+        if (firstSelectedImage != null)
+            return firstSelectedImage;
+
+        return ViewModel.Images.FirstOrDefault();
+    }
+
+    private ImageFileInfo? GetAdjacentImage(ImageFileInfo currentImage, int delta)
+    {
+        if (ViewModel.Images.Count == 0)
+            return null;
+
+        var currentIndex = ViewModel.Images.IndexOf(currentImage);
+        if (currentIndex < 0)
+            return null;
+
+        var nextIndex = Math.Clamp(currentIndex + delta, 0, ViewModel.Images.Count - 1);
+        return ViewModel.Images[nextIndex];
     }
 
     private void Filter_FilterChanged(object? sender, EventArgs e)
@@ -1050,6 +1146,43 @@ public sealed partial class MainPage : Page
         return ViewModel.Images.Count > 0 && ViewModel.HasSubFoldersInCurrentFolder;
     }
 
+    private void AutoCollapseImageBrowsingChrome(string reason)
+    {
+        AutoCollapseNavigationDrawer(reason);
+        AutoCollapseFolderDrawer(reason);
+    }
+
+    private void AutoExpandImageBrowsingChrome(string reason)
+    {
+        if (!CanAutoToggleFolderDrawer())
+            return;
+
+        AutoExpandNavigationDrawer(reason);
+        AutoExpandFolderDrawer(reason);
+    }
+
+    private void AutoCollapseNavigationDrawer(string reason)
+    {
+        if (ViewModel.Images.Count == 0 || _isNavigationDrawerPinnedCollapsed)
+            return;
+
+        _isNavigationDrawerPinnedCollapsed = true;
+        _isNavigationDrawerTemporarilyExpanded = false;
+        // System.Diagnostics.Debug.WriteLine($"[MainPage] Navigation drawer auto collapsed, reason={reason}");
+        UpdateNavigationDrawerState();
+    }
+
+    private void AutoExpandNavigationDrawer(string reason)
+    {
+        if (ViewModel.Images.Count == 0 || !_isNavigationDrawerPinnedCollapsed)
+            return;
+
+        _isNavigationDrawerPinnedCollapsed = false;
+        _isNavigationDrawerTemporarilyExpanded = false;
+        // System.Diagnostics.Debug.WriteLine($"[MainPage] Navigation drawer auto expanded, reason={reason}");
+        UpdateNavigationDrawerState();
+    }
+
     private void AutoCollapseFolderDrawer(string reason)
     {
         if (!CanAutoToggleFolderDrawer())
@@ -1700,7 +1833,7 @@ public sealed partial class MainPage : Page
     {
         if (sender is FrameworkElement { Tag: ImageFileInfo })
         {
-            AutoCollapseFolderDrawer("image-tapped");
+            AutoCollapseImageBrowsingChrome("image-tapped");
         }
     }
 
@@ -1921,6 +2054,137 @@ public sealed partial class MainPage : Page
     }
 
     private void MainPage_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        HandleMainPageShortcutKey(e);
+    }
+
+    private void HandleMainPageShortcutKey(KeyRoutedEventArgs e)
+    {
+        var viewerShortcut = _currentViewer != null;
+        if (!CanHandleMainPageShortcut(viewerShortcut))
+            return;
+
+        if (_currentViewer != null)
+        {
+            if (e.Key == VirtualKey.Space || e.Key == VirtualKey.Escape)
+            {
+                _currentViewer.PrepareCloseAnimation();
+                e.Handled = true;
+            }
+            else if (e.Key == VirtualKey.Left || e.Key == VirtualKey.Up)
+            {
+                _ = SwitchViewerImageAsync(-1);
+                e.Handled = true;
+            }
+            else if (e.Key == VirtualKey.Right || e.Key == VirtualKey.Down)
+            {
+                _ = SwitchViewerImageAsync(1);
+                e.Handled = true;
+            }
+            else if (e.Key >= VirtualKey.Number0 && e.Key <= VirtualKey.Number5)
+            {
+                if (!e.Handled)
+                {
+                    _currentViewer.HandleRatingKey(e.Key);
+                }
+
+                e.Handled = true;
+            }
+            else if (e.Key >= VirtualKey.NumberPad0 && e.Key <= VirtualKey.NumberPad5)
+            {
+                _currentViewer.HandleRatingKey(e.Key - (VirtualKey.NumberPad0 - VirtualKey.Number0));
+                e.Handled = true;
+            }
+
+            return;
+        }
+
+        if (e.Key == VirtualKey.Space)
+        {
+            _ = ToggleImageViewerForCurrentSelectionAsync();
+            e.Handled = true;
+        }
+        else if (e.Key == VirtualKey.A)
+        {
+            var isCtrlPressed = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
+                .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+            if (isCtrlPressed)
+            {
+                ImageGridView.SelectAll();
+                e.Handled = true;
+            }
+        }
+        else if (e.Key == VirtualKey.Escape)
+        {
+            ClearGridViewSelection();
+            e.Handled = true;
+        }
+        else if (e.Key == VirtualKey.Delete)
+        {
+            TogglePendingDeleteForSelectedItems();
+            e.Handled = true;
+        }
+        else if (e.Key >= VirtualKey.Number0 && e.Key <= VirtualKey.Number5)
+        {
+            HandleRatingShortcut(e.Key);
+            e.Handled = true;
+        }
+        else if (e.Key >= VirtualKey.NumberPad0 && e.Key <= VirtualKey.NumberPad5)
+        {
+            HandleRatingShortcut(e.Key - (VirtualKey.NumberPad0 - VirtualKey.Number0));
+            e.Handled = true;
+        }
+    }
+
+    private bool CanHandleMainPageShortcut(bool viewerShortcut)
+    {
+        if (_isUnloaded || AppLifetime.IsShuttingDown)
+            return false;
+
+        var focusedElement = FocusManager.GetFocusedElement(XamlRoot) as DependencyObject;
+        if (IsTextInputElement(focusedElement))
+            return false;
+
+        if (viewerShortcut)
+            return true;
+
+        return focusedElement == null ||
+               IsWithin(focusedElement, ImageGridView) ||
+               ReferenceEquals(focusedElement, this);
+    }
+
+    private static bool IsTextInputElement(DependencyObject? element)
+    {
+        while (element != null)
+        {
+            if (element is TextBox or PasswordBox or RichEditBox or AutoSuggestBox)
+            {
+                return true;
+            }
+
+            element = VisualTreeHelper.GetParent(element);
+        }
+
+        return false;
+    }
+
+    private static bool IsWithin(DependencyObject element, DependencyObject ancestor)
+    {
+        var current = element;
+        while (current != null)
+        {
+            if (ReferenceEquals(current, ancestor))
+            {
+                return true;
+            }
+
+            current = VisualTreeHelper.GetParent(current);
+        }
+
+        return false;
+    }
+
+    private void MainPage_KeyDownLegacy(object sender, KeyRoutedEventArgs e)
     {
         // System.Diagnostics.Debug.WriteLine($"[MainPage] MainPage_KeyDown: 按键={e.Key}, _currentViewer={( _currentViewer == null ? "null" : "not null" )}, e.Handled初始值={e.Handled}");
         
@@ -2479,11 +2743,11 @@ public sealed partial class MainPage : Page
 
         if (delta < 0)
         {
-            AutoCollapseFolderDrawer("wheel-down");
+            AutoCollapseImageBrowsingChrome("wheel-down");
         }
         else if (verticalOffset <= ImageGridTopScrollTolerance)
         {
-            AutoExpandFolderDrawer("wheel-up-at-top");
+            AutoExpandImageBrowsingChrome("wheel-up-at-top");
         }
     }
 
@@ -2533,13 +2797,13 @@ public sealed partial class MainPage : Page
 
         if (delta > ImageGridTopScrollTolerance)
         {
-            AutoCollapseFolderDrawer(reason);
+            AutoCollapseImageBrowsingChrome(reason);
         }
         else if (delta < -ImageGridTopScrollTolerance &&
                  previousOffset <= ImageGridTopScrollTolerance &&
                  nextVerticalOffset <= ImageGridTopScrollTolerance)
         {
-            AutoExpandFolderDrawer($"{reason}-top");
+            AutoExpandImageBrowsingChrome($"{reason}-top");
         }
     }
 

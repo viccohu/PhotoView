@@ -629,14 +629,10 @@
                                             Width="20"
                                             Height="20"
                                             VerticalAlignment="Center">
-                                            <FontIcon
-                                                Glyph="&#xE8B7;"
-                                                FontFamily="{StaticResource SymbolThemeFontFamily}"
-                                                FontSize="18"
-                                                Foreground="#FBC02D"
-                                                VerticalAlignment="Center"/>
                                             <Image
                                                 Source="{x:Bind ListIcon, Mode=OneWay}"
+                                                Width="20"
+                                                Height="20"
                                                 Stretch="Uniform"
                                                 VerticalAlignment="Center"
                                                 HorizontalAlignment="Center"/>

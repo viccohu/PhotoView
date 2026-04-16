@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
@@ -30,6 +30,8 @@
     <Content Remove="Assets\BadgeLogo.scale-200.png" />
     <Content Remove="Assets\BadgeLogo.scale-400.png" />
     <Content Remove="Assets\lgo-08.png" />
+    <Content Remove="Assets\mainpage.svg" />
+    <Content Remove="Assets\preview.svg" />
   </ItemGroup>
 
   <ItemGroup>

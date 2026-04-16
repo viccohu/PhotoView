@@ -111,6 +111,14 @@ public sealed partial class PreviewImageCanvasControl : UserControl
         SetZoomPercent(Math.Abs(currentPercent - 100d) < 1d ? GetFitZoomPercent() : 100d);
     }
 
+    public void ResetToFitZoom()
+    {
+        if (_imageFileInfo == null)
+            return;
+
+        SetZoomPercent(GetFitZoomPercent());
+    }
+
     public void RotateClockwise()
     {
         _rotationDegrees = (_rotationDegrees + 90) % 360;
@@ -461,6 +469,8 @@ public sealed partial class PreviewImageCanvasControl : UserControl
 
     private void ImageContainer_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
     {
+        Focus(FocusState.Pointer);
+
         if (_imageFileInfo == null)
             return;
 
@@ -496,6 +506,8 @@ public sealed partial class PreviewImageCanvasControl : UserControl
 
     private void ImageTransformContainer_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
+        Focus(FocusState.Pointer);
+
         if (_imageFileInfo == null)
             return;
 
@@ -505,6 +517,8 @@ public sealed partial class PreviewImageCanvasControl : UserControl
 
     private void ImageContainer_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
+        Focus(FocusState.Pointer);
+
         if (_imageFileInfo == null || !CanPan())
             return;
 

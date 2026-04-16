@@ -6,7 +6,9 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
     d:DesignHeight="480"
-    d:DesignWidth="720">
+    d:DesignWidth="720"
+    IsTabStop="True"
+    UseSystemFocusVisuals="False">
 
     <Grid
         x:Name="ImageContainer"

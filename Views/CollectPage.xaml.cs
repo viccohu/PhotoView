@@ -25,6 +25,7 @@ public sealed partial class CollectPage : Page
     private const int VisibleThumbnailPrefetchItemCount = 12;
     private readonly DispatcherTimer _visibleThumbnailLoadTimer;
     private readonly DispatcherTimer _ratingDebounceTimer;
+    private readonly KeyEventHandler _shortcutKeyDownHandler;
     private readonly HashSet<ImageFileInfo> _pendingVisibleThumbnailLoads = new();
     private readonly HashSet<ImageFileInfo> _realizedImageItems = new();
     private readonly Dictionary<RatingControl, bool> _ratingControlEventMap = new();
@@ -80,9 +81,10 @@ public sealed partial class CollectPage : Page
         PreviewCanvas.ZoomPercentChanged += PreviewCanvas_ZoomPercentChanged;
         _thumbnailWheelHandler = PreviewThumbnailGridView_PointerWheelChanged;
         PreviewThumbnailGridView.AddHandler(UIElement.PointerWheelChangedEvent, _thumbnailWheelHandler, true);
+        _shortcutKeyDownHandler = CollectPage_KeyDown;
+        AddHandler(UIElement.KeyDownEvent, _shortcutKeyDownHandler, true);
         Loaded += CollectPage_Loaded;
         Unloaded += CollectPage_Unloaded;
-        KeyDown += CollectPage_KeyDown;
     }
 
     private void CollectPage_Loaded(object sender, RoutedEventArgs e)
@@ -130,9 +132,9 @@ public sealed partial class CollectPage : Page
             PreviewThumbnailGridView.RemoveHandler(UIElement.PointerWheelChangedEvent, _thumbnailWheelHandler);
             _thumbnailWheelHandler = null;
         }
+        RemoveHandler(UIElement.KeyDownEvent, _shortcutKeyDownHandler);
         Loaded -= CollectPage_Loaded;
         Unloaded -= CollectPage_Unloaded;
-        KeyDown -= CollectPage_KeyDown;
     }
 
     private async void LoadPreview_Click(object sender, RoutedEventArgs e)
@@ -1005,7 +1007,20 @@ public sealed partial class CollectPage : Page
 
     private void CollectPage_KeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (e.Key == VirtualKey.Delete)
+        HandlePageShortcutKey(e);
+    }
+
+    private void HandlePageShortcutKey(KeyRoutedEventArgs e)
+    {
+        if (!CanHandlePageShortcut())
+            return;
+
+        if (e.Key == VirtualKey.Escape && ViewModel.SelectedImage != null)
+        {
+            PreviewCanvas.ResetToFitZoom();
+            e.Handled = true;
+        }
+        else if (e.Key == VirtualKey.Delete)
         {
             ViewModel.TogglePendingDeleteForSelected(PreviewThumbnailGridView.SelectedItems.OfType<ImageFileInfo>());
             e.Handled = true;
@@ -1020,11 +1035,55 @@ public sealed partial class CollectPage : Page
             HandleRatingShortcut(e.Key - (VirtualKey.NumberPad0 - VirtualKey.Number0));
             e.Handled = true;
         }
-        else if (e.Key == VirtualKey.Left || e.Key == VirtualKey.Right)
+        else if (e.Key == VirtualKey.Left || e.Key == VirtualKey.Right ||
+                 e.Key == VirtualKey.Up || e.Key == VirtualKey.Down)
         {
-            MoveSelection(e.Key == VirtualKey.Right ? 1 : -1);
+            MoveSelection(e.Key == VirtualKey.Right || e.Key == VirtualKey.Down ? 1 : -1);
             e.Handled = true;
         }
+    }
+
+    private bool CanHandlePageShortcut()
+    {
+        if (_isDisposed || _isUnloaded)
+            return false;
+
+        var focusedElement = FocusManager.GetFocusedElement(XamlRoot) as DependencyObject;
+        if (IsTextInputElement(focusedElement))
+            return false;
+
+        return focusedElement == null || !IsWithin(focusedElement, LoadDrawerRoot);
+    }
+
+    private static bool IsTextInputElement(DependencyObject? element)
+    {
+        while (element != null)
+        {
+            if (element is TextBox or PasswordBox or RichEditBox or AutoSuggestBox)
+            {
+                return true;
+            }
+
+            element = VisualTreeHelper.GetParent(element);
+        }
+
+        return false;
+    }
+
+    private static bool IsWithin(DependencyObject element, DependencyObject ancestor)
+    {
+        var current = element;
+        while (current != null)
+        {
+            if (ReferenceEquals(current, ancestor))
+            {
+                return true;
+            }
+
+            current = VisualTreeHelper.GetParent(current);
+        }
+
+        return false;
     }
 
     private void HandleRatingShortcut(VirtualKey key)
@@ -1034,7 +1093,12 @@ public sealed partial class CollectPage : Page
             .ToList();
 
         if (selectedImages.Count == 0)
-            return;
+        {
+            if (ViewModel.SelectedImage == null)
+                return;
+
+            selectedImages.Add(ViewModel.SelectedImage);
+        }
 
         var stars = key - VirtualKey.Number0;
         var imagesToProcess = new List<ImageFileInfo>();

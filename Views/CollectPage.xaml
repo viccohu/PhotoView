@@ -162,7 +162,7 @@
                             VerticalAlignment="Center"/>
                         <ToggleButton
                             Grid.Column="1"
-                            Content="包含子文件夹"
+                            Content="子文件夹"
                             FontSize="12"
                             Padding="8,2"
                             MinHeight="28"
