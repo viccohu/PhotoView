@@ -125,6 +125,19 @@ public class SettingsViewModel : ObservableRecipient
         }
     }
 
+    public bool MainPageAutoCollapseSidebar
+    {
+        get => _settingsService.MainPageAutoCollapseSidebar;
+        set
+        {
+            if (_settingsService.MainPageAutoCollapseSidebar != value)
+            {
+                _settingsService.MainPageAutoCollapseSidebar = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public ICommand SwitchThemeCommand
     {
         get;
@@ -161,6 +174,11 @@ public class SettingsViewModel : ObservableRecipient
     }
 
     public ICommand SetAlwaysDecodeRawCommand
+    {
+        get;
+    }
+
+    public ICommand SetMainPageAutoCollapseSidebarCommand
     {
         get;
     }
@@ -249,6 +267,16 @@ public class SettingsViewModel : ObservableRecipient
                 {
                     AlwaysDecodeRaw = param;
                     await _settingsService.SaveAlwaysDecodeRawAsync(param);
+                }
+            });
+
+        SetMainPageAutoCollapseSidebarCommand = new RelayCommand<bool>(
+            async (param) =>
+            {
+                if (MainPageAutoCollapseSidebar != param)
+                {
+                    MainPageAutoCollapseSidebar = param;
+                    await _settingsService.SaveMainPageAutoCollapseSidebarAsync(param);
                 }
             });
     }

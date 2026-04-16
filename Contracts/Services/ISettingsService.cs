@@ -85,6 +85,11 @@ public interface ISettingsService
         set;
     }
 
+    bool MainPageAutoCollapseSidebar {
+        get;
+        set;
+    }
+
     event EventHandler<NavigationViewPaneDisplayMode> NavigationViewModeChanged;
     event EventHandler<int> BatchSizeChanged;
     event EventHandler<PerformanceMode>? PerformanceModeChanged;
@@ -92,6 +97,7 @@ public interface ISettingsService
     event EventHandler<bool>? RememberLastFolderChanged;
     event EventHandler<bool>? DeleteToRecycleBinChanged;
     event EventHandler<bool>? AlwaysDecodeRawChanged;
+    event EventHandler<bool>? MainPageAutoCollapseSidebarChanged;
 
     Task SaveNavigationViewModeAsync(NavigationViewPaneDisplayMode mode);
     Task<NavigationViewPaneDisplayMode> LoadNavigationViewModeAsync();
@@ -127,6 +133,8 @@ public interface ISettingsService
     Task<double> LoadDecodeScaleFactorAsync();
     Task SaveAlwaysDecodeRawAsync(bool alwaysDecode);
     Task<bool> LoadAlwaysDecodeRawAsync();
+    Task SaveMainPageAutoCollapseSidebarAsync(bool enabled);
+    Task<bool> LoadMainPageAutoCollapseSidebarAsync();
     void SuspendAlwaysDecodeRawPersistence(string reason);
     Task ResumeAlwaysDecodeRawPersistenceAsync(string reason);
 

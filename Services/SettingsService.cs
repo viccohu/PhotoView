@@ -23,6 +23,7 @@ public class SettingsService : ISettingsService
     private string _exportRawFolderName = "RAW";
     private double _decodeScaleFactor = 2.0;
     private bool _alwaysDecodeRaw = false;
+    private bool _mainPageAutoCollapseSidebar = false;
 
     public event EventHandler<NavigationViewPaneDisplayMode>? NavigationViewModeChanged;
     public event EventHandler<int>? BatchSizeChanged;
@@ -31,6 +32,7 @@ public class SettingsService : ISettingsService
     public event EventHandler<bool>? RememberLastFolderChanged;
     public event EventHandler<bool>? DeleteToRecycleBinChanged;
     public event EventHandler<bool>? AlwaysDecodeRawChanged;
+    public event EventHandler<bool>? MainPageAutoCollapseSidebarChanged;
 
     public NavigationViewPaneDisplayMode NavigationViewMode
     {
@@ -227,6 +229,19 @@ public class SettingsService : ISettingsService
             {
                 _alwaysDecodeRaw = value;
                 AlwaysDecodeRawChanged?.Invoke(this, value);
+            }
+        }
+    }
+
+    public bool MainPageAutoCollapseSidebar
+    {
+        get => _mainPageAutoCollapseSidebar;
+        set
+        {
+            if (_mainPageAutoCollapseSidebar != value)
+            {
+                _mainPageAutoCollapseSidebar = value;
+                MainPageAutoCollapseSidebarChanged?.Invoke(this, value);
             }
         }
     }
@@ -503,6 +518,23 @@ public class SettingsService : ISettingsService
         return _alwaysDecodeRaw;
     }
 
+    public async Task SaveMainPageAutoCollapseSidebarAsync(bool enabled)
+    {
+        await _localSettingsService.SaveSettingAsync("MainPageAutoCollapseSidebar", enabled);
+    }
+
+    public async Task<bool> LoadMainPageAutoCollapseSidebarAsync()
+    {
+        var enabled = await _localSettingsService.ReadSettingAsync<bool?>("MainPageAutoCollapseSidebar");
+        if (enabled.HasValue)
+        {
+            _mainPageAutoCollapseSidebar = enabled.Value;
+            return enabled.Value;
+        }
+
+        return _mainPageAutoCollapseSidebar;
+    }
+
     public void SuspendAlwaysDecodeRawPersistence(string reason)
     {
         // Reserved hook for viewer lifetime; the setting is only persisted by explicit save calls.
@@ -531,5 +563,6 @@ public class SettingsService : ISettingsService
         await LoadExportRawFolderNameAsync();
         await LoadDecodeScaleFactorAsync();
         await LoadAlwaysDecodeRawAsync();
+        await LoadMainPageAutoCollapseSidebarAsync();
     }
 }

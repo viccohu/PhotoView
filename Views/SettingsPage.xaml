@@ -70,6 +70,13 @@
                             <ComboBoxItem Content="Left" />
                         </ComboBox>
                     </toolkit:SettingsCard>
+
+                    <toolkit:SettingsCard Description="Automatically collapse the album page folder tree while browsing images" Header="Album sidebar auto-collapse">
+                        <toolkit:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE8B7;" />
+                        </toolkit:SettingsCard.HeaderIcon>
+                        <ToggleSwitch x:Name="MainPageAutoCollapseSidebarToggleSwitch" Toggled="MainPageAutoCollapseSidebarToggleSwitch_Toggled" />
+                    </toolkit:SettingsCard>
                     
                     <!-- Performance -->
                     <TextBlock Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" Text="Performance" />

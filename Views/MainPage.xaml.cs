@@ -1163,7 +1163,9 @@ public sealed partial class MainPage : Page
 
     private void AutoCollapseNavigationDrawer(string reason)
     {
-        if (ViewModel.Images.Count == 0 || _isNavigationDrawerPinnedCollapsed)
+        if (!_settingsService.MainPageAutoCollapseSidebar ||
+            ViewModel.Images.Count == 0 ||
+            _isNavigationDrawerPinnedCollapsed)
             return;
 
         _isNavigationDrawerPinnedCollapsed = true;
@@ -1174,7 +1176,9 @@ public sealed partial class MainPage : Page
 
     private void AutoExpandNavigationDrawer(string reason)
     {
-        if (ViewModel.Images.Count == 0 || !_isNavigationDrawerPinnedCollapsed)
+        if (!_settingsService.MainPageAutoCollapseSidebar ||
+            ViewModel.Images.Count == 0 ||
+            !_isNavigationDrawerPinnedCollapsed)
             return;
 
         _isNavigationDrawerPinnedCollapsed = false;

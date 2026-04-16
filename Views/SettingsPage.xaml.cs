@@ -59,6 +59,7 @@ public sealed partial class SettingsPage : Page
         UpdateRememberLastFolderSelection();
         UpdateDeleteToRecycleBinSelection();
         UpdateAlwaysDecodeRawSelection();
+        UpdateMainPageAutoCollapseSidebarSelection();
         
         _isInitialized = true;
     }
@@ -119,6 +120,11 @@ public sealed partial class SettingsPage : Page
     private void UpdateAlwaysDecodeRawSelection()
     {
         AlwaysDecodeRawToggleSwitch.IsOn = ViewModel.AlwaysDecodeRaw;
+    }
+
+    private void UpdateMainPageAutoCollapseSidebarSelection()
+    {
+        MainPageAutoCollapseSidebarToggleSwitch.IsOn = ViewModel.MainPageAutoCollapseSidebar;
     }
 
     private void themeMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -213,5 +219,13 @@ public sealed partial class SettingsPage : Page
             return;
 
         ViewModel.SetAlwaysDecodeRawCommand.Execute(AlwaysDecodeRawToggleSwitch.IsOn);
+    }
+
+    private void MainPageAutoCollapseSidebarToggleSwitch_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (!_isInitialized)
+            return;
+
+        ViewModel.SetMainPageAutoCollapseSidebarCommand.Execute(MainPageAutoCollapseSidebarToggleSwitch.IsOn);
     }
 }
