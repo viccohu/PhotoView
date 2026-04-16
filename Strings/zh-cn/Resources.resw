@@ -135,22 +135,127 @@
   <data name="Settings_Personalization.Text" xml:space="preserve">
     <value>个性化</value>
   </data>
-  <data name="Settings_Theme.Text" xml:space="preserve">
-    <value>主题</value>
-  </data>
-  <data name="Settings_Theme_Dark.Content" xml:space="preserve">
-    <value>深色</value>
-  </data>
-  <data name="Settings_Theme_Default.Content" xml:space="preserve">
-    <value>Windows默认</value>
-  </data>
-  <data name="Settings_Theme_Light.Content" xml:space="preserve">
-    <value>浅色</value>
-  </data>
   <data name="Shell_Collect.Content" xml:space="preserve">
     <value>预览</value>
   </data>
   <data name="Shell_Main.Content" xml:space="preserve">
     <value>相册</value>
+  </data>
+  <data name="Settings_Language_Default.Content" xml:space="preserve">
+    <value>使用系统语言</value>
+  </data>
+  <data name="Settings_Language_English.Content" xml:space="preserve">
+    <value>English</value>
+  </data>
+  <data name="Settings_Language_Chinese.Content" xml:space="preserve">
+    <value>中文（简体）</value>
+  </data>
+  <data name="SettingsPage_Title.Text" xml:space="preserve">
+    <value>设置</value>
+  </data>
+  <data name="Settings_Section_Appearance.Text" xml:space="preserve">
+    <value>外观与行为</value>
+  </data>
+  <data name="Settings_Section_Performance.Text" xml:space="preserve">
+    <value>性能</value>
+  </data>
+  <data name="Settings_Section_Display.Text" xml:space="preserve">
+    <value>显示</value>
+  </data>
+  <data name="Settings_Section_FileOperations.Text" xml:space="preserve">
+    <value>文件操作</value>
+  </data>
+  <data name="Settings_Section_About.Text" xml:space="preserve">
+    <value>关于</value>
+  </data>
+  <data name="Settings_Theme.Header" xml:space="preserve">
+    <value>应用主题</value>
+  </data>
+  <data name="Settings_Theme.Description" xml:space="preserve">
+    <value>选择要显示的应用主题</value>
+  </data>
+  <data name="Settings_Theme_Light.Content" xml:space="preserve">
+    <value>浅色</value>
+  </data>
+  <data name="Settings_Theme_Dark.Content" xml:space="preserve">
+    <value>深色</value>
+  </data>
+  <data name="Settings_Theme_Default.Content" xml:space="preserve">
+    <value>使用系统设置</value>
+  </data>
+  <data name="Settings_Language.Header" xml:space="preserve">
+    <value>语言</value>
+  </data>
+  <data name="Settings_Language.Description" xml:space="preserve">
+    <value>选择应用程序显示语言（需要重启）</value>
+  </data>
+  <data name="Settings_NavigationStyle.Header" xml:space="preserve">
+    <value>导航样式</value>
+  </data>
+  <data name="Settings_NavigationStyle_Top.Content" xml:space="preserve">
+    <value>顶部</value>
+  </data>
+  <data name="Settings_NavigationStyle_Left.Content" xml:space="preserve">
+    <value>左侧</value>
+  </data>
+  <data name="Settings_AutoCollapseSidebar.Header" xml:space="preserve">
+    <value>相册侧边栏自动折叠</value>
+  </data>
+  <data name="Settings_AutoCollapseSidebar.Description" xml:space="preserve">
+    <value>浏览图片时自动折叠相册页文件夹树</value>
+  </data>
+  <data name="Settings_PerformanceMode.Header" xml:space="preserve">
+    <value>性能模式</value>
+  </data>
+  <data name="Settings_PerformanceMode.Description" xml:space="preserve">
+    <value>调整缩略图加载性能</value>
+  </data>
+  <data name="Settings_PerformanceMode_Smart.Content" xml:space="preserve">
+    <value>智能（根据 CPU 自动调整）</value>
+  </data>
+  <data name="Settings_PerformanceMode_Stable.Content" xml:space="preserve">
+    <value>稳定（4 个并发）</value>
+  </data>
+  <data name="Settings_BatchSize.Header" xml:space="preserve">
+    <value>批处理大小</value>
+  </data>
+  <data name="Settings_BatchSize.Description" xml:space="preserve">
+    <value>每批次枚举的文件数量</value>
+  </data>
+  <data name="Settings_AlwaysDecodeRaw.Header" xml:space="preserve">
+    <value>RAW 文件始终解码</value>
+  </data>
+  <data name="Settings_AlwaysDecodeRaw.Description" xml:space="preserve">
+    <value>关闭时优先展示内置 HD 图片</value>
+  </data>
+  <data name="Settings_RememberLastFolder.Header" xml:space="preserve">
+    <value>记住上次文件夹</value>
+  </data>
+  <data name="Settings_RememberLastFolder.Description" xml:space="preserve">
+    <value>记住上次打开的文件夹</value>
+  </data>
+  <data name="Settings_ThumbnailSize.Header" xml:space="preserve">
+    <value>默认缩略图大小</value>
+  </data>
+  <data name="Settings_ThumbnailSize.Description" xml:space="preserve">
+    <value>设置默认缩略图显示大小</value>
+  </data>
+  <data name="Settings_ThumbnailSize_Small.Content" xml:space="preserve">
+    <value>小</value>
+  </data>
+  <data name="Settings_ThumbnailSize_Medium.Content" xml:space="preserve">
+    <value>中</value>
+  </data>
+  <data name="Settings_ThumbnailSize_Large.Content" xml:space="preserve">
+    <value>大</value>
+  </data>
+  <data name="Settings_DeleteToRecycleBin.Header" xml:space="preserve">
+    <value>删除到回收站</value>
+  </data>
+  <data name="Settings_DeleteToRecycleBin.Description" xml:space="preserve">
+    <value>将删除的文件移至回收站（不适用于可移动驱动器）</value>
+  </data>
+  <data name="Settings_PrivacyStatement.Header" xml:space="preserve">
+    <value>隐私声明</value>
   </data>
 </root>

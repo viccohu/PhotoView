@@ -27,11 +27,11 @@
         
         <TextBlock
             x:Name="PageHeader"
+            x:Uid="SettingsPage_Title"
             MaxWidth="1064"
             Margin="36,24,36,0"
             AutomationProperties.HeadingLevel="Level1"
-            Style="{StaticResource TitleTextBlockStyle}"
-            Text="Settings" />
+            Style="{StaticResource TitleTextBlockStyle}" />
         
         <ScrollView
             Grid.Row="1"
@@ -45,9 +45,9 @@
                     </StackPanel.ChildrenTransitions>
                     
                     <!-- Appearance & behavior -->
-                    <TextBlock Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" Text="Appearance &amp; behavior" />
+                    <TextBlock x:Uid="Settings_Section_Appearance" Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" />
                     
-                    <toolkit:SettingsCard Description="Select which app theme to display" Header="App theme">
+                    <toolkit:SettingsCard x:Uid="Settings_Theme">
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE790;" />
                         </toolkit:SettingsCard.HeaderIcon>
@@ -55,23 +55,34 @@
                             x:Name="themeMode"
                             AutomationProperties.AutomationId="themeModeComboBox"
                             SelectionChanged="themeMode_SelectionChanged">
-                            <ComboBoxItem Content="Light" Tag="Light" />
-                            <ComboBoxItem Content="Dark" Tag="Dark" />
-                            <ComboBoxItem Content="Use system setting" Tag="Default" />
+                            <ComboBoxItem x:Uid="Settings_Theme_Light" Tag="Light" />
+                            <ComboBoxItem x:Uid="Settings_Theme_Dark" Tag="Dark" />
+                            <ComboBoxItem x:Uid="Settings_Theme_Default" Tag="Default" />
                         </ComboBox>
                     </toolkit:SettingsCard>
                     
-                    <toolkit:SettingsCard Header="Navigation style">
+                    <toolkit:SettingsCard x:Uid="Settings_Language">
+                        <toolkit:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE774;" />
+                        </toolkit:SettingsCard.HeaderIcon>
+                        <ComboBox x:Name="languageComboBox" SelectionChanged="languageComboBox_SelectionChanged">
+                            <ComboBoxItem x:Uid="Settings_Language_Default" Tag="default" />
+                            <ComboBoxItem x:Uid="Settings_Language_English" Tag="en-US" />
+                            <ComboBoxItem x:Uid="Settings_Language_Chinese" Tag="zh-CN" />
+                        </ComboBox>
+                    </toolkit:SettingsCard>
+                    
+                    <toolkit:SettingsCard x:Uid="Settings_NavigationStyle">
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xF594;" />
                         </toolkit:SettingsCard.HeaderIcon>
                         <ComboBox x:Name="navigationLocation" SelectionChanged="navigationLocation_SelectionChanged">
-                            <ComboBoxItem Content="Top" />
-                            <ComboBoxItem Content="Left" />
+                            <ComboBoxItem x:Uid="Settings_NavigationStyle_Top" />
+                            <ComboBoxItem x:Uid="Settings_NavigationStyle_Left" />
                         </ComboBox>
                     </toolkit:SettingsCard>
 
-                    <toolkit:SettingsCard Description="Automatically collapse the album page folder tree while browsing images" Header="Album sidebar auto-collapse">
+                    <toolkit:SettingsCard x:Uid="Settings_AutoCollapseSidebar">
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE8B7;" />
                         </toolkit:SettingsCard.HeaderIcon>
@@ -79,19 +90,19 @@
                     </toolkit:SettingsCard>
                     
                     <!-- Performance -->
-                    <TextBlock Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" Text="Performance" />
+                    <TextBlock x:Uid="Settings_Section_Performance" Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" />
                     
-                    <toolkit:SettingsCard Description="Adjust thumbnail loading performance" Header="Performance mode">
+                    <toolkit:SettingsCard x:Uid="Settings_PerformanceMode">
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE9D9;" />
                         </toolkit:SettingsCard.HeaderIcon>
                         <ComboBox x:Name="PerformanceModeComboBox" SelectionChanged="PerformanceModeComboBox_SelectionChanged">
-                            <ComboBoxItem Content="Smart (auto-adjust based on CPU)" Tag="Smart" />
-                            <ComboBoxItem Content="Stable (4 concurrent)" Tag="Stable" />
+                            <ComboBoxItem x:Uid="Settings_PerformanceMode_Smart" Tag="Smart" />
+                            <ComboBoxItem x:Uid="Settings_PerformanceMode_Stable" Tag="Stable" />
                         </ComboBox>
                     </toolkit:SettingsCard>
                     
-                    <toolkit:SettingsCard Description="Number of files to enumerate per batch" Header="Batch size">
+                    <toolkit:SettingsCard x:Uid="Settings_BatchSize">
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE8FD;" />
                         </toolkit:SettingsCard.HeaderIcon>
@@ -103,7 +114,7 @@
                         </ComboBox>
                     </toolkit:SettingsCard>
                     
-                    <toolkit:SettingsCard Description="关闭时优先展示内置 HD 图片" Header="RAW 文件始终解码">
+                    <toolkit:SettingsCard x:Uid="Settings_AlwaysDecodeRaw">
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE7B8;" />
                         </toolkit:SettingsCard.HeaderIcon>
@@ -111,30 +122,30 @@
                     </toolkit:SettingsCard>
                     
                     <!-- Display -->
-                    <TextBlock Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" Text="Display" />
+                    <TextBlock x:Uid="Settings_Section_Display" Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" />
                     
-                    <toolkit:SettingsCard Description="Remember the last opened folder" Header="Remember last folder">
+                    <toolkit:SettingsCard x:Uid="Settings_RememberLastFolder">
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE838;" />
                         </toolkit:SettingsCard.HeaderIcon>
                         <ToggleSwitch x:Name="RememberLastFolderToggleSwitch" Toggled="RememberLastFolderToggleSwitch_Toggled" />
                     </toolkit:SettingsCard>
                     
-                    <toolkit:SettingsCard Description="Set the default thumbnail display size" Header="Default thumbnail size">
+                    <toolkit:SettingsCard x:Uid="Settings_ThumbnailSize">
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE7B8;" />
                         </toolkit:SettingsCard.HeaderIcon>
                         <ComboBox x:Name="ThumbnailSizeComboBox" SelectionChanged="ThumbnailSizeComboBox_SelectionChanged">
-                            <ComboBoxItem Content="Small" Tag="Small" />
-                            <ComboBoxItem Content="Medium" Tag="Medium" />
-                            <ComboBoxItem Content="Large" Tag="Large" />
+                            <ComboBoxItem x:Uid="Settings_ThumbnailSize_Small" Tag="Small" />
+                            <ComboBoxItem x:Uid="Settings_ThumbnailSize_Medium" Tag="Medium" />
+                            <ComboBoxItem x:Uid="Settings_ThumbnailSize_Large" Tag="Large" />
                         </ComboBox>
                     </toolkit:SettingsCard>
                     
                     <!-- File Operations -->
-                    <TextBlock Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" Text="File Operations" />
+                    <TextBlock x:Uid="Settings_Section_FileOperations" Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" />
                     
-                    <toolkit:SettingsCard Description="Move deleted files to recycle bin (not available for removable drives)" Header="Delete to recycle bin">
+                    <toolkit:SettingsCard x:Uid="Settings_DeleteToRecycleBin">
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE74D;" />
                         </toolkit:SettingsCard.HeaderIcon>
@@ -142,7 +153,7 @@
                     </toolkit:SettingsCard>
                     
                     <!-- About -->
-                    <TextBlock Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" Text="About" />
+                    <TextBlock x:Uid="Settings_Section_About" Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" />
                     
                     <toolkit:SettingsExpander Margin="0,0,0,36" Header="PhotoView">
                         <toolkit:SettingsExpander.HeaderIcon>
@@ -153,7 +164,7 @@
                             IsTextSelectionEnabled="True"
                             Text="{x:Bind ViewModel.VersionDescription, Mode=OneWay}" />
                         <toolkit:SettingsExpander.Items>
-                            <toolkit:SettingsCard Header="Privacy Statement">
+                            <toolkit:SettingsCard x:Uid="Settings_PrivacyStatement">
                                 <toolkit:SettingsCard.ActionIcon>
                                     <FontIcon Glyph="&#xE8A7;" />
                                 </toolkit:SettingsCard.ActionIcon>

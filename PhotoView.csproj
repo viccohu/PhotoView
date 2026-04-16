@@ -97,6 +97,6 @@
     <PackageCertificateThumbprint>F1DAC3950855C8A869D07B4B90005EB7F09A5BEF</PackageCertificateThumbprint>
     <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
-    <DefaultLanguage>zh-cn</DefaultLanguage>
+    <DefaultLanguage>zh-CN</DefaultLanguage>
   </PropertyGroup>
 </Project>

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -135,22 +135,127 @@
   <data name="Settings_Personalization.Text" xml:space="preserve">
     <value>Personalization</value>
   </data>
-  <data name="Settings_Theme.Text" xml:space="preserve">
-    <value>Theme</value>
-  </data>
-  <data name="Settings_Theme_Dark.Content" xml:space="preserve">
-    <value>Dark</value>
-  </data>
-  <data name="Settings_Theme_Default.Content" xml:space="preserve">
-    <value>Default</value>
-  </data>
-  <data name="Settings_Theme_Light.Content" xml:space="preserve">
-    <value>Light</value>
-  </data>
   <data name="Shell_Collect.Content" xml:space="preserve">
     <value>Preview</value>
   </data>
   <data name="Shell_Main.Content" xml:space="preserve">
     <value>Album</value>
+  </data>
+  <data name="Settings_Language_Default.Content" xml:space="preserve">
+    <value>Use system language</value>
+  </data>
+  <data name="Settings_Language_English.Content" xml:space="preserve">
+    <value>English</value>
+  </data>
+  <data name="Settings_Language_Chinese.Content" xml:space="preserve">
+    <value>Chinese (Simplified)</value>
+  </data>
+  <data name="SettingsPage_Title.Text" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Settings_Section_Appearance.Text" xml:space="preserve">
+    <value>Appearance &amp; behavior</value>
+  </data>
+  <data name="Settings_Section_Performance.Text" xml:space="preserve">
+    <value>Performance</value>
+  </data>
+  <data name="Settings_Section_Display.Text" xml:space="preserve">
+    <value>Display</value>
+  </data>
+  <data name="Settings_Section_FileOperations.Text" xml:space="preserve">
+    <value>File Operations</value>
+  </data>
+  <data name="Settings_Section_About.Text" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="Settings_Theme.Header" xml:space="preserve">
+    <value>App theme</value>
+  </data>
+  <data name="Settings_Theme.Description" xml:space="preserve">
+    <value>Select which app theme to display</value>
+  </data>
+  <data name="Settings_Theme_Light.Content" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="Settings_Theme_Dark.Content" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="Settings_Theme_Default.Content" xml:space="preserve">
+    <value>Use system setting</value>
+  </data>
+  <data name="Settings_Language.Header" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Settings_Language.Description" xml:space="preserve">
+    <value>Select application display language (requires restart)</value>
+  </data>
+  <data name="Settings_NavigationStyle.Header" xml:space="preserve">
+    <value>Navigation style</value>
+  </data>
+  <data name="Settings_NavigationStyle_Top.Content" xml:space="preserve">
+    <value>Top</value>
+  </data>
+  <data name="Settings_NavigationStyle_Left.Content" xml:space="preserve">
+    <value>Left</value>
+  </data>
+  <data name="Settings_AutoCollapseSidebar.Header" xml:space="preserve">
+    <value>Album sidebar auto-collapse</value>
+  </data>
+  <data name="Settings_AutoCollapseSidebar.Description" xml:space="preserve">
+    <value>Automatically collapse the album page folder tree while browsing images</value>
+  </data>
+  <data name="Settings_PerformanceMode.Header" xml:space="preserve">
+    <value>Performance mode</value>
+  </data>
+  <data name="Settings_PerformanceMode.Description" xml:space="preserve">
+    <value>Adjust thumbnail loading performance</value>
+  </data>
+  <data name="Settings_PerformanceMode_Smart.Content" xml:space="preserve">
+    <value>Smart (auto-adjust based on CPU)</value>
+  </data>
+  <data name="Settings_PerformanceMode_Stable.Content" xml:space="preserve">
+    <value>Stable (4 concurrent)</value>
+  </data>
+  <data name="Settings_BatchSize.Header" xml:space="preserve">
+    <value>Batch size</value>
+  </data>
+  <data name="Settings_BatchSize.Description" xml:space="preserve">
+    <value>Number of files to enumerate per batch</value>
+  </data>
+  <data name="Settings_AlwaysDecodeRaw.Header" xml:space="preserve">
+    <value>Always decode RAW files</value>
+  </data>
+  <data name="Settings_AlwaysDecodeRaw.Description" xml:space="preserve">
+    <value>Prioritize displaying built-in HD images when closing</value>
+  </data>
+  <data name="Settings_RememberLastFolder.Header" xml:space="preserve">
+    <value>Remember last folder</value>
+  </data>
+  <data name="Settings_RememberLastFolder.Description" xml:space="preserve">
+    <value>Remember the last opened folder</value>
+  </data>
+  <data name="Settings_ThumbnailSize.Header" xml:space="preserve">
+    <value>Default thumbnail size</value>
+  </data>
+  <data name="Settings_ThumbnailSize.Description" xml:space="preserve">
+    <value>Set the default thumbnail display size</value>
+  </data>
+  <data name="Settings_ThumbnailSize_Small.Content" xml:space="preserve">
+    <value>Small</value>
+  </data>
+  <data name="Settings_ThumbnailSize_Medium.Content" xml:space="preserve">
+    <value>Medium</value>
+  </data>
+  <data name="Settings_ThumbnailSize_Large.Content" xml:space="preserve">
+    <value>Large</value>
+  </data>
+  <data name="Settings_DeleteToRecycleBin.Header" xml:space="preserve">
+    <value>Delete to recycle bin</value>
+  </data>
+  <data name="Settings_DeleteToRecycleBin.Description" xml:space="preserve">
+    <value>Move deleted files to recycle bin (not available for removable drives)</value>
+  </data>
+  <data name="Settings_PrivacyStatement.Header" xml:space="preserve">
+    <value>Privacy Statement</value>
   </data>
 </root>

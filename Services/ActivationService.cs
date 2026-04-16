@@ -12,14 +12,16 @@ public class ActivationService : IActivationService
     private readonly ActivationHandler<LaunchActivatedEventArgs> _defaultHandler;
     private readonly IEnumerable<IActivationHandler> _activationHandlers;
     private readonly IThemeSelectorService _themeSelectorService;
+    private readonly ILanguageService _languageService;
     private readonly ISettingsService _settingsService;
     private UIElement? _shell = null;
 
-    public ActivationService(ActivationHandler<LaunchActivatedEventArgs> defaultHandler, IEnumerable<IActivationHandler> activationHandlers, IThemeSelectorService themeSelectorService, ISettingsService settingsService)
+    public ActivationService(ActivationHandler<LaunchActivatedEventArgs> defaultHandler, IEnumerable<IActivationHandler> activationHandlers, IThemeSelectorService themeSelectorService, ILanguageService languageService, ISettingsService settingsService)
     {
         _defaultHandler = defaultHandler;
         _activationHandlers = activationHandlers;
         _themeSelectorService = themeSelectorService;
+        _languageService = languageService;
         _settingsService = settingsService;
     }
 
@@ -64,6 +66,12 @@ public class ActivationService : IActivationService
     {
         await _themeSelectorService.InitializeAsync().ConfigureAwait(false);
         await _settingsService.InitializeAsync().ConfigureAwait(false);
+        
+        if (_languageService is Services.LanguageService languageService)
+        {
+            await languageService.InitializeAsync().ConfigureAwait(false);
+        }
+        
         await Task.CompletedTask;
     }
 

@@ -60,8 +60,23 @@ public sealed partial class SettingsPage : Page
         UpdateDeleteToRecycleBinSelection();
         UpdateAlwaysDecodeRawSelection();
         UpdateMainPageAutoCollapseSidebarSelection();
+        UpdateLanguageSelection();
         
         _isInitialized = true;
+    }
+
+    private void UpdateLanguageSelection()
+    {
+        var currentLanguage = ViewModel.CurrentLanguage;
+        for (int i = 0; i < languageComboBox.Items.Count; i++)
+        {
+            if (languageComboBox.Items[i] is ComboBoxItem item &&
+                item.Tag?.ToString() == currentLanguage)
+            {
+                languageComboBox.SelectedIndex = i;
+                break;
+            }
+        }
     }
 
     private void UpdateBatchSizeSelection()
@@ -227,5 +242,17 @@ public sealed partial class SettingsPage : Page
             return;
 
         ViewModel.SetMainPageAutoCollapseSidebarCommand.Execute(MainPageAutoCollapseSidebarToggleSwitch.IsOn);
+    }
+
+    private void languageComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_isInitialized)
+            return;
+
+        if (languageComboBox.SelectedItem is ComboBoxItem item &&
+            item.Tag?.ToString() is string languageCode)
+        {
+            ViewModel.SetLanguageCommand.Execute(languageCode);
+        }
     }
 }

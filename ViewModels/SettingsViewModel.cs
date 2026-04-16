@@ -10,6 +10,7 @@ using Microsoft.UI.Xaml.Controls;
 using PhotoView.Contracts.Services;
 using PhotoView.Helpers;
 using PhotoView.Models;
+using PhotoView.Services;
 
 using Windows.ApplicationModel;
 
@@ -19,8 +20,10 @@ public class SettingsViewModel : ObservableRecipient
 {
     private readonly IThemeSelectorService _themeSelectorService;
     private readonly ISettingsService _settingsService;
+    private readonly ILanguageService _languageService;
     private ElementTheme _elementTheme;
     private string _versionDescription;
+    private string _currentLanguage;
 
     public ElementTheme ElementTheme
     {
@@ -33,6 +36,14 @@ public class SettingsViewModel : ObservableRecipient
         get => _versionDescription;
         set => SetProperty(ref _versionDescription, value);
     }
+
+    public string CurrentLanguage
+    {
+        get => _currentLanguage;
+        set => SetProperty(ref _currentLanguage, value);
+    }
+
+    public IEnumerable<string> SupportedLanguages => _languageService.SupportedLanguages;
 
     public NavigationViewPaneDisplayMode NavigationViewMode
     {
@@ -183,12 +194,19 @@ public class SettingsViewModel : ObservableRecipient
         get;
     }
 
-    public SettingsViewModel(IThemeSelectorService themeSelectorService, ISettingsService settingsService)
+    public ICommand SetLanguageCommand
+    {
+        get;
+    }
+
+    public SettingsViewModel(IThemeSelectorService themeSelectorService, ISettingsService settingsService, ILanguageService languageService)
     {
         _themeSelectorService = themeSelectorService;
         _settingsService = settingsService;
+        _languageService = languageService;
         _elementTheme = _themeSelectorService.Theme;
         _versionDescription = GetVersionDescription();
+        _currentLanguage = _languageService.CurrentLanguage;
 
         SwitchThemeCommand = new RelayCommand<ElementTheme>(
             async (param) =>
@@ -277,6 +295,16 @@ public class SettingsViewModel : ObservableRecipient
                 {
                     MainPageAutoCollapseSidebar = param;
                     await _settingsService.SaveMainPageAutoCollapseSidebarAsync(param);
+                }
+            });
+
+        SetLanguageCommand = new RelayCommand<string>(
+            async (param) =>
+            {
+                if (CurrentLanguage != param)
+                {
+                    CurrentLanguage = param;
+                    await _languageService.SetLanguageAsync(param);
                 }
             });
     }
