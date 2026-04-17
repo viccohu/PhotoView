@@ -53,6 +53,7 @@ public class ImageFileInfo : INotifyPropertyChanged
     private int _ratingEditVersion;
     private RatingSource _ratingSource = RatingSource.Unknown;
     private ObservableCollection<FormatTag> _formatTags = new();
+    private DateTime? _dateTaken;
 
     private static readonly uint[] SystemThumbnailSizes = { 96, 160, 256, 512, 1024 };
 
@@ -753,6 +754,32 @@ public class ImageFileInfo : INotifyPropertyChanged
     {
         get => _isRatingLoaded;
         private set => SetProperty(ref _isRatingLoaded, value);
+    }
+
+    public void SetRatingFromProperties(uint rating, RatingSource source)
+    {
+        lock (_thumbnailLoadLock)
+        {
+            if (_isRatingLoaded)
+                return;
+
+            _isRatingLoadRequested = true;
+            SetRatingCore(rating);
+            RatingSource = source;
+            IsRatingLoaded = true;
+            IsRatingLoading = false;
+        }
+    }
+
+    public DateTime? DateTaken
+    {
+        get => _dateTaken;
+        private set => SetProperty(ref _dateTaken, value);
+    }
+
+    public void SetDateTakenFromProperties(DateTime? dateTaken)
+    {
+        DateTaken = dateTaken;
     }
 
     public async Task EnsureRatingAsync(RatingService ratingService)

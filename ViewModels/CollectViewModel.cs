@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using PhotoView.Contracts.Services;
+using PhotoView.Helpers;
 using PhotoView.Models;
 using PhotoView.Services;
 using System.Collections.ObjectModel;
@@ -485,11 +486,6 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
             {
                 _metadataHydrationGate.Release();
             }
-
-            if (!cancellationToken.IsCancellationRequested)
-            {
-                await imageInfo.LoadRatingAsync(_ratingService);
-            }
         }
         catch (OperationCanceledException)
         {
@@ -504,18 +500,29 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     {
         try
         {
-            var properties = await imageInfo.ImageFile.Properties.GetImagePropertiesAsync().AsTask(cancellationToken);
-            var width = (int)Math.Max(properties.Width, 200);
-            var height = (int)Math.Max(properties.Height, 200);
-            var orientation = properties.Orientation;
-            if (orientation == Windows.Storage.FileProperties.PhotoOrientation.Rotate90 ||
-                orientation == Windows.Storage.FileProperties.PhotoOrientation.Rotate270 ||
-                orientation == Windows.Storage.FileProperties.PhotoOrientation.Transpose ||
-                orientation == Windows.Storage.FileProperties.PhotoOrientation.Transverse)
+            var properties = await StorageFilePropertyReader.GetImagePropertiesAsync(imageInfo.ImageFile, cancellationToken);
+
+            if (imageInfo.Width <= 200 || imageInfo.Height <= 200)
             {
-                (width, height) = (height, width);
+                var width = (int)Math.Max(properties.Width, 200);
+                var height = (int)Math.Max(properties.Height, 200);
+                var orientation = properties.Orientation;
+                if (orientation == Windows.Storage.FileProperties.PhotoOrientation.Rotate90 ||
+                    orientation == Windows.Storage.FileProperties.PhotoOrientation.Rotate270 ||
+                    orientation == Windows.Storage.FileProperties.PhotoOrientation.Transpose ||
+                    orientation == Windows.Storage.FileProperties.PhotoOrientation.Transverse)
+                {
+                    (width, height) = (height, width);
+                }
+                imageInfo.UpdateMetadata(width, height, properties.Title);
             }
-            imageInfo.UpdateMetadata(width, height, properties.Title);
+
+            imageInfo.SetRatingFromProperties(properties.Rating, RatingSource.WinRT);
+
+            if (properties.DateTaken != DateTimeOffset.MinValue && properties.DateTaken != default)
+            {
+                imageInfo.SetDateTakenFromProperties(properties.DateTaken.DateTime);
+            }
         }
         catch (OperationCanceledException)
         {

@@ -203,7 +203,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
         };
     }
 
-    public async Task LoadFileDetailsAsync(StorageFile file)
+    public async Task LoadFileDetailsAsync(StorageFile file, DateTime? cachedDateTaken = null)
     {
         try
         {
@@ -218,7 +218,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
         try
         {
             // Debug.WriteLine($"[ImageViewerViewModel] 开始读取EXIF: {file.Name}");
-            var exifData = await _exifService.GetExifDataAsync(file);
+            var exifData = await _exifService.GetExifDataAsync(file, default, cachedDateTaken);
             // Debug.WriteLine($"[ImageViewerViewModel] EXIF读取完成");
 
             if (exifData.DateTaken.HasValue)

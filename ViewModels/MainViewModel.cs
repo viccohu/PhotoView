@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using PhotoView.Contracts.Services;
+using PhotoView.Helpers;
 using PhotoView.Models;
 using PhotoView.Services;
 using System.Collections.ObjectModel;
@@ -815,8 +816,9 @@ public partial class MainViewModel : ObservableRecipient
             var metadata = await LoadImageMetadataAsync(imageInfo.ImageFile, cancellationToken);
             if (metadata.HasValue && !cancellationToken.IsCancellationRequested)
             {
-                var (width, height, title) = metadata.Value;
+                var (width, height, title, dateTaken) = metadata.Value;
                 imageInfo.UpdateMetadata(width, height, title);
+                imageInfo.SetDateTakenFromProperties(dateTaken);
             }
         }
         catch (OperationCanceledException)
@@ -830,7 +832,7 @@ public partial class MainViewModel : ObservableRecipient
 
     public static async System.Threading.Tasks.Task<ImageFileInfo> LoadImageInfo(StorageFile file)
     {
-        var properties = await file.Properties.GetImagePropertiesAsync();
+        var properties = await StorageFilePropertyReader.GetImagePropertiesAsync(file);
         int width = (int)properties.Width;
         int height = (int)properties.Height;
         
@@ -852,17 +854,18 @@ public partial class MainViewModel : ObservableRecipient
             file.FileType);
     }
 
-    private async Task<(int Width, int Height, string Title)?> LoadImageMetadataAsync(
+    private async Task<(int Width, int Height, string Title, DateTime? DateTaken)?> LoadImageMetadataAsync(
         StorageFile file,
         CancellationToken cancellationToken)
     {
         int width = 200;
         int height = 200;
         string title = string.Empty;
+        DateTime? dateTaken = null;
 
         try
         {
-            var properties = await file.Properties.GetImagePropertiesAsync().AsTask(cancellationToken);
+            var properties = await StorageFilePropertyReader.GetImagePropertiesAsync(file, cancellationToken);
 
             if (properties.Width > 0 && properties.Height > 0)
             {
@@ -880,6 +883,11 @@ public partial class MainViewModel : ObservableRecipient
             }
 
             title = properties.Title;
+
+            if (properties.DateTaken != DateTimeOffset.MinValue && properties.DateTaken != default)
+            {
+                dateTaken = properties.DateTaken.DateTime;
+            }
         }
         catch (OperationCanceledException)
         {
@@ -890,7 +898,7 @@ public partial class MainViewModel : ObservableRecipient
             System.Diagnostics.Debug.WriteLine($"[LoadImageMetadataAsync] Properties failed for {file.Name}: {ex.Message}");
         }
 
-        return (width, height, title);
+        return (width, height, title, dateTaken);
     }
 
     private async Task<ImageFileInfo?> LoadImageInfoSafeAsync(StorageFile file, CancellationToken cancellationToken)
@@ -916,7 +924,7 @@ public partial class MainViewModel : ObservableRecipient
             // 先尝试用 GetImagePropertiesAsync（包括 RAW 文件）
             try
             {
-                var properties = await file.Properties.GetImagePropertiesAsync().AsTask(cancellationToken);
+                var properties = await StorageFilePropertyReader.GetImagePropertiesAsync(file, cancellationToken);
                 
                 if (properties.Width > 0 && properties.Height > 0)
                 {

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Windows.Graphics.Imaging;
 using Windows.Storage;
 using PhotoView.Contracts.Services;
+using PhotoView.Helpers;
 using PhotoView.Models;
 
 namespace PhotoView.Services;
@@ -103,35 +104,18 @@ public class ExifService : IExifService
         await _cacheService.InitializeAsync();
     }
 
-    public async Task<ExifData> GetExifDataAsync(StorageFile file, CancellationToken cancellationToken = default)
+    public async Task<ExifData> GetExifDataAsync(StorageFile file, CancellationToken cancellationToken = default, DateTime? cachedDateTaken = null)
     {
         await _concurrencyLimiter.WaitAsync(cancellationToken);
         try
         {
             var exifData = new ExifData();
-            
-            // System.Diagnostics.Debug.WriteLine($"[ExifService] 开始处理文件: {file.Name}, 格式: {file.FileType}");
 
-            // 1. 首先尝试使用 ImageProperties API 获取 DateTaken
-            try
+            if (cachedDateTaken.HasValue)
             {
-                var imageProperties = await file.Properties.GetImagePropertiesAsync();
-                if (imageProperties.DateTaken != DateTimeOffset.MinValue && imageProperties.DateTaken != default)
-                {
-                    exifData.DateTaken = imageProperties.DateTaken.DateTime;
-                    // System.Diagnostics.Debug.WriteLine($"[ExifService] DateTaken (ImageProperties): {imageProperties.DateTaken}");
-                }
-                else
-                {
-                    // System.Diagnostics.Debug.WriteLine($"[ExifService] DateTaken (ImageProperties): 未找到");
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[ExifService] ImageProperties 获取失败: {ex.Message}");
+                exifData.DateTaken = cachedDateTaken;
             }
 
-            // 2. 使用 BitmapDecoder 获取其他属性
             using var stream = await file.OpenReadAsync().AsTask(cancellationToken);
             var decoder = await BitmapDecoder.CreateAsync(stream).AsTask(cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
@@ -154,17 +138,11 @@ public class ExifService : IExifService
             {
                 var properties = await decoder.BitmapProperties.GetPropertiesAsync(ExifPropertyNames);
 
-                // 如果 ImageProperties 没有获取到 DateTaken，尝试 BitmapProperties
                 if (!exifData.DateTaken.HasValue)
                 {
                     if (properties.TryGetValue("System.Photo.DateTaken", out var dateProp) && dateProp.Value is DateTime dateTaken)
                     {
                         exifData.DateTaken = dateTaken;
-                        // System.Diagnostics.Debug.WriteLine($"[ExifService] DateTaken (BitmapProperties): {dateTaken}");
-                    }
-                    else
-                    {
-                        // System.Diagnostics.Debug.WriteLine($"[ExifService] DateTaken (BitmapProperties): 未找到");
                     }
                 }
 
@@ -322,7 +300,7 @@ public class ExifService : IExifService
             {
                 try
                 {
-                    var properties = await file.Properties.GetImagePropertiesAsync();
+                    var properties = await StorageFilePropertyReader.GetImagePropertiesAsync(file);
                     return (properties.Rating, RatingSource.WinRT);
                 }
                 catch (Exception ex)
@@ -349,7 +327,7 @@ public class ExifService : IExifService
             {
                 try
                 {
-                    var properties = await file.Properties.GetImagePropertiesAsync();
+                    var properties = await StorageFilePropertyReader.GetImagePropertiesAsync(file);
                     properties.Rating = rating;
                     await properties.SavePropertiesAsync();
                 }

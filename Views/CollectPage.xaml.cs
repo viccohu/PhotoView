@@ -698,6 +698,8 @@ public sealed partial class CollectPage : Page
         }
     }
 
+    private int _selectedImageVersion;
+
     private async void UpdateSelectedImageUi()
     {
         var imageInfo = ViewModel.SelectedImage;
@@ -707,8 +709,15 @@ public sealed partial class CollectPage : Page
             return;
         }
 
+        var version = ++_selectedImageVersion;
         PreviewInfoViewModel.SetBasicInfo(imageInfo);
-        await PreviewInfoViewModel.LoadFileDetailsAsync(imageInfo.ImageFile);
+
+        await PreviewInfoViewModel.LoadFileDetailsAsync(imageInfo.ImageFile, imageInfo.DateTaken);
+
+        if (version != _selectedImageVersion)
+        {
+            return;
+        }
     }
 
     private void StartSelectedThumbnailLoad(ImageFileInfo imageInfo)

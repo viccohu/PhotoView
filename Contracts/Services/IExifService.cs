@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Windows.Storage;
@@ -8,7 +9,7 @@ namespace PhotoView.Contracts.Services;
 
 public interface IExifService
 {
-    Task<ExifData> GetExifDataAsync(StorageFile file, CancellationToken cancellationToken = default);
+    Task<ExifData> GetExifDataAsync(StorageFile file, CancellationToken cancellationToken = default, DateTime? cachedDateTaken = null);
     Task<(uint Rating, RatingSource Source)> GetRatingAsync(StorageFile file);
     Task SetRatingAsync(StorageFile file, uint rating);
     Task<ExifData> GetFullExifDataAsync(StorageFile file, CancellationToken cancellationToken = default);
