@@ -815,6 +815,6 @@ public class ThumbnailService : IThumbnailService
     [System.Diagnostics.Conditional("DEBUG")]
     private static void DebugDecode(string message)
     {
-        System.Diagnostics.Debug.WriteLine($"[ThumbnailDecode] {DateTime.Now:HH:mm:ss.fff} {message}");
+        // System.Diagnostics.Debug.WriteLine($"[ThumbnailDecode] {DateTime.Now:HH:mm:ss.fff} {message}");
     }
 }

@@ -880,12 +880,12 @@ public sealed partial class PreviewImageCanvasControl : UserControl
     [System.Diagnostics.Conditional("DEBUG")]
     private static void DebugPreview(string message)
     {
-        System.Diagnostics.Debug.WriteLine($"[PreviewFitHighRes] {DateTime.Now:HH:mm:ss.fff} {message}");
+        // System.Diagnostics.Debug.WriteLine($"[PreviewFitHighRes] {DateTime.Now:HH:mm:ss.fff} {message}");
     }
 
     [System.Diagnostics.Conditional("DEBUG")]
     private static void DebugOriginal(string message)
     {
-        System.Diagnostics.Debug.WriteLine($"[PreviewOriginal] {DateTime.Now:HH:mm:ss.fff} {message}");
+        // System.Diagnostics.Debug.WriteLine($"[PreviewOriginal] {DateTime.Now:HH:mm:ss.fff} {message}");
     }
 }

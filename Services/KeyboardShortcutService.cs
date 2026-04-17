@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 
 using PhotoView.Contracts.Services;
+using Windows.System;
 
 namespace PhotoView.Services;
 
@@ -27,33 +28,30 @@ public class KeyboardShortcutService : IKeyboardShortcutService
         });
     }
 
+    private static readonly HashSet<VirtualKey> OverrideKeys = new()
+    {
+        VirtualKey.Space,
+        VirtualKey.Escape,
+        VirtualKey.Delete,
+    };
+
     private void Window_KeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (IsTextInputFocused())
-        {
-            Debug.WriteLine($"[KeyboardShortcutService] 焦点在输入框，跳过快捷键处理 - Key: {e.Key}");
             return;
-        }
 
         if (string.IsNullOrEmpty(_currentPageKey))
-        {
-            Debug.WriteLine("[KeyboardShortcutService] 未设置当前页面，跳过快捷键处理");
             return;
-        }
+
+        if (e.Handled && !OverrideKeys.Contains(e.Key))
+            return;
 
         if (_pageHandlers.TryGetValue(_currentPageKey, out var handler))
         {
-            Debug.WriteLine($"[KeyboardShortcutService] 调用页面处理器 - Page: {_currentPageKey}, Key: {e.Key}");
-            
             if (handler(e))
             {
                 e.Handled = true;
-                Debug.WriteLine($"[KeyboardShortcutService] 快捷键已处理 - Key: {e.Key}");
             }
-        }
-        else
-        {
-            Debug.WriteLine($"[KeyboardShortcutService] 未找到页面处理器 - Page: {_currentPageKey}");
         }
     }
 
@@ -89,14 +87,7 @@ public class KeyboardShortcutService : IKeyboardShortcutService
             return false;
 
         var focusedElement = FocusManager.GetFocusedElement(rootElement.XamlRoot) as DependencyObject;
-        var isTextInput = IsTextInputElement(focusedElement);
-        
-        if (isTextInput)
-        {
-            Debug.WriteLine($"[KeyboardShortcutService] 检测到输入框焦点 - Element: {focusedElement?.GetType().Name ?? "null"}");
-        }
-        
-        return isTextInput;
+        return IsTextInputElement(focusedElement);
     }
 
     private static bool IsTextInputElement(DependencyObject? element)
