@@ -58,7 +58,7 @@ public sealed partial class MainPage : Page
     private const int MaxActiveWarmPreviewLoads = 2;
     private const uint WarmPreviewLongSidePixels = 160;
     private readonly PointerEventHandler _imageGridPointerWheelHandler;
-    private readonly KeyEventHandler _shortcutKeyDownHandler;
+    private readonly IKeyboardShortcutService _shortcutService;
     private FolderNode? _pendingLoadNode;
     private ScrollViewer? _imageGridScrollViewer;
     private ItemsWrapGrid? _imageItemsWrapGrid;
@@ -87,18 +87,15 @@ public sealed partial class MainPage : Page
 
     public MainPage()
     {
-        // System.Diagnostics.Debug.WriteLine($"[MainPage] 构造函数开始");
-        
         ViewModel = App.GetService<MainViewModel>();
         _settingsService = App.GetService<ISettingsService>();
         _shellToolbarService = App.GetService<ShellToolbarService>();
         _thumbnailService = App.GetService<IThumbnailService>();
-        // System.Diagnostics.Debug.WriteLine($"[MainPage] ViewModel 已获取, FolderTree.Count={ViewModel.FolderTree.Count}");
+        _shortcutService = App.GetService<IKeyboardShortcutService>();
         
         NavigationCacheMode = NavigationCacheMode.Enabled;
         InitializeComponent();
         _imageGridPointerWheelHandler = ImageGridView_PointerWheelChanged;
-        _shortcutKeyDownHandler = MainPage_KeyDown;
         FolderTreeView.DataContext = ViewModel;
 
         _loadImagesThrottleTimer = new DispatcherTimer
@@ -125,19 +122,14 @@ public sealed partial class MainPage : Page
         ViewModel.SelectedFolderChanged += ViewModel_SelectedFolderChanged;
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         Loaded += MainPage_Loaded;
-        AddHandler(UIElement.KeyDownEvent, _shortcutKeyDownHandler, true);
         Unloaded += MainPage_Unloaded;
         
-        // System.Diagnostics.Debug.WriteLine($"[MainPage] 事件已订阅, FolderTree.Count={ViewModel.FolderTree.Count}");
+        _shortcutService.RegisterPageShortcutHandler("MainPage", HandleShortcut);
         
-        // 如果 FolderTree 已经加载完成（事件在订阅前已触发），直接调用恢复逻辑
         if (ViewModel.FolderTree.Count > 0)
         {
-            // System.Diagnostics.Debug.WriteLine($"[MainPage] 构造函数中检测到 FolderTree 已加载, Count={ViewModel.FolderTree.Count}");
             _ = TryRestoreLastFolderAsync();
         }
-        
-        // System.Diagnostics.Debug.WriteLine($"[MainPage] 构造函数结束");
     }
 
     private void MainPage_Loaded(object sender, RoutedEventArgs e)
@@ -155,6 +147,18 @@ public sealed partial class MainPage : Page
         UpdateNavigationDrawerState(animate: false);
         UpdateFolderDrawerState(animate: false);
         ReattachActiveViewerAfterNavigation();
+    }
+
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+        _shortcutService.SetCurrentPage("MainPage");
+    }
+
+    protected override void OnNavigatedFrom(NavigationEventArgs e)
+    {
+        base.OnNavigatedFrom(e);
+        _shortcutService.SetCurrentPage("");
     }
 
     private async void ImageViewer_Closed(object? sender, EventArgs e)
@@ -2057,56 +2061,56 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private void MainPage_KeyDown(object sender, KeyRoutedEventArgs e)
+    private bool HandleShortcut(KeyRoutedEventArgs e)
     {
-        HandleMainPageShortcutKey(e);
-    }
-
-    private void HandleMainPageShortcutKey(KeyRoutedEventArgs e)
-    {
-        var viewerShortcut = _currentViewer != null;
-        if (!CanHandleMainPageShortcut(viewerShortcut))
-            return;
+        if (_isUnloaded || AppLifetime.IsShuttingDown)
+            return false;
 
         if (_currentViewer != null)
         {
-            if (e.Key == VirtualKey.Space || e.Key == VirtualKey.Escape)
-            {
-                _currentViewer.PrepareCloseAnimation();
-                e.Handled = true;
-            }
-            else if (e.Key == VirtualKey.Left || e.Key == VirtualKey.Up)
-            {
-                _ = SwitchViewerImageAsync(-1);
-                e.Handled = true;
-            }
-            else if (e.Key == VirtualKey.Right || e.Key == VirtualKey.Down)
-            {
-                _ = SwitchViewerImageAsync(1);
-                e.Handled = true;
-            }
-            else if (e.Key >= VirtualKey.Number0 && e.Key <= VirtualKey.Number5)
-            {
-                if (!e.Handled)
-                {
-                    _currentViewer.HandleRatingKey(e.Key);
-                }
-
-                e.Handled = true;
-            }
-            else if (e.Key >= VirtualKey.NumberPad0 && e.Key <= VirtualKey.NumberPad5)
-            {
-                _currentViewer.HandleRatingKey(e.Key - (VirtualKey.NumberPad0 - VirtualKey.Number0));
-                e.Handled = true;
-            }
-
-            return;
+            return HandleViewerShortcut(e);
         }
 
+        return HandleMainPageShortcut(e);
+    }
+
+    private bool HandleViewerShortcut(KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Space || e.Key == VirtualKey.Escape)
+        {
+            _currentViewer.PrepareCloseAnimation();
+            return true;
+        }
+        else if (e.Key == VirtualKey.Left || e.Key == VirtualKey.Up)
+        {
+            _ = SwitchViewerImageAsync(-1);
+            return true;
+        }
+        else if (e.Key == VirtualKey.Right || e.Key == VirtualKey.Down)
+        {
+            _ = SwitchViewerImageAsync(1);
+            return true;
+        }
+        else if (e.Key >= VirtualKey.Number0 && e.Key <= VirtualKey.Number5)
+        {
+            _currentViewer.HandleRatingKey(e.Key);
+            return true;
+        }
+        else if (e.Key >= VirtualKey.NumberPad0 && e.Key <= VirtualKey.NumberPad5)
+        {
+            _currentViewer.HandleRatingKey(e.Key - (VirtualKey.NumberPad0 - VirtualKey.Number0));
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool HandleMainPageShortcut(KeyRoutedEventArgs e)
+    {
         if (e.Key == VirtualKey.Space)
         {
             _ = ToggleImageViewerForCurrentSelectionAsync();
-            e.Handled = true;
+            return true;
         }
         else if (e.Key == VirtualKey.A)
         {
@@ -2115,46 +2119,31 @@ public sealed partial class MainPage : Page
             if (isCtrlPressed)
             {
                 ImageGridView.SelectAll();
-                e.Handled = true;
+                return true;
             }
         }
         else if (e.Key == VirtualKey.Escape)
         {
             ClearGridViewSelection();
-            e.Handled = true;
+            return true;
         }
         else if (e.Key == VirtualKey.Delete)
         {
             TogglePendingDeleteForSelectedItems();
-            e.Handled = true;
+            return true;
         }
         else if (e.Key >= VirtualKey.Number0 && e.Key <= VirtualKey.Number5)
         {
             HandleRatingShortcut(e.Key);
-            e.Handled = true;
+            return true;
         }
         else if (e.Key >= VirtualKey.NumberPad0 && e.Key <= VirtualKey.NumberPad5)
         {
             HandleRatingShortcut(e.Key - (VirtualKey.NumberPad0 - VirtualKey.Number0));
-            e.Handled = true;
-        }
-    }
-
-    private bool CanHandleMainPageShortcut(bool viewerShortcut)
-    {
-        if (_isUnloaded || AppLifetime.IsShuttingDown)
-            return false;
-
-        var focusedElement = FocusManager.GetFocusedElement(XamlRoot) as DependencyObject;
-        if (IsTextInputElement(focusedElement))
-            return false;
-
-        if (viewerShortcut)
             return true;
+        }
 
-        return focusedElement == null ||
-               IsWithin(focusedElement, ImageGridView) ||
-               ReferenceEquals(focusedElement, this);
+        return false;
     }
 
     private static bool IsTextInputElement(DependencyObject? element)

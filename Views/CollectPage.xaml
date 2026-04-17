@@ -213,12 +213,12 @@
                                     </Grid.ColumnDefinitions>
                                     <FlyoutBase.AttachedFlyout>
                                         <MenuFlyout Placement="Bottom">
+                                            <MenuFlyoutItem Text="放进预览载入区" Icon="Add" Click="AddFolderToPreviewSource_Click"/>
+                                            <MenuFlyoutSeparator/>
                                             <MenuFlyoutItem Text="固定到常用文件夹" Icon="Pin" Click="PinFolder_Click"/>
                                             <MenuFlyoutItem Text="取消固定" Icon="UnPin" Click="UnpinFolder_Click"/>
                                             <MenuFlyoutSeparator/>
                                             <MenuFlyoutItem Text="刷新外接设备" Icon="Refresh" Click="RefreshExternalDevices_Click"/>
-                                            <MenuFlyoutSeparator/>
-                                            <MenuFlyoutItem Text="放进预览载入区" Icon="Add" Click="AddFolderToPreviewSource_Click"/>
                                         </MenuFlyout>
                                     </FlyoutBase.AttachedFlyout>
                                     <FontIcon

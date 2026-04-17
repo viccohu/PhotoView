@@ -56,6 +56,7 @@ public partial class App : Application
             services.AddSingleton<ILocalSettingsService, LocalSettingsService>();
             services.AddSingleton<IThemeSelectorService, ThemeSelectorService>();
             services.AddSingleton<ILanguageService, LanguageService>();
+            services.AddSingleton<IKeyboardShortcutService, KeyboardShortcutService>();
             services.AddSingleton<INavigationViewService, NavigationViewService>();
             services.AddSingleton<ISettingsService, SettingsService>();
             services.AddSingleton<RatingCacheService>();

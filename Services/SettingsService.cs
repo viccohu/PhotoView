@@ -15,7 +15,7 @@ public class SettingsService : ISettingsService
     private bool _deleteToRecycleBin = true;
     private string _lastFolderPath = string.Empty;
     private string _exportLastFolderPath = string.Empty;
-    private bool _exportImageEnabled = false;
+    private bool _exportImageEnabled = true;
     private int _exportImageMinRating = 1;
     private string _exportImageFolderName = string.Empty;
     private bool _exportRawEnabled = false;

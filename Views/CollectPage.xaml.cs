@@ -11,6 +11,7 @@ using PhotoView.Models;
 using PhotoView.Services;
 using PhotoView.ViewModels;
 using System.Collections.Specialized;
+using System.Diagnostics;
 using System.IO;
 using Windows.Storage;
 using Windows.System;
@@ -25,7 +26,7 @@ public sealed partial class CollectPage : Page
     private const int VisibleThumbnailPrefetchItemCount = 12;
     private readonly DispatcherTimer _visibleThumbnailLoadTimer;
     private readonly DispatcherTimer _ratingDebounceTimer;
-    private readonly KeyEventHandler _shortcutKeyDownHandler;
+    private readonly IKeyboardShortcutService _shortcutService;
     private readonly HashSet<ImageFileInfo> _pendingVisibleThumbnailLoads = new();
     private readonly HashSet<ImageFileInfo> _realizedImageItems = new();
     private readonly Dictionary<RatingControl, bool> _ratingControlEventMap = new();
@@ -61,6 +62,8 @@ public sealed partial class CollectPage : Page
         PreviewInfoViewModel = App.GetService<ImageViewerViewModel>();
         _settingsService = App.GetService<ISettingsService>();
         _shellToolbarService = App.GetService<ShellToolbarService>();
+        _shortcutService = App.GetService<IKeyboardShortcutService>();
+        
         NavigationCacheMode = NavigationCacheMode.Disabled;
         InitializeComponent();
         DataContext = ViewModel;
@@ -81,10 +84,10 @@ public sealed partial class CollectPage : Page
         PreviewCanvas.ZoomPercentChanged += PreviewCanvas_ZoomPercentChanged;
         _thumbnailWheelHandler = PreviewThumbnailGridView_PointerWheelChanged;
         PreviewThumbnailGridView.AddHandler(UIElement.PointerWheelChangedEvent, _thumbnailWheelHandler, true);
-        _shortcutKeyDownHandler = CollectPage_KeyDown;
-        AddHandler(UIElement.KeyDownEvent, _shortcutKeyDownHandler, true);
         Loaded += CollectPage_Loaded;
         Unloaded += CollectPage_Unloaded;
+        
+        _shortcutService.RegisterPageShortcutHandler("CollectPage", HandleShortcut);
     }
 
     private void CollectPage_Loaded(object sender, RoutedEventArgs e)
@@ -99,6 +102,18 @@ public sealed partial class CollectPage : Page
         QueueVisibleThumbnailLoad("page-loaded");
     }
 
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+        _shortcutService.SetCurrentPage("CollectPage");
+    }
+
+    protected override void OnNavigatedFrom(NavigationEventArgs e)
+    {
+        base.OnNavigatedFrom(e);
+        _shortcutService.SetCurrentPage("");
+    }
+
     private void CollectPage_Unloaded(object sender, RoutedEventArgs e)
     {
         _isUnloaded = true;
@@ -107,6 +122,7 @@ public sealed partial class CollectPage : Page
         _realizedImageItems.Clear();
         _thumbnailItemsPanel = null;
         _thumbnailScrollViewer = null;
+        
         DisposePageSubscriptions();
     }
 
@@ -132,7 +148,6 @@ public sealed partial class CollectPage : Page
             PreviewThumbnailGridView.RemoveHandler(UIElement.PointerWheelChangedEvent, _thumbnailWheelHandler);
             _thumbnailWheelHandler = null;
         }
-        RemoveHandler(UIElement.KeyDownEvent, _shortcutKeyDownHandler);
         Loaded -= CollectPage_Loaded;
         Unloaded -= CollectPage_Unloaded;
     }
@@ -1005,66 +1020,41 @@ public sealed partial class CollectPage : Page
         await file.DeleteAsync(deleteOption);
     }
 
-    private void CollectPage_KeyDown(object sender, KeyRoutedEventArgs e)
+    private bool HandleShortcut(KeyRoutedEventArgs e)
     {
-        HandlePageShortcutKey(e);
-    }
+        if (_isDisposed || _isUnloaded)
+            return false;
 
-    private void HandlePageShortcutKey(KeyRoutedEventArgs e)
-    {
-        if (!CanHandlePageShortcut())
-            return;
-
-        if (e.Key == VirtualKey.Escape && ViewModel.SelectedImage != null)
+        if (e.Key == VirtualKey.Space && ViewModel.SelectedImage != null)
+        {
+            PreviewCanvas.ToggleOriginalOrFitZoom();
+            return true;
+        }
+        else if (e.Key == VirtualKey.Escape && ViewModel.SelectedImage != null)
         {
             PreviewCanvas.ResetToFitZoom();
-            e.Handled = true;
+            return true;
         }
         else if (e.Key == VirtualKey.Delete)
         {
             ViewModel.TogglePendingDeleteForSelected(PreviewThumbnailGridView.SelectedItems.OfType<ImageFileInfo>());
-            e.Handled = true;
+            return true;
         }
         else if (e.Key >= VirtualKey.Number0 && e.Key <= VirtualKey.Number5)
         {
             HandleRatingShortcut(e.Key);
-            e.Handled = true;
+            return true;
         }
         else if (e.Key >= VirtualKey.NumberPad0 && e.Key <= VirtualKey.NumberPad5)
         {
             HandleRatingShortcut(e.Key - (VirtualKey.NumberPad0 - VirtualKey.Number0));
-            e.Handled = true;
+            return true;
         }
         else if (e.Key == VirtualKey.Left || e.Key == VirtualKey.Right ||
                  e.Key == VirtualKey.Up || e.Key == VirtualKey.Down)
         {
             MoveSelection(e.Key == VirtualKey.Right || e.Key == VirtualKey.Down ? 1 : -1);
-            e.Handled = true;
-        }
-    }
-
-    private bool CanHandlePageShortcut()
-    {
-        if (_isDisposed || _isUnloaded)
-            return false;
-
-        var focusedElement = FocusManager.GetFocusedElement(XamlRoot) as DependencyObject;
-        if (IsTextInputElement(focusedElement))
-            return false;
-
-        return focusedElement == null || !IsWithin(focusedElement, LoadDrawerRoot);
-    }
-
-    private static bool IsTextInputElement(DependencyObject? element)
-    {
-        while (element != null)
-        {
-            if (element is TextBox or PasswordBox or RichEditBox or AutoSuggestBox)
-            {
-                return true;
-            }
-
-            element = VisualTreeHelper.GetParent(element);
+            return true;
         }
 
         return false;
@@ -1142,8 +1132,9 @@ public sealed partial class CollectPage : Page
             : -1;
         var nextIndex = Math.Clamp(currentIndex + delta, 0, ViewModel.Images.Count - 1);
         var nextImage = ViewModel.Images[nextIndex];
+        
         ViewModel.SelectedImage = nextImage;
         PreviewThumbnailGridView.SelectedItem = nextImage;
-        PreviewThumbnailGridView.ScrollIntoView(nextImage);
+        PreviewThumbnailGridView.ScrollIntoView(nextImage, ScrollIntoViewAlignment.Default);
     }
 }

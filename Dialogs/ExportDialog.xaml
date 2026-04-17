@@ -5,7 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Title="导出图片"
+    Title="导出"
     CloseButtonText="取消"
     PrimaryButtonText="开始导出"
     DefaultButton="Primary">
@@ -14,7 +14,7 @@
         <TextBlock Text="选择要导出的文件类型和筛选条件" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
         
         <StackPanel Orientation="Horizontal" Spacing="12">
-            <ToggleButton x:Name="ImageToggleButton" Width="80" Content="图片"/>
+            <ToggleButton x:Name="ImageToggleButton" Width="140" Content="照片（JPG）"/>
             <ComboBox x:Name="ImageRatingComboBox" Width="100" PlaceholderText="星级" IsEnabled="False">
                 <ComboBoxItem Content="≥ 1 星" Tag="1"/>
                 <ComboBoxItem Content="≥ 2 星" Tag="2"/>
@@ -22,11 +22,11 @@
                 <ComboBoxItem Content="≥ 4 星" Tag="4"/>
                 <ComboBoxItem Content="≥ 5 星" Tag="5"/>
             </ComboBox>
-            <TextBox x:Name="ImageFolderTextBox" Width="120" PlaceholderText="文件夹名称" IsEnabled="False"/>
+            <TextBox x:Name="ImageFolderTextBox" Width="140" PlaceholderText="文件夹名称" IsEnabled="False"/>
         </StackPanel>
         
         <StackPanel Orientation="Horizontal" Spacing="12">
-            <ToggleButton x:Name="RawToggleButton" Width="80" Content="RAW"/>
+            <ToggleButton x:Name="RawToggleButton" Width="140" Content="数字底片（RAW）"/>
             <ComboBox x:Name="RawRatingComboBox" Width="100" PlaceholderText="星级" IsEnabled="False">
                 <ComboBoxItem Content="≥ 1 星" Tag="1"/>
                 <ComboBoxItem Content="≥ 2 星" Tag="2"/>
@@ -34,7 +34,7 @@
                 <ComboBoxItem Content="≥ 4 星" Tag="4"/>
                 <ComboBoxItem Content="≥ 5 星" Tag="5"/>
             </ComboBox>
-            <TextBox x:Name="RawFolderTextBox" Width="120" PlaceholderText="文件夹名称" IsEnabled="False"/>
+            <TextBox x:Name="RawFolderTextBox" Width="140" PlaceholderText="文件夹名称" IsEnabled="False"/>
         </StackPanel>
         
         <StackPanel Orientation="Horizontal" Spacing="12">

@@ -14,36 +14,41 @@ public class ActivationService : IActivationService
     private readonly IThemeSelectorService _themeSelectorService;
     private readonly ILanguageService _languageService;
     private readonly ISettingsService _settingsService;
+    private readonly IKeyboardShortcutService _shortcutService;
     private UIElement? _shell = null;
 
-    public ActivationService(ActivationHandler<LaunchActivatedEventArgs> defaultHandler, IEnumerable<IActivationHandler> activationHandlers, IThemeSelectorService themeSelectorService, ILanguageService languageService, ISettingsService settingsService)
+    public ActivationService(
+        ActivationHandler<LaunchActivatedEventArgs> defaultHandler, 
+        IEnumerable<IActivationHandler> activationHandlers, 
+        IThemeSelectorService themeSelectorService, 
+        ILanguageService languageService, 
+        ISettingsService settingsService,
+        IKeyboardShortcutService shortcutService)
     {
         _defaultHandler = defaultHandler;
         _activationHandlers = activationHandlers;
         _themeSelectorService = themeSelectorService;
         _languageService = languageService;
         _settingsService = settingsService;
+        _shortcutService = shortcutService;
     }
 
     public async Task ActivateAsync(object activationArgs)
     {
-        // Execute tasks before activation.
         await InitializeAsync();
 
-        // Set the MainWindow Content.
         if (App.MainWindow.Content == null)
         {
             _shell = App.GetService<ShellPage>();
             App.MainWindow.Content = _shell ?? new Frame();
         }
 
-        // Handle activation via ActivationHandlers.
+        _shortcutService.Initialize(App.MainWindow);
+
         await HandleActivationAsync(activationArgs);
 
-        // Activate the MainWindow.
         App.MainWindow.Activate();
 
-        // Execute tasks after activation.
         await StartupAsync();
     }
 
