@@ -157,7 +157,7 @@
                     
                     <toolkit:SettingsExpander Margin="0,0,0,36" Header="PhotoView">
                         <toolkit:SettingsExpander.HeaderIcon>
-                            <BitmapIcon ShowAsMonochrome="False" UriSource="/Assets/WindowIcon.ico" />
+                            <BitmapIcon ShowAsMonochrome="False" UriSource="/Assets/WindowIcon.png" />
                         </toolkit:SettingsExpander.HeaderIcon>
                         <TextBlock
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"

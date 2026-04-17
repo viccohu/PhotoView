@@ -21,8 +21,8 @@ public class KeyboardShortcutService : IKeyboardShortcutService
         {
             if (window.Content is UIElement rootElement)
             {
-                rootElement.KeyDown += Window_KeyDown;
-                Debug.WriteLine("[KeyboardShortcutService] 窗口级键盘事件已注册");
+                rootElement.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(Window_KeyDown), handledEventsToo: true);
+                Debug.WriteLine("[KeyboardShortcutService] 窗口级键盘事件已注册（handledEventsToo: true）");
             }
         });
     }

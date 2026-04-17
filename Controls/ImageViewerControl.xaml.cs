@@ -790,51 +790,22 @@ public sealed partial class ImageViewerControl : UserControl
     {
         try
         {
-            // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 按键={e.Key}, e.Handled={e.Handled}");
-            
-            if (e.Key == Windows.System.VirtualKey.Escape)
+            if (e.Key >= Windows.System.VirtualKey.Number1 && e.Key <= Windows.System.VirtualKey.Number5)
             {
-                PrepareCloseAnimation();
-                e.Handled = true;
-                // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 处理了Escape键");
-            }
-            else if (e.Key == Windows.System.VirtualKey.Left || e.Key == Windows.System.VirtualKey.Right ||
-                     e.Key == Windows.System.VirtualKey.Up || e.Key == Windows.System.VirtualKey.Down)
-            {
-                e.Handled = true;
-                // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 阻止了方向键 {e.Key}");
-            }
-            else if (e.Key >= Windows.System.VirtualKey.Number1 && e.Key <= Windows.System.VirtualKey.Number5)
-            {
-                // 处理数字键评级
                 uint rating = (uint)(e.Key - Windows.System.VirtualKey.Number1 + 1);
-                // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 数字键评级, rating={rating}");
                 
                 if (ViewModel != null)
                 {
                     _ = ViewModel.SetRatingCommand.ExecuteAsync(rating);
                     e.Handled = true;
-                    // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 执行了评级命令");
-                }
-                else
-                {
-                    // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: ViewModel 为 null，无法执行评级");
                 }
             }
             else if (e.Key == Windows.System.VirtualKey.Number0)
             {
-                // 数字0清除评级
-                // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 数字键清除评级");
-                
                 if (ViewModel != null)
                 {
                     _ = ViewModel.SetRatingCommand.ExecuteAsync(0);
                     e.Handled = true;
-                    // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: 执行了清除评级命令");
-                }
-                else
-                {
-                    // System.Diagnostics.Debug.WriteLine($"[ImageViewerControl] OnKeyDown: ViewModel 为 null，无法清除评级");
                 }
             }
             base.OnKeyDown(e);

@@ -21,8 +21,8 @@
         <StackPanel Grid.Column="0" Margin="0,0,12,0" Spacing="8">
             <TextBlock Text="文件类型" Style="{ThemeResource BodyTextBlockStyle}"/>
             <StackPanel x:Name="FileTypeButtonsPanel" Spacing="4">
-                <ToggleButton x:Name="ImageFilterButton" Content="图片" Checked="ImageFilterButton_Checked" Unchecked="ImageFilterButton_Unchecked"/>
-                <ToggleButton x:Name="RawFilterButton" Content="RAW" Checked="RawFilterButton_Checked" Unchecked="RawFilterButton_Unchecked"/>
+                <ToggleButton x:Name="ImageFilterButton" Content="照片（JPG、PNG）" Checked="ImageFilterButton_Checked" Unchecked="ImageFilterButton_Unchecked"/>
+                <ToggleButton x:Name="RawFilterButton" Content="数字底片（RAW）" FontSize="14" Checked="RawFilterButton_Checked" Unchecked="RawFilterButton_Unchecked"/>
             </StackPanel>
             <ToggleButton 
                 x:Name="PendingDeleteFilterButton"

@@ -243,7 +243,7 @@
                     <Border
                      Width="1"
                      Background="White"
-                     Opacity="0.3"
+                     Opacity="0.2"
                      Margin="3,0,2,0"
                      />
                     <Border
@@ -520,7 +520,7 @@
                             <TextBlock
                                 Text="文件夹"
                                 Style="{ThemeResource BodyTextBlockStyle}"
-                                FontWeight="SemiBold"
+                          
                                 VerticalAlignment="Center"/>
                             <TextBlock
                                 Style="{ThemeResource CaptionTextBlockStyle}"
@@ -813,7 +813,7 @@
                             Height="26"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Bottom"
-                            Margin="16,0,16,12"
+                            Margin="16,0,16,8"
                             Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}"
                             CornerRadius="10">
                             <controls:ShimmerControl IsLoading="{x:Bind IsRatingLoading, Mode=OneWay}">
