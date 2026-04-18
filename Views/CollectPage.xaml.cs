@@ -45,6 +45,7 @@ public sealed partial class CollectPage : Page
     private Button? _shellDeleteButton;
     private SplitButton? _shellFilterSplitButton;
     private (ImageFileInfo Image, uint Rating)? _pendingRatingUpdate;
+    private int _selectedThumbnailLoadVersion;
 
     public CollectViewModel ViewModel
     {
@@ -238,7 +239,6 @@ public sealed partial class CollectPage : Page
         if (PreviewThumbnailGridView.SelectedItem is ImageFileInfo imageInfo)
         {
             ViewModel.SelectedImage = imageInfo;
-            StartSelectedThumbnailLoad(imageInfo);
         }
     }
 
@@ -271,9 +271,10 @@ public sealed partial class CollectPage : Page
 
         if (args.InRecycleQueue)
         {
-            imageInfo.CancelThumbnailLoad();
+            imageInfo.CancelTargetThumbnailLoad();
             _pendingVisibleThumbnailLoads.Remove(imageInfo);
             _realizedImageItems.Remove(imageInfo);
+            DebugThumbnailLoad($"Recycle cancel target image={GetDebugName(imageInfo)}");
             return;
         }
 
@@ -409,6 +410,11 @@ public sealed partial class CollectPage : Page
         {
             _pendingVisibleThumbnailLoads.Clear();
             _realizedImageItems.Clear();
+            DebugThumbnailLoad("Images reset; cleared visible thumbnail queues");
+        }
+        else
+        {
+            DebugThumbnailLoad($"Images changed action={e.Action} new={e.NewItems?.Count ?? 0} old={e.OldItems?.Count ?? 0}");
         }
         QueueVisibleThumbnailLoad("images-changed");
     }
@@ -725,24 +731,48 @@ public sealed partial class CollectPage : Page
         if (_isDisposed || _isUnloaded)
             return;
 
+        var version = ++_selectedThumbnailLoadVersion;
         _pendingVisibleThumbnailLoads.Remove(imageInfo);
-        _ = LoadSelectedThumbnailAsync(imageInfo);
+        DebugThumbnailLoad($"Selected thumbnail start image={GetDebugName(imageInfo)} version={version}");
+        _ = LoadSelectedThumbnailAsync(imageInfo, version);
     }
 
-    private async Task LoadSelectedThumbnailAsync(ImageFileInfo imageInfo)
+    private async Task LoadSelectedThumbnailAsync(ImageFileInfo imageInfo, int version)
     {
         try
         {
             await imageInfo.EnsureFastPreviewAsync(ViewModel.ThumbnailSize);
+            if (!IsCurrentSelectedThumbnailLoad(imageInfo, version))
+            {
+                DebugThumbnailLoad($"Selected thumbnail skip stale after fast image={GetDebugName(imageInfo)} version={version}");
+                return;
+            }
+
             await imageInfo.EnsureThumbnailAsync(ViewModel.ThumbnailSize);
+            if (!IsCurrentSelectedThumbnailLoad(imageInfo, version))
+            {
+                DebugThumbnailLoad($"Selected thumbnail completed stale image={GetDebugName(imageInfo)} version={version}");
+                return;
+            }
+
+            DebugThumbnailLoad($"Selected thumbnail complete image={GetDebugName(imageInfo)} version={version}");
         }
         catch (OperationCanceledException)
         {
+            DebugThumbnailLoad($"Selected thumbnail canceled image={GetDebugName(imageInfo)} version={version}");
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[CollectPage] selected thumbnail load failed: {ex.Message}");
         }
+    }
+
+    private bool IsCurrentSelectedThumbnailLoad(ImageFileInfo imageInfo, int version)
+    {
+        return !_isDisposed &&
+            !_isUnloaded &&
+            version == _selectedThumbnailLoadVersion &&
+            ReferenceEquals(ViewModel.SelectedImage, imageInfo);
     }
 
     private void PreviewInfoViewModel_RatingUpdated(object? sender, (ImageFileInfo Image, uint Rating) e)
@@ -1145,5 +1175,21 @@ public sealed partial class CollectPage : Page
         ViewModel.SelectedImage = nextImage;
         PreviewThumbnailGridView.SelectedItem = nextImage;
         PreviewThumbnailGridView.ScrollIntoView(nextImage, ScrollIntoViewAlignment.Default);
+    }
+
+    private static string GetDebugName(ImageFileInfo? imageInfo)
+    {
+        if (imageInfo == null)
+            return "<null>";
+
+        return string.IsNullOrWhiteSpace(imageInfo.ImageFile?.Name)
+            ? imageInfo.ImageName
+            : imageInfo.ImageFile.Name;
+    }
+
+    [Conditional("DEBUG")]
+    private static void DebugThumbnailLoad(string message)
+    {
+        Debug.WriteLine($"[CollectThumbnailLoad] {DateTime.Now:HH:mm:ss.fff} {message}");
     }
 }

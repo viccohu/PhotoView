@@ -28,9 +28,13 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     private readonly RatingService _ratingService;
     private readonly FolderTreeService _folderTreeService;
     private readonly SemaphoreSlim _metadataHydrationGate = new(2);
+    private readonly object _metadataHydrationQueueLock = new();
     private readonly List<ImageFileInfo> _allImages = new();
+    private readonly HashSet<ImageFileInfo> _metadataHydrationQueued = new();
     private readonly HashSet<string> _loadedSourcePaths = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? _loadCts;
+    private CancellationTokenSource? _metadataCts;
+    private DateTime _lastLoadStatusUpdateUtc = DateTime.MinValue;
     private int _pendingDeleteCount;
     private bool _loadedIncludeSubfolders;
 
@@ -154,6 +158,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         var sourcePaths = SelectedSources.Select(source => source.Path).ToArray();
         if (sourcePaths.Length == 0)
         {
+            ResetMetadataHydrationQueue();
             ReplaceImageList(Array.Empty<ImageFileInfo>());
             _allImages.Clear();
             _loadedSourcePaths.Clear();
@@ -174,6 +179,10 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
             StatusText = "当前预览列表已是最新";
             return;
         }
+
+        var metadataCancellationToken = canAppend
+            ? EnsureMetadataHydrationQueue()
+            : ResetMetadataHydrationQueue();
 
         _loadCts?.Cancel();
         _loadCts = new CancellationTokenSource();
@@ -197,13 +206,16 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
 
         try
         {
-            var loadedCount = await LoadSourcesRoundRobinAsync(pathsToLoad, IncludeSubfolders, cancellationToken);
+            var loadedCount = await LoadSourcesRoundRobinAsync(
+                pathsToLoad,
+                IncludeSubfolders,
+                cancellationToken,
+                metadataCancellationToken);
             foreach (var path in pathsToLoad)
             {
                 _loadedSourcePaths.Add(path);
             }
             _loadedIncludeSubfolders = IncludeSubfolders;
-            ApplyFilter();
             SelectedImage ??= Images.FirstOrDefault();
             StatusText = $"已载入 {_allImages.Count} 张图片";
             if (loadedCount == 0 && _allImages.Count == 0)
@@ -291,6 +303,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
 
     public void ApplyFilter()
     {
+        DebugLoad($"ApplyFilter reset begin all={_allImages.Count} visibleBefore={Images.Count}");
         Images.Clear();
         foreach (var image in _allImages.Where(MatchFilter))
         {
@@ -303,16 +316,19 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         }
 
         UpdatePendingDeleteCount();
+        DebugLoad($"ApplyFilter reset complete visibleAfter={Images.Count} selected={GetDebugName(SelectedImage)}");
     }
 
     public void Dispose()
     {
         _workspaceService.SourcesChanged -= WorkspaceService_SourcesChanged;
         _loadCts?.Cancel();
+        _metadataCts?.Cancel();
         foreach (var image in _allImages)
         {
             image.CancelThumbnailLoad();
         }
+        ClearMetadataHydrationQueue();
     }
 
     private async Task LoadDrivesAsync()
@@ -339,7 +355,8 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     private async Task<int> LoadSourcesRoundRobinAsync(
         IReadOnlyList<string> sourcePaths,
         bool includeSubfolders,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        CancellationToken metadataCancellationToken)
     {
         var states = new List<SourceLoadState>();
         foreach (var path in sourcePaths)
@@ -378,14 +395,23 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
                 }
 
                 state.Index += (uint)batch.Count;
-                var added = AddFilesFromSourceBatch(state, batch, cancellationToken);
-                totalAdded += added;
+                var addedImages = AddFilesFromSourceBatch(state, batch, cancellationToken);
+                totalAdded += addedImages.Count;
 
-                if (added > 0)
+                if (addedImages.Count > 0)
                 {
-                    ApplyFilter();
-                    SelectedImage ??= Images.FirstOrDefault();
-                    StatusText = $"已载入 {_allImages.Count} 张图片";
+                    var appendResult = AppendImagesForCurrentFilter(addedImages, cancellationToken);
+                    foreach (var imageInfo in addedImages)
+                    {
+                        StartImageInfoLoad(
+                            imageInfo,
+                            metadataCancellationToken,
+                            immediate: ReferenceEquals(imageInfo, appendResult.InitialSelection));
+                    }
+
+                    UpdateLoadStatus(force: false);
+                    DebugLoad(
+                        $"Batch appended source={state.SourcePath} files={batch.Count} new={addedImages.Count} visibleAdded={appendResult.VisibleAdded} total={_allImages.Count} visible={Images.Count} selected={GetDebugName(SelectedImage)}");
                     await Task.Yield();
                 }
             }
@@ -394,7 +420,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         return totalAdded;
     }
 
-    private int AddFilesFromSourceBatch(
+    private List<ImageFileInfo> AddFilesFromSourceBatch(
         SourceLoadState state,
         IReadOnlyList<StorageFile> batch,
         CancellationToken cancellationToken)
@@ -420,7 +446,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
             }
         }
 
-        var addedCount = 0;
+        var addedImages = new List<ImageFileInfo>();
         foreach (var groupKey in newGroupKeys)
         {
             if (!state.FileNameMap.TryGetValue(groupKey, out var groupFiles))
@@ -439,12 +465,41 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
             group.PrimaryImage.UpdateDisplaySize(ThumbnailSize);
 
             _allImages.Add(group.PrimaryImage);
-            StartDeferredImageInfoLoad(group.PrimaryImage, cancellationToken);
+            addedImages.Add(group.PrimaryImage);
             state.ProcessedGroups.Add(groupKey);
-            addedCount++;
         }
 
-        return addedCount;
+        return addedImages;
+    }
+
+    private (int VisibleAdded, ImageFileInfo? InitialSelection) AppendImagesForCurrentFilter(
+        IReadOnlyList<ImageFileInfo> images,
+        CancellationToken cancellationToken)
+    {
+        ImageFileInfo? initialSelection = null;
+        var visibleAdded = 0;
+
+        foreach (var image in images)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!MatchFilter(image))
+                continue;
+
+            Images.Add(image);
+            visibleAdded++;
+            if (SelectedImage == null && initialSelection == null)
+            {
+                initialSelection = image;
+            }
+        }
+
+        if (initialSelection != null)
+        {
+            SelectedImage = initialSelection;
+            DebugLoad($"Initial selection set image={GetDebugName(initialSelection)}");
+        }
+
+        return (visibleAdded, initialSelection);
     }
 
     private static string CreateGroupKey(string sourcePath, StorageFile file)
@@ -466,21 +521,35 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
             file.FileType);
     }
 
-    private void StartDeferredImageInfoLoad(ImageFileInfo imageInfo, CancellationToken cancellationToken)
+    private void StartImageInfoLoad(ImageFileInfo imageInfo, CancellationToken cancellationToken, bool immediate)
     {
-        _ = StartDeferredImageInfoLoadAsync(imageInfo, cancellationToken);
+        lock (_metadataHydrationQueueLock)
+        {
+            if (!_metadataHydrationQueued.Add(imageInfo))
+            {
+                DebugLoad($"Metadata load already queued image={GetDebugName(imageInfo)} immediate={immediate}");
+                return;
+            }
+        }
+
+        _ = StartImageInfoLoadAsync(imageInfo, cancellationToken, immediate);
     }
 
-    private async Task StartDeferredImageInfoLoadAsync(ImageFileInfo imageInfo, CancellationToken cancellationToken)
+    private async Task StartImageInfoLoadAsync(ImageFileInfo imageInfo, CancellationToken cancellationToken, bool immediate)
     {
         try
         {
-            await Task.Delay(DeferredImageInfoLoadDelayMs, cancellationToken);
+            if (!immediate)
+            {
+                await Task.Delay(DeferredImageInfoLoadDelayMs, cancellationToken);
+            }
 
             await _metadataHydrationGate.WaitAsync(cancellationToken);
             try
             {
+                DebugLoad($"Metadata load begin image={GetDebugName(imageInfo)} immediate={immediate}");
                 await HydrateImageMetadataAsync(imageInfo, cancellationToken);
+                DebugLoad($"Metadata load complete image={GetDebugName(imageInfo)} size={imageInfo.Width}x{imageInfo.Height}");
             }
             finally
             {
@@ -596,13 +665,47 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     private void ReplaceImageList(IEnumerable<ImageFileInfo> images)
     {
         _allImages.Clear();
+        ClearMetadataHydrationQueue();
         _allImages.AddRange(images);
         ApplyFilter();
+    }
+
+    private CancellationToken EnsureMetadataHydrationQueue()
+    {
+        _metadataCts ??= new CancellationTokenSource();
+        return _metadataCts.Token;
+    }
+
+    private CancellationToken ResetMetadataHydrationQueue()
+    {
+        _metadataCts?.Cancel();
+        _metadataCts?.Dispose();
+        _metadataCts = new CancellationTokenSource();
+        ClearMetadataHydrationQueue();
+        return _metadataCts.Token;
+    }
+
+    private void UpdateLoadStatus(bool force)
+    {
+        var now = DateTime.UtcNow;
+        if (!force && now - _lastLoadStatusUpdateUtc < TimeSpan.FromMilliseconds(150))
+            return;
+
+        _lastLoadStatusUpdateUtc = now;
+        StatusText = $"已载入 {_allImages.Count} 张图片";
     }
 
     private void UpdatePendingDeleteCount()
     {
         PendingDeleteCount = _allImages.Count(image => image.IsPendingDelete);
+    }
+
+    private void ClearMetadataHydrationQueue()
+    {
+        lock (_metadataHydrationQueueLock)
+        {
+            _metadataHydrationQueued.Clear();
+        }
     }
 
     private static string NormalizePath(string path)
@@ -624,6 +727,12 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     private static void DebugSelection(string message)
     {
         System.Diagnostics.Debug.WriteLine($"[CollectSelection] {DateTime.Now:HH:mm:ss.fff} {message}");
+    }
+
+    [System.Diagnostics.Conditional("DEBUG")]
+    private static void DebugLoad(string message)
+    {
+        System.Diagnostics.Debug.WriteLine($"[CollectLoad] {DateTime.Now:HH:mm:ss.fff} {message}");
     }
 
     private sealed class SourceLoadState
