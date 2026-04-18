@@ -53,6 +53,8 @@ public sealed partial class MainPage : Page
     private const int TargetThumbnailStartBudgetPerTick = 8;
     private const int FastPreviewPrefetchScreenCount = 8;
     private const int TargetThumbnailPrefetchItemCount = 4;
+    private const int TargetThumbnailRetainScreenCount = 2;
+    private const int MaxTargetThumbnailRetainedItems = 160;
     private const int WarmPreviewIdleBudgetPerTick = 3;
     private const int WarmPreviewScrollBudgetPerTick = 1;
     private const int MaxActiveWarmPreviewLoads = 2;
@@ -1597,20 +1599,34 @@ public sealed partial class MainPage : Page
     {
         try
         {
+            DebugTargetThumbnail($"load start item={imageInfo.ImageName} queueVersion={queueVersion} currentVersion={Volatile.Read(ref _thumbnailQueueVersion)} hasTarget={imageInfo.HasTargetThumbnail} userScroll={_isUserScrollInProgress}");
             await imageInfo.EnsureFastPreviewAsync(size);
             if (queueVersion != Volatile.Read(ref _thumbnailQueueVersion))
+            {
+                DebugTargetThumbnail($"load stop after fast item={imageInfo.ImageName} stale queueVersion={queueVersion} currentVersion={Volatile.Read(ref _thumbnailQueueVersion)}");
                 return;
+            }
 
             await imageInfo.EnsureThumbnailAsync(size);
             if (queueVersion != Volatile.Read(ref _thumbnailQueueVersion))
+            {
+                DebugTargetThumbnail($"load stop after target item={imageInfo.ImageName} stale queueVersion={queueVersion} currentVersion={Volatile.Read(ref _thumbnailQueueVersion)}");
                 return;
+            }
 
             if (!_isUnloaded &&
                 !AppLifetime.IsShuttingDown &&
                 queueVersion == Volatile.Read(ref _thumbnailQueueVersion) &&
                 IsItemInCurrentTargetRange(imageInfo))
             {
-                _targetThumbnailRetainedItems.Add(imageInfo);
+                if (_targetThumbnailRetainedItems.Add(imageInfo))
+                {
+                    DebugTargetThumbnail($"retain item={imageInfo.ImageName} count={_targetThumbnailRetainedItems.Count}");
+                }
+            }
+            else
+            {
+                DebugTargetThumbnail($"load complete not retained item={imageInfo.ImageName} inRange={IsItemInCurrentTargetRange(imageInfo)} unloaded={_isUnloaded}");
             }
         }
         catch (OperationCanceledException)
@@ -2865,15 +2881,62 @@ public sealed partial class MainPage : Page
 
     private void TrimTargetThumbnails(int firstIndex, int lastIndex)
     {
+        if (_targetThumbnailRetainedItems.Count == 0)
+            return;
+
+        var retainFirstIndex = firstIndex;
+        var retainLastIndex = lastIndex;
+        var centerIndex = (firstIndex + lastIndex) / 2d;
+
+        if (TryGetVisibleIndexRange(out var visibleFirstIndex, out var visibleLastIndex))
+        {
+            var visibleCount = Math.Max(1, visibleLastIndex - visibleFirstIndex + 1);
+            var retainPadding = (visibleCount * TargetThumbnailRetainScreenCount) + TargetThumbnailPrefetchItemCount;
+            retainFirstIndex = Math.Max(0, visibleFirstIndex - retainPadding);
+            retainLastIndex = Math.Min(ViewModel.Images.Count - 1, visibleLastIndex + retainPadding);
+            centerIndex = (visibleFirstIndex + visibleLastIndex) / 2d;
+        }
+
         foreach (var imageInfo in _targetThumbnailRetainedItems.ToArray())
         {
             var index = ViewModel.Images.IndexOf(imageInfo);
-            if (index >= firstIndex && index <= lastIndex)
+            if (index < 0)
+            {
+                _targetThumbnailRetainedItems.Remove(imageInfo);
+                DebugTargetThumbnail($"drop missing item={imageInfo.ImageName} count={_targetThumbnailRetainedItems.Count}");
+            }
+        }
+
+        if (_targetThumbnailRetainedItems.Count <= MaxTargetThumbnailRetainedItems)
+            return;
+
+        var overflowCandidates = _targetThumbnailRetainedItems
+            .Select(imageInfo => new
+            {
+                ImageInfo = imageInfo,
+                Index = ViewModel.Images.IndexOf(imageInfo)
+            })
+            .Where(candidate => candidate.Index >= 0)
+            .OrderByDescending(candidate => Math.Abs(candidate.Index - centerIndex))
+            .ToArray();
+
+        foreach (var candidate in overflowCandidates)
+        {
+            if (_targetThumbnailRetainedItems.Count <= MaxTargetThumbnailRetainedItems)
+                break;
+
+            if (candidate.Index >= retainFirstIndex && candidate.Index <= retainLastIndex)
                 continue;
 
-            imageInfo.DowngradeToFastPreview();
-            _targetThumbnailRetainedItems.Remove(imageInfo);
+            DowngradeRetainedTargetThumbnail(candidate.ImageInfo, candidate.Index, "retain-cap");
         }
+    }
+
+    private void DowngradeRetainedTargetThumbnail(ImageFileInfo imageInfo, int index, string reason)
+    {
+        imageInfo.DowngradeToFastPreview();
+        _targetThumbnailRetainedItems.Remove(imageInfo);
+        DebugTargetThumbnail($"downgrade reason={reason} item={imageInfo.ImageName} index={index} count={_targetThumbnailRetainedItems.Count}");
     }
 
     private void StartWarmPreviewLoads(int budget)
@@ -2982,6 +3045,12 @@ public sealed partial class MainPage : Page
                 QueueVisibleThumbnailLoad($"post-scroll:{reason}");
             });
         }
+    }
+
+    [System.Diagnostics.Conditional("DEBUG")]
+    private static void DebugTargetThumbnail(string message)
+    {
+        System.Diagnostics.Debug.WriteLine($"[MainPageTargetThumb] {DateTime.Now:HH:mm:ss.fff} {message}");
     }
 
     private void ClearAllPendingDelete_Click(object sender, RoutedEventArgs e)
