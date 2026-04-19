@@ -29,13 +29,17 @@
     <Content Remove="Assets\BadgeLogo.scale-150.png" />
     <Content Remove="Assets\BadgeLogo.scale-200.png" />
     <Content Remove="Assets\BadgeLogo.scale-400.png" />
+    <Content Remove="Assets\flip-vertical.svg" />
+    <Content Remove="Assets\flip.svg" />
     <Content Remove="Assets\lgo-08.png" />
-    <Content Remove="Assets\mainpage.svg" />
-    <Content Remove="Assets\preview.svg" />
+    <Content Remove="Assets\sub-folder.svg" />
+    <Content Remove="Assets\table-closed.svg" />
+    <Content Remove="Assets\table-open.svg" />
+    <Content Remove="Assets\画板 1 副本 2.png" />
+    <Content Remove="Assets\画板 1 副本 3.png" />
+    <Content Remove="Assets\画板 1 副本.png" />
+    <Content Remove="Assets\画板 1.png" />
   </ItemGroup>
-
-
-
   <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>

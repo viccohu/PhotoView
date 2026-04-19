@@ -1104,6 +1104,8 @@ public sealed partial class MainPage : Page
         var hasFolders = ViewModel.HasSubFoldersInCurrentFolder;
         var shouldShowContent = hasFolders && _isFolderDrawerExpanded;
         FolderDrawerRoot.Visibility = Visibility.Visible;
+        FolderDrawerOpenIcon.Visibility = shouldShowContent ? Visibility.Visible : Visibility.Collapsed;
+        FolderDrawerClosedIcon.Visibility = shouldShowContent ? Visibility.Collapsed : Visibility.Visible;
         FolderDrawerChevronTransform.Angle = shouldShowContent ? 180d : 0d;
         FolderDrawerToggleButton.IsEnabled = hasFolders;
 

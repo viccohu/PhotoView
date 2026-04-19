@@ -51,16 +51,14 @@
                 TODO: Update item icons by updating FontIcon.Glyph properties.
                 https://docs.microsoft.com/windows/apps/design/style/segoe-fluent-icons-font#icon-list
                 -->
-                <NavigationViewItem x:Uid="Shell_Main" helpers:NavigationHelper.NavigateTo="PhotoView.ViewModels.MainViewModel">
-                    <NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE8B9;" />
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-                <NavigationViewItem x:Uid="Shell_Collect" helpers:NavigationHelper.NavigateTo="PhotoView.ViewModels.CollectViewModel">
-                    <NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="30" Glyph="&#xE7F7;" />
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
+                <NavigationViewItem
+                    x:Name="MainNavigationItem"
+                    x:Uid="Shell_Main"
+                    helpers:NavigationHelper.NavigateTo="PhotoView.ViewModels.MainViewModel" />
+                <NavigationViewItem
+                    x:Name="PreviewNavigationItem"
+                    x:Uid="Shell_Collect"
+                    helpers:NavigationHelper.NavigateTo="PhotoView.ViewModels.CollectViewModel" />
                 <!--<NavigationViewItem x:Uid="Shell_FolderPage" Content="文件夹" helpers:NavigationHelper.NavigateTo="PhotoPro.ViewModels.CollectViewModel">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE838;"/>

@@ -25,6 +25,9 @@ public enum NodeType
 
 public partial class FolderNode : ObservableObject
 {
+    private const uint FolderListIconThumbnailSize = 64;
+    private const int FolderListIconDecodePixelWidth = 48;
+
     [ObservableProperty]
     private string _name;
 
@@ -52,8 +55,16 @@ public partial class FolderNode : ObservableObject
     public ImageSource? ListIcon
     {
         get => _listIcon;
-        private set => SetProperty(ref _listIcon, value);
+        private set
+        {
+            if (SetProperty(ref _listIcon, value))
+            {
+                OnPropertyChanged(nameof(HasListIcon));
+            }
+        }
     }
+
+    public bool HasListIcon => ListIcon != null;
 
     public bool HasExpandableChildren => IsLoaded ? Children.Count > 0 : HasSubFolders;
 
@@ -86,15 +97,15 @@ public partial class FolderNode : ObservableObject
         {
             var thumbnail = await Folder.GetThumbnailAsync(
                 ThumbnailMode.ListView,
-                32,
-                ThumbnailOptions.None).AsTask(cancellationToken);
+                FolderListIconThumbnailSize,
+                ThumbnailOptions.UseCurrentScale).AsTask(cancellationToken);
 
             if (thumbnail == null || thumbnail.Size <= 0)
                 return;
 
             var bitmap = new BitmapImage
             {
-                DecodePixelWidth = 20
+                DecodePixelWidth = FolderListIconDecodePixelWidth
             };
             await bitmap.SetSourceAsync(thumbnail).AsTask(cancellationToken);
             ListIcon = bitmap;

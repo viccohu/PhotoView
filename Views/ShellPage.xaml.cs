@@ -49,6 +49,7 @@ public sealed partial class ShellPage : Page
 
         _themeSelectorService = App.GetService<IThemeSelectorService>();
         _themeSelectorService.ThemeChanged += OnThemeChanged;
+        UpdateNavigationIcons();
 
         _navigationService = App.GetService<INavigationService>();
         _navigationService.Navigated += OnNavigationServiceNavigated;
@@ -107,6 +108,7 @@ public sealed partial class ShellPage : Page
         DispatcherQueue.TryEnqueue(async () =>
         {
             await Task.Delay(50);
+            UpdateNavigationIcons();
             UpdateTitleBarColor();
         });
     }
@@ -190,6 +192,30 @@ public sealed partial class ShellPage : Page
         }
     }
 
+    private void UpdateNavigationIcons()
+    {
+        var isDarkTheme = _themeSelectorService.Theme == ElementTheme.Dark ||
+                          (_themeSelectorService.Theme == ElementTheme.Default &&
+                           Application.Current.RequestedTheme == ApplicationTheme.Dark);
+
+        MainNavigationItem.Icon = CreateNavigationIcon(isDarkTheme
+            ? "ms-appx:///Assets/mainpge-black.png"
+            : "ms-appx:///Assets/mainpge-white.png");
+        PreviewNavigationItem.Icon = CreateNavigationIcon(isDarkTheme
+            ? "ms-appx:///Assets/preview-black.png"
+            : "ms-appx:///Assets/preview-white.png");
+    }
+
+    private static BitmapIcon CreateNavigationIcon(string uri)
+    {
+        return new BitmapIcon
+        {
+            Width = 24,
+            Height = 24,
+            ShowAsMonochrome = false,
+            UriSource = new Uri(uri)
+        };
+    }
     private void TitleBar_BackRequested(TitleBar sender, object args)
     {
         // 处理返回逻辑
