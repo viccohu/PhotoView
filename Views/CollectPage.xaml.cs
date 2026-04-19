@@ -13,6 +13,7 @@ using PhotoView.ViewModels;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IO;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.System;
 
@@ -42,6 +43,7 @@ public sealed partial class CollectPage : Page
     private bool _isUpdatingZoomSlider;
     private bool _isLoadDrawerPinnedCollapsed;
     private bool _isLoadDrawerTemporarilyExpanded;
+    private bool _suppressNextThumbnailDragStart;
     private Button? _shellDeleteButton;
     private SplitButton? _shellFilterSplitButton;
     private (ImageFileInfo Image, uint Rating)? _pendingRatingUpdate;
@@ -240,6 +242,90 @@ public sealed partial class CollectPage : Page
         {
             ViewModel.SelectedImage = imageInfo;
         }
+    }
+
+    private void PreviewThumbnailGridView_DragItemsStarting(object sender, DragItemsStartingEventArgs e)
+    {
+        if (_suppressNextThumbnailDragStart)
+        {
+            _suppressNextThumbnailDragStart = false;
+            e.Cancel = true;
+            return;
+        }
+
+        var dragImages = GetDragImagesFromItems(e.Items).ToList();
+        if (dragImages.Count == 0)
+        {
+            e.Cancel = true;
+            return;
+        }
+
+        var storageFiles = dragImages
+            .Select(image => image.ImageFile)
+            .Where(file => file != null && !string.IsNullOrWhiteSpace(file.Path) && File.Exists(file.Path))
+            .Cast<StorageFile>()
+            .ToList();
+
+        if (storageFiles.Count == 0)
+        {
+            e.Cancel = true;
+            return;
+        }
+
+        e.Data.RequestedOperation = DataPackageOperation.Copy;
+        e.Data.Properties.ApplicationName = "PhotoView";
+        e.Data.Properties.Title = storageFiles.Count == 1
+            ? storageFiles[0].Name
+            : $"{storageFiles.Count} 个文件";
+        e.Data.SetStorageItems(storageFiles);
+    }
+
+    private IEnumerable<ImageFileInfo> GetDragImagesFromItems(IList<object> dragItems)
+    {
+        var dragImage = dragItems.OfType<ImageFileInfo>().FirstOrDefault();
+        if (dragImage == null)
+            return Array.Empty<ImageFileInfo>();
+
+        if (PreviewThumbnailGridView.SelectedItems.Contains(dragImage))
+        {
+            return GetOrderedSelectedImagesForDrag();
+        }
+
+        PreviewThumbnailGridView.SelectedItems.Clear();
+        PreviewThumbnailGridView.SelectedItem = dragImage;
+        ViewModel.SelectedImage = dragImage;
+        return new[] { dragImage };
+    }
+
+    private IEnumerable<ImageFileInfo> GetOrderedSelectedImagesForDrag()
+    {
+        var selected = PreviewThumbnailGridView.SelectedItems
+            .OfType<ImageFileInfo>()
+            .ToHashSet();
+
+        if (selected.Count == 0)
+            return Array.Empty<ImageFileInfo>();
+
+        return ViewModel.Images.Where(selected.Contains).ToList();
+    }
+
+    private void PreviewThumbnailItem_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        _suppressNextThumbnailDragStart = IsWithinRatingControl(e.OriginalSource as DependencyObject);
+    }
+
+    private static bool IsWithinRatingControl(DependencyObject? source)
+    {
+        var current = source;
+        while (current != null)
+        {
+            if (current is RatingControl)
+                return true;
+
+            current = VisualTreeHelper.GetParent(current);
+        }
+
+        return false;
     }
 
     private void PreviewThumbnailGridView_PointerWheelChanged(object sender, PointerRoutedEventArgs e)

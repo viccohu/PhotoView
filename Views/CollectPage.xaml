@@ -400,7 +400,10 @@
                     ItemsSource="{x:Bind ViewModel.Images}"
                     SelectionMode="Extended"
                     SelectedItem="{x:Bind ViewModel.SelectedImage, Mode=OneWay}"
+                    CanDragItems="True"
+                    CanReorderItems="False"
                     SelectionChanged="PreviewThumbnailGridView_SelectionChanged"
+                    DragItemsStarting="PreviewThumbnailGridView_DragItemsStarting"
                     ContainerContentChanging="PreviewThumbnailGridView_ContainerContentChanging"
                     ScrollViewer.HorizontalScrollBarVisibility="Auto"
                     ScrollViewer.HorizontalScrollMode="Enabled"
@@ -412,7 +415,8 @@
                             <Grid
                                 Width="142"
                                 Height="{Binding DataContext.IsThumbnailStripCollapsed, ElementName=PreviewThumbnailGridView, Converter={StaticResource ThumbnailItemHeightConverter}}"
-                                Tag="{x:Bind}">
+                                Tag="{x:Bind}"
+                                PointerPressed="PreviewThumbnailItem_PointerPressed">
                                 <Border
                                     Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
                                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -549,12 +553,14 @@
                                             <Border
                                                 Grid.Row="2"
                                                 Background="{ThemeResource SmokeFillColorDefaultBrush}"
-                                                CornerRadius="0,0,8,8">
+                                                CornerRadius="0,0,8,8"
+                                                CanDrag="False">
                                                 <RatingControl
                                                     Value="{x:Bind RatingValue, Mode=TwoWay}"
                                                     IsReadOnly="False"
                                                     IsClearEnabled="True"
                                                     MaxRating="5"
+                                                    CanDrag="False"
                                                     FontSize="12"
                                                     HorizontalAlignment="Center"
                                                     VerticalAlignment="Center"
@@ -569,12 +575,14 @@
                                             Grid.Row="2"
                                             Background="{ThemeResource SmokeFillColorDefaultBrush}"
                                             CornerRadius="0,0,8,8"
+                                            CanDrag="False"
                                             Visibility="{Binding DataContext.IsThumbnailStripCollapsed, ElementName=PreviewThumbnailGridView, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
                                             <RatingControl
                                                 Value="{x:Bind RatingValue, Mode=TwoWay}"
                                                 IsReadOnly="False"
                                                 IsClearEnabled="True"
                                                 MaxRating="5"
+                                                CanDrag="False"
                                                 FontSize="12"
                                                 HorizontalAlignment="Center"
                                                 VerticalAlignment="Center"
