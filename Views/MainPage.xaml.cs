@@ -1719,6 +1719,9 @@ public sealed partial class MainPage : Page
             if (imageInfo == null)
                 return;
 
+            if (!imageInfo.CanEditGridRating)
+                return;
+
             if (imageInfo.IsRatingLoading && !imageInfo.IsRatingLoaded)
                 return;
 
@@ -1771,6 +1774,7 @@ public sealed partial class MainPage : Page
             foreach (var imageInfo in allImagesToProcess)
             {
                 await UpdateRatingAsync(imageInfo, rating);
+                ViewModel.RefreshBurstCoverAfterRatingChanged(imageInfo);
             }
         }
     }
@@ -1930,6 +1934,100 @@ public sealed partial class MainPage : Page
         if (sender is FrameworkElement { Tag: ImageFileInfo })
         {
             AutoCollapseImageBrowsingChrome("image-tapped");
+        }
+    }
+
+    private async void BurstToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement element)
+            return;
+
+        var imageInfo = element.DataContext as ImageFileInfo;
+        if (imageInfo == null)
+            return;
+
+        await ToggleBurstExpansionAsync(imageInfo);
+    }
+
+    private async Task ToggleBurstExpansionAsync(ImageFileInfo imageInfo)
+    {
+        if (_isUnloaded || AppLifetime.IsShuttingDown || imageInfo.BurstGroup == null)
+            return;
+
+        AttachImageGridScrollViewer();
+        var anchorTop = TryGetItemTopRelativeToScrollViewer(imageInfo);
+        var warmupImages = ViewModel.GetBurstExpansionWarmupImages(imageInfo);
+        foreach (var warmupImage in warmupImages.Take(TargetThumbnailStartBudgetPerTick))
+        {
+            _pendingFastPreviewLoads.Remove(warmupImage);
+            await warmupImage.EnsureFastPreviewAsync(ViewModel.ThumbnailSize);
+        }
+
+        ViewModel.ToggleBurstExpansion(imageInfo);
+        QueueVisibleThumbnailLoad("burst-toggle");
+        var restoreImage = imageInfo;
+        if (!ViewModel.Images.Contains(restoreImage) && imageInfo.BurstGroup != null)
+        {
+            restoreImage = imageInfo.BurstGroup.Images.FirstOrDefault(ViewModel.Images.Contains) ?? imageInfo;
+        }
+
+        DispatcherQueue.TryEnqueue(async () =>
+        {
+            await Task.Yield();
+            RestoreItemTopRelativeToScrollViewer(restoreImage, anchorTop);
+        });
+    }
+
+    private double? TryGetItemTopRelativeToScrollViewer(ImageFileInfo imageInfo)
+    {
+        if (_imageGridScrollViewer == null ||
+            ImageGridView.ContainerFromItem(imageInfo) is not FrameworkElement container)
+        {
+            return null;
+        }
+
+        try
+        {
+            return container
+                .TransformToVisual(_imageGridScrollViewer)
+                .TransformPoint(new Windows.Foundation.Point(0, 0))
+                .Y;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private void RestoreItemTopRelativeToScrollViewer(ImageFileInfo imageInfo, double? previousTop)
+    {
+        if (!previousTop.HasValue ||
+            _isUnloaded ||
+            AppLifetime.IsShuttingDown ||
+            _imageGridScrollViewer == null)
+        {
+            return;
+        }
+
+        var currentTop = TryGetItemTopRelativeToScrollViewer(imageInfo);
+        if (!currentTop.HasValue)
+            return;
+
+        var targetOffset = _imageGridScrollViewer.VerticalOffset + currentTop.Value - previousTop.Value;
+        targetOffset = Math.Clamp(targetOffset, 0d, _imageGridScrollViewer.ScrollableHeight);
+
+        _isProgrammaticScrollActive = true;
+        try
+        {
+            _imageGridScrollViewer.ChangeView(null, targetOffset, null, disableAnimation: true);
+        }
+        finally
+        {
+            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+            {
+                _isProgrammaticScrollActive = false;
+                QueueVisibleThumbnailLoad("burst-anchor-restore");
+            });
         }
     }
 
@@ -2498,7 +2596,7 @@ public sealed partial class MainPage : Page
 
         foreach (var image in singleImagesToRemove)
         {
-            ViewModel.Images.Remove(image);
+            ViewModel.RemoveImagesFromLibrary(new[] { image });
         }
 
         foreach (var group in groupsToProcess.Keys)
@@ -2519,13 +2617,13 @@ public sealed partial class MainPage : Page
                     newPrimary.IsRatingLoading = false;
                     newPrimary.IsPendingDelete = false;
                     
-                    ViewModel.Images[index] = newPrimary;
+                    ViewModel.ReplaceImageInLibrary(oldPrimary, newPrimary);
                     newPrimary.RefreshGroupProperties();
                 }
             }
             else
             {
-                ViewModel.Images.Remove(oldPrimary);
+                ViewModel.RemoveImagesFromLibrary(new[] { oldPrimary });
             }
         }
 

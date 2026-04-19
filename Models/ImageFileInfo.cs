@@ -46,6 +46,10 @@ public class ImageFileInfo : INotifyPropertyChanged
     private ThumbnailLoadStage _thumbnailStage = ThumbnailLoadStage.None;
     private ImageGroup? _group;
     private bool _isPrimary;
+    private BurstPhotoGroup? _burstGroup;
+    private bool _isBurstPrimary;
+    private bool _isBurstDisplayCover;
+    private bool _isBurstChildVisible;
     private uint _rating;
     private bool _isRatingLoading = true;
     private bool _isRatingLoaded;
@@ -900,6 +904,32 @@ public class ImageFileInfo : INotifyPropertyChanged
 
     public bool IsPrimary => _isPrimary;
 
+    public BurstPhotoGroup? BurstGroup => _burstGroup;
+
+    public bool IsBurstPrimary => IsBurstCover;
+
+    public bool IsBurstCover => (_isBurstPrimary || _isBurstDisplayCover) && BurstCount > 1;
+
+    public bool IsBurstExpanded => _burstGroup?.IsExpanded == true;
+
+    public int BurstCount => _burstGroup?.Images.Count ?? 0;
+
+    public string BurstBadgeText => IsBurstExpanded ? $"收起 {BurstCount}" : $"连拍 {BurstCount}";
+
+    public bool IsCollapsedBurstCover => IsBurstCover && !IsBurstExpanded;
+
+    public bool CanEditGridRating => !IsCollapsedBurstCover;
+
+    public bool IsBurstMemberVisualActive => BurstCount > 1 && IsBurstExpanded;
+
+    public string BurstAccentColor => _burstGroup?.AccentColor ?? "#808080";
+
+    public bool IsBurstChildVisible
+    {
+        get => _isBurstChildVisible;
+        private set => SetProperty(ref _isBurstChildVisible, value);
+    }
+
     public List<ImageFileInfo>? AlternateFormats =>
         _group?.Images.Where(i => i != this).ToList();
 
@@ -935,6 +965,52 @@ public class ImageFileInfo : INotifyPropertyChanged
         OnPropertyChanged(nameof(HasAlternateFormats));
         OnPropertyChanged(nameof(AlternateFormatsText));
         UpdateFormatTags();
+    }
+
+    public void ClearBurstInfo()
+    {
+        _burstGroup = null;
+        _isBurstPrimary = false;
+        _isBurstDisplayCover = false;
+        IsBurstChildVisible = false;
+        RefreshBurstProperties();
+    }
+
+    public void SetBurstInfo(BurstPhotoGroup group, bool isPrimary)
+    {
+        _burstGroup = group;
+        _isBurstPrimary = isPrimary;
+        _isBurstDisplayCover = false;
+        IsBurstChildVisible = !isPrimary && group.IsExpanded;
+        RefreshBurstProperties();
+    }
+
+    public void SetBurstDisplayCover(bool isDisplayCover)
+    {
+        if (SetProperty(ref _isBurstDisplayCover, isDisplayCover, nameof(IsBurstCover)))
+        {
+            RefreshBurstProperties();
+        }
+    }
+
+    public void SetBurstChildVisible(bool isVisible)
+    {
+        IsBurstChildVisible = isVisible;
+    }
+
+    public void RefreshBurstProperties()
+    {
+        OnPropertyChanged(nameof(BurstGroup));
+        OnPropertyChanged(nameof(IsBurstPrimary));
+        OnPropertyChanged(nameof(IsBurstCover));
+        OnPropertyChanged(nameof(IsBurstExpanded));
+        OnPropertyChanged(nameof(BurstCount));
+        OnPropertyChanged(nameof(BurstBadgeText));
+        OnPropertyChanged(nameof(IsCollapsedBurstCover));
+        OnPropertyChanged(nameof(CanEditGridRating));
+        OnPropertyChanged(nameof(IsBurstMemberVisualActive));
+        OnPropertyChanged(nameof(BurstAccentColor));
+        OnPropertyChanged(nameof(IsBurstChildVisible));
     }
 
     public void RefreshGroupProperties()

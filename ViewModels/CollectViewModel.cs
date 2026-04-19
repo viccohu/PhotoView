@@ -633,7 +633,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
 
             if (properties.DateTaken != DateTimeOffset.MinValue && properties.DateTaken != default)
             {
-                imageInfo.SetDateTakenFromProperties(properties.DateTaken.DateTime);
+                imageInfo.SetDateTakenFromProperties(properties.DateTaken.LocalDateTime);
             }
         }
         catch (OperationCanceledException)

@@ -160,6 +160,14 @@ public partial class ImageViewerViewModel : ObservableRecipient
 
         SetFileFormatInfo(imageFileInfo.ImageName);
         LoadFilePaths(imageFileInfo);
+        if (imageFileInfo.DateTaken.HasValue)
+        {
+            ApplyDateTaken(imageFileInfo.DateTaken.Value);
+        }
+        else
+        {
+            ClearDateTaken();
+        }
 
         IsLoadingExif = true;
     }
@@ -170,7 +178,7 @@ public partial class ImageViewerViewModel : ObservableRecipient
 
         if (imageFileInfo.ImageFile != null)
         {
-            await LoadFileDetailsAsync(imageFileInfo.ImageFile);
+            await LoadFileDetailsAsync(imageFileInfo.ImageFile, imageFileInfo.DateTaken);
         }
     }
 
@@ -223,22 +231,12 @@ public partial class ImageViewerViewModel : ObservableRecipient
 
             if (exifData.DateTaken.HasValue)
             {
-                CaptureDate = exifData.DateTaken.Value.Date;
-                CaptureTime = exifData.DateTaken.Value.TimeOfDay;
-                FormattedDateTime = $"{exifData.DateTaken.Value:yyyy年 M月 d日 HH:mm}";
-                CaptureYear = $"{exifData.DateTaken.Value:yyyy年}";
-                CaptureMonth = $"{exifData.DateTaken.Value:M月}";
-                CaptureDay = $"{exifData.DateTaken.Value:d日}";
-                CaptureTimeOfDay = $"{exifData.DateTaken.Value:HH:mm}";
+                ApplyDateTaken(exifData.DateTaken.Value);
                 // Debug.WriteLine($"[ImageViewerViewModel] 日期时间: {FormattedDateTime}");
             }
             else
             {
-                FormattedDateTime = "----";
-                CaptureYear = "----";
-                CaptureMonth = "----";
-                CaptureDay = "----";
-                CaptureTimeOfDay = "----";
+                ClearDateTaken();
                 // Debug.WriteLine($"[ImageViewerViewModel] 日期时间: 未找到");
             }
 
@@ -271,6 +269,28 @@ public partial class ImageViewerViewModel : ObservableRecipient
             IsLoadingExif = false;
             // Debug.WriteLine($"[ImageViewerViewModel] IsLoadingExif = false");
         }
+    }
+
+    private void ApplyDateTaken(DateTime dateTaken)
+    {
+        CaptureDate = dateTaken.Date;
+        CaptureTime = dateTaken.TimeOfDay;
+        FormattedDateTime = $"{dateTaken:yyyy年 M月 d日 HH:mm}";
+        CaptureYear = $"{dateTaken:yyyy年}";
+        CaptureMonth = $"{dateTaken:M月}";
+        CaptureDay = $"{dateTaken:d日}";
+        CaptureTimeOfDay = $"{dateTaken:HH:mm}";
+    }
+
+    private void ClearDateTaken()
+    {
+        CaptureDate = null;
+        CaptureTime = null;
+        FormattedDateTime = "----";
+        CaptureYear = "----";
+        CaptureMonth = "----";
+        CaptureDay = "----";
+        CaptureTimeOfDay = "----";
     }
 
     private void UpdateDeviceInfo(ExifData exifData)

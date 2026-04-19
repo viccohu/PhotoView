@@ -531,7 +531,7 @@ public sealed partial class ImageViewerControl : UserControl
 
                         if (_imageFileInfo?.ImageFile != null)
                         {
-                            _ = LoadExifAfterImageAsync(_imageFileInfo.ImageFile);
+                            _ = LoadExifAfterImageAsync(_imageFileInfo);
                         }
                     }
                     catch (Exception ex)
@@ -1529,12 +1529,12 @@ public sealed partial class ImageViewerControl : UserControl
         }
     }
 
-    private async Task LoadExifAfterImageAsync(StorageFile file)
+    private async Task LoadExifAfterImageAsync(ImageFileInfo imageFileInfo)
     {
         try
         {
             _isLoadingExif = true;
-            await ViewModel.LoadFileDetailsAsync(file);
+            await ViewModel.LoadFileDetailsAsync(imageFileInfo.ImageFile, imageFileInfo.DateTaken);
             _isLoadingExif = false;
         }
         catch (Exception ex)

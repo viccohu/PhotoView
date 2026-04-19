@@ -724,6 +724,22 @@
                             </MenuFlyout>
                         </FlyoutBase.AttachedFlyout>
                         <Border
+                            Margin="10,0,10,0"
+                            CornerRadius="12"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{x:Bind BurstAccentColor, Mode=OneWay, Converter={StaticResource StringToBrushConverter}}"
+                            BorderThickness="0"
+                            Opacity="0.55"
+                            Visibility="{x:Bind IsBurstCover, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                        <Border
+                            Margin="5,0,5,0"
+                            CornerRadius="12"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{x:Bind BurstAccentColor, Mode=OneWay, Converter={StaticResource StringToBrushConverter}}"
+                            BorderThickness="0"
+                            Opacity="0.72"
+                            Visibility="{x:Bind IsBurstCover, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                        <Border
                             CornerRadius="12"
                             Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -738,6 +754,44 @@
                                     VerticalAlignment="Center"/>
                             </Grid>
                         </Border>
+                        <Border
+                            Width="6"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Stretch"
+                            Background="{x:Bind BurstAccentColor, Mode=OneWay, Converter={StaticResource StringToBrushConverter}}"
+                            CornerRadius="12,0,0,12"
+                            Opacity="0.8"
+                            Visibility="{x:Bind IsBurstMemberVisualActive, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                        <Border
+                            CornerRadius="12"
+                            BorderBrush="{x:Bind BurstAccentColor, Mode=OneWay, Converter={StaticResource StringToBrushConverter}}"
+                            BorderThickness="0"
+                            Opacity="0.75"
+                            Visibility="{x:Bind IsBurstMemberVisualActive, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                        <Button
+                            Margin="0,8,8,0"
+                            Padding="8,4"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Background="{x:Bind BurstAccentColor, Mode=OneWay, Converter={StaticResource StringToBrushConverter}}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Click="BurstToggleButton_Click"
+                            Visibility="{x:Bind IsBurstCover, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <FontIcon
+                                    Glyph="&#xE8B9;"
+                                    FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                    FontSize="12"
+                                    Foreground="White"/>
+                                <TextBlock
+                                    Text="{x:Bind BurstBadgeText, Mode=OneWay}"
+                                    FontSize="12"
+                                    FontWeight="SemiBold"
+                                    Foreground="White"/>
+                            </StackPanel>
+                        </Button>
                         <FontIcon
                             Glyph="&#xEB90;"
                             FontFamily="{StaticResource SymbolThemeFontFamily}"
@@ -847,8 +901,8 @@
                                             HorizontalAlignment="Center"
                                             VerticalAlignment="Center"
                                             Value="{x:Bind RatingValue, Mode=TwoWay}"
-                                            IsReadOnly="False"
-                                            IsClearEnabled="True"
+                                            IsReadOnly="{x:Bind IsCollapsedBurstCover, Mode=OneWay}"
+                                            IsClearEnabled="{x:Bind CanEditGridRating, Mode=OneWay}"
                                             MaxRating="5"
                                             Loaded="RatingControl_Loaded"/>
                                     </Grid>
@@ -920,6 +974,11 @@
                         Orientation="Horizontal"/>
                 </ItemsPanelTemplate>
             </GridView.ItemsPanel>
+            <GridView.ItemContainerTransitions>
+                <TransitionCollection>
+                    <RepositionThemeTransition/>
+                </TransitionCollection>
+            </GridView.ItemContainerTransitions>
         </GridView>
 
         <ContentPresenter
