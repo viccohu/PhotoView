@@ -912,6 +912,23 @@ public sealed partial class CollectPage : Page
     {
         PreviewCanvas.ToggleOriginalOrFitZoom();
     }
+    private void ZoomOutButton_Click(object sender, RoutedEventArgs e)
+    {
+        StepZoomPercent(-10d);
+    }
+
+    private void ZoomInButton_Click(object sender, RoutedEventArgs e)
+    {
+        StepZoomPercent(10d);
+    }
+
+    private void StepZoomPercent(double deltaPercent)
+    {
+        var targetPercent = Math.Clamp(ZoomSlider.Value + deltaPercent, ZoomSlider.Minimum, ZoomSlider.Maximum);
+        PreviewCanvas.SetZoomPercent(targetPercent);
+        ZoomSlider.Value = targetPercent;
+        ZoomValueButton.Content = $"{targetPercent:F0}%";
+    }
 
     private void RotatePreview_Click(object sender, RoutedEventArgs e)
     {
