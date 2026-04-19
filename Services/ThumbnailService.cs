@@ -1,6 +1,7 @@
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using ImageMagick;
 using PhotoView.Contracts.Services;
 using PhotoView.Helpers;
 using PhotoView.Models;
@@ -12,6 +13,7 @@ using System.Threading.Tasks;
 using Windows.Graphics.Imaging;
 using Windows.Storage;
 using Windows.Storage.FileProperties;
+using Windows.Storage.Streams;
 
 namespace PhotoView.Services;
 
@@ -75,6 +77,23 @@ public class ThumbnailService : IThumbnailService
             previewLongSidePixels,
             ThumbnailOptions.UseCurrentScale,
             cancellationToken);
+
+        if (result == null && IsPhotoshopFile(file.FileType))
+        {
+            var gate = _decodeGate;
+            await gate.WaitAsync(cancellationToken);
+            try
+            {
+                if (key.HasValue && TryGetCachedThumbnail(key.Value, out cachedResult))
+                    return cachedResult;
+
+                result = await DecodePhotoshopCompositeAsync(file, previewLongSidePixels, cancellationToken);
+            }
+            finally
+            {
+                gate.Release();
+            }
+        }
 
         if (key.HasValue)
         {
@@ -465,20 +484,12 @@ public class ThumbnailService : IThumbnailService
 
     private static bool IsRawFile(string extension)
     {
-        var rawExtensions = new[] {
-            ".cr2", ".cr3", ".crw",
-            ".nef", ".nrw",
-            ".arw", ".srf", ".sr2",
-            ".raf",
-            ".orf",
-            ".rw2",
-            ".pef",
-            ".dng",
-            ".3fr", ".iiq", ".eip",
-            ".srw",
-            ".raw"
-        };
-        return rawExtensions.Contains(extension.ToLowerInvariant());
+        return ImageFormatRegistry.IsRaw(extension);
+    }
+
+    private static bool IsPhotoshopFile(string extension)
+    {
+        return ImageFormatRegistry.IsPhotoshop(extension);
     }
 
     private static async Task<DecodeResult?> TryGetRawEmbeddedPreviewAsync(
@@ -668,6 +679,76 @@ public class ThumbnailService : IThumbnailService
         return await tcs.Task;
     }
 
+    private static async Task<DecodeResult?> CreateBitmapImageResultFromBytesAsync(
+        byte[] bytes,
+        uint width,
+        uint height,
+        CancellationToken cancellationToken)
+    {
+        var dispatcherQueue = App.MainWindow.DispatcherQueue;
+        if (dispatcherQueue == null || dispatcherQueue.HasThreadAccess)
+        {
+            return await CreateBitmapImageResultFromBytesOnUIThreadAsync(bytes, width, height, cancellationToken);
+        }
+
+        var tcs = new TaskCompletionSource<DecodeResult?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, async () =>
+            {
+                try
+                {
+                    if (cancellationToken.IsCancellationRequested || AppLifetime.IsShuttingDown)
+                    {
+                        tcs.TrySetResult(null);
+                        return;
+                    }
+
+                    var result = await CreateBitmapImageResultFromBytesOnUIThreadAsync(bytes, width, height, cancellationToken);
+                    tcs.TrySetResult(result);
+                }
+                catch (OperationCanceledException)
+                {
+                    tcs.TrySetResult(null);
+                }
+                catch (Exception ex)
+                {
+                    tcs.TrySetException(ex);
+                }
+            }))
+        {
+            return null;
+        }
+
+        return await tcs.Task;
+    }
+
+    private static async Task<DecodeResult?> CreateBitmapImageResultFromBytesOnUIThreadAsync(
+        byte[] bytes,
+        uint width,
+        uint height,
+        CancellationToken cancellationToken)
+    {
+        if (bytes.Length == 0 || cancellationToken.IsCancellationRequested || AppLifetime.IsShuttingDown)
+            return null;
+
+        using var stream = new InMemoryRandomAccessStream();
+        using (var writer = new DataWriter(stream))
+        {
+            writer.WriteBytes(bytes);
+            await writer.StoreAsync().AsTask(cancellationToken);
+            await writer.FlushAsync().AsTask(cancellationToken);
+            writer.DetachStream();
+        }
+
+        stream.Seek(0);
+        var bitmap = new BitmapImage();
+        await bitmap.SetSourceAsync(stream).AsTask(cancellationToken);
+
+        return new DecodeResult(
+            width > 0 ? width : (uint)Math.Max(0, bitmap.PixelWidth),
+            height > 0 ? height : (uint)Math.Max(0, bitmap.PixelHeight),
+            bitmap);
+    }
+
     private static async Task<DecodeResult?> CreateBitmapImageResultOnUIThreadAsync(
         Windows.Storage.Streams.IRandomAccessStream stream,
         uint targetLongSide,
@@ -696,6 +777,71 @@ public class ThumbnailService : IThumbnailService
             bitmap);
     }
 
+    private static async Task<DecodeResult?> DecodePhotoshopCompositeAsync(
+        StorageFile file,
+        uint targetLongSide,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var decode = await Task.Run(() =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                using var image = new MagickImage(file.Path);
+                cancellationToken.ThrowIfCancellationRequested();
+
+                image.AutoOrient();
+                if (image.Width == 0 || image.Height == 0)
+                    return null;
+
+                var sourceLongSide = Math.Max(image.Width, image.Height);
+                var decodeLongSide = sourceLongSide > 0
+                    ? Math.Min(targetLongSide, sourceLongSide)
+                    : targetLongSide;
+
+                uint scaledWidth;
+                uint scaledHeight;
+                if (image.Width >= image.Height)
+                {
+                    scaledWidth = Math.Max(1u, decodeLongSide);
+                    scaledHeight = Math.Max(1u, (uint)Math.Round(scaledWidth * ((double)image.Height / image.Width)));
+                }
+                else
+                {
+                    scaledHeight = Math.Max(1u, decodeLongSide);
+                    scaledWidth = Math.Max(1u, (uint)Math.Round(scaledHeight * ((double)image.Width / image.Height)));
+                }
+
+                if (scaledWidth != image.Width || scaledHeight != image.Height)
+                {
+                    image.Resize(scaledWidth, scaledHeight);
+                }
+
+                image.Format = MagickFormat.Png;
+                using var memoryStream = new System.IO.MemoryStream();
+                image.Write(memoryStream);
+                return new PhotoshopDecodeBuffer(memoryStream.ToArray(), scaledWidth, scaledHeight);
+            }, cancellationToken).ConfigureAwait(false);
+
+            cancellationToken.ThrowIfCancellationRequested();
+            return decode == null
+                ? null
+                : await CreateBitmapImageResultFromBytesAsync(decode.Bytes, decode.Width, decode.Height, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ThumbnailService] Photoshop decode failed for {file.Name}: {ex.Message}");
+            return null;
+        }
+    }
+
+    private sealed record PhotoshopDecodeBuffer(byte[] Bytes, uint Width, uint Height);
+
     private async Task<DecodeResult?> DecodeThumbnailAsync(
         StorageFile file,
         uint longSidePixels,
@@ -704,6 +850,12 @@ public class ThumbnailService : IThumbnailService
     {
         var extension = file.FileType.ToLowerInvariant();
         DebugDecode($"Decode begin file={file.Name} longSide={longSidePixels} forceRaw={forceFullDecodeRaw} ext={extension}");
+
+        if (IsPhotoshopFile(extension))
+        {
+            DebugDecode($"Decode Photoshop composite file={file.Name} longSide={longSidePixels}");
+            return await DecodePhotoshopCompositeAsync(file, longSidePixels, cancellationToken);
+        }
         
         if (IsRawFile(extension) && !forceFullDecodeRaw)
         {

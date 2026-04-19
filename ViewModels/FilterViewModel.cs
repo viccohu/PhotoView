@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using System;
 using System.Collections.ObjectModel;
 using System.Collections.Generic;
+using PhotoView.Models;
 
 namespace PhotoView.ViewModels;
 
@@ -21,12 +22,6 @@ public enum RatingCondition
 
 public partial class FilterViewModel : ObservableObject
 {
-    private static readonly HashSet<string> RawExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".arw", ".cr2", ".cr3", ".nef", ".nrw", ".orf", ".pef",
-        ".raf", ".rw2", ".srw", ".dng", ".x3f", ".mos", ".mrw"
-    };
-
     [ObservableProperty]
     private bool _isImageFilter;
 
@@ -62,9 +57,7 @@ public partial class FilterViewModel : ObservableObject
 
     public static bool IsRawExtension(string extension)
     {
-        if (string.IsNullOrEmpty(extension))
-            return false;
-        return RawExtensions.Contains(extension.ToLowerInvariant());
+        return ImageFormatRegistry.IsRaw(extension);
     }
 
     partial void OnIsImageFilterChanged(bool value)

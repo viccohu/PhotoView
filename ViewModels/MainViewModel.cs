@@ -20,7 +20,7 @@ public partial class MainViewModel : ObservableRecipient
     private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         // 常见图片格式
-        ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp",
+        ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif", ".webp", ".psd", ".psb",
         
         // RAW 格式 - Canon
         ".cr2", ".cr3", ".crw",
@@ -152,6 +152,7 @@ public partial class MainViewModel : ObservableRecipient
         _settingsService = settingsService;
         _ratingService = ratingService;
         _folderTreeService = folderTreeService;
+        _settingsService.PreferPsdAsPrimaryPreviewChanged += OnPreferPsdAsPrimaryPreviewChanged;
         _thumbnailSize = _settingsService.ThumbnailSize;
         _folderTree = new ObservableCollection<FolderNode>();
         _breadcrumbPath = new ObservableCollection<FolderNode>();
@@ -350,7 +351,9 @@ public partial class MainViewModel : ObservableRecipient
                     var groupName = ImageGroup.GetGroupName(file.Name);
                     if (!processedGroups.Contains(groupName) && fileNameMap.TryGetValue(groupName, out var groupFiles))
                     {
-                        var sortedFiles = groupFiles.OrderBy(f => ImageGroup.GetFormatPriority(f.FileType)).ToList();
+                        var sortedFiles = groupFiles
+                            .OrderBy(f => ImageGroup.GetFormatPriority(f.FileType, _settingsService.PreferPsdAsPrimaryPreview))
+                            .ToList();
                         var primaryFile = sortedFiles.First();
                         
                         if (!newPrimaryFiles.Contains(primaryFile))
@@ -478,7 +481,7 @@ public partial class MainViewModel : ObservableRecipient
 
     private static bool IsImageFile(StorageFile file)
     {
-        return ImageExtensions.Contains(file.FileType);
+        return ImageFormatRegistry.IsSupported(file.FileType);
     }
 
     private async Task RecordFolderVisitAsync(FolderNode folderNode)
@@ -518,7 +521,7 @@ public partial class MainViewModel : ObservableRecipient
                 .Select(file => CreatePlaceholderImageInfo(file))
                 .ToList();
 
-            var group = new ImageGroup(groupName, imageInfos);
+            var group = new ImageGroup(groupName, imageInfos, _settingsService.PreferPsdAsPrimaryPreview);
             group.PrimaryImage.UpdateDisplaySize(ThumbnailSize);
 
             Images.Add(group.PrimaryImage);
@@ -898,6 +901,16 @@ public partial class MainViewModel : ObservableRecipient
             System.Diagnostics.Debug.WriteLine($"[LoadImageMetadataAsync] Properties failed for {file.Name}: {ex.Message}");
         }
 
+        if (width == 200 && height == 200 && ImageFormatRegistry.IsPhotoshop(file.FileType))
+        {
+            var photoshopSize = await PhotoshopImageInfoReader.TryReadSizeAsync(file, cancellationToken);
+            if (photoshopSize.HasValue)
+            {
+                width = photoshopSize.Value.Width;
+                height = photoshopSize.Value.Height;
+            }
+        }
+
         return (width, height, title, dateTaken);
     }
 
@@ -919,7 +932,7 @@ public partial class MainViewModel : ObservableRecipient
             int height = 200;
             string title = string.Empty;
             var fileExtension = Path.GetExtension(file.Name);
-            var isRaw = RawExtensions.Contains(fileExtension);
+            var isRaw = ImageFormatRegistry.IsRaw(fileExtension);
 
             // 先尝试用 GetImagePropertiesAsync（包括 RAW 文件）
             try
@@ -944,6 +957,16 @@ public partial class MainViewModel : ObservableRecipient
             }
             catch (Exception ex)
             {
+            }
+
+            if (width == 200 && height == 200 && ImageFormatRegistry.IsPhotoshop(file.FileType))
+            {
+                var photoshopSize = await PhotoshopImageInfoReader.TryReadSizeAsync(file, cancellationToken);
+                if (photoshopSize.HasValue)
+                {
+                    width = photoshopSize.Value.Width;
+                    height = photoshopSize.Value.Height;
+                }
             }
 
             // 如果还是默认值，再尝试用 BitmapDecoder
@@ -995,6 +1018,7 @@ public partial class MainViewModel : ObservableRecipient
 
     public void Dispose()
     {
+        _settingsService.PreferPsdAsPrimaryPreviewChanged -= OnPreferPsdAsPrimaryPreviewChanged;
         _loadImagesCts?.Cancel();
         CancelRatingPreload();
 
@@ -1124,7 +1148,9 @@ public partial class MainViewModel : ObservableRecipient
                     var groupName = ImageGroup.GetGroupName(file.Name);
                     if (!processedGroups.Contains(groupName) && fileNameMap.TryGetValue(groupName, out var groupFiles))
                     {
-                        var sortedFiles = groupFiles.OrderBy(f => ImageGroup.GetFormatPriority(f.FileType)).ToList();
+                        var sortedFiles = groupFiles
+                            .OrderBy(f => ImageGroup.GetFormatPriority(f.FileType, _settingsService.PreferPsdAsPrimaryPreview))
+                            .ToList();
                         var primaryFile = sortedFiles.First();
                         
                         if (!newPrimaryFiles.Contains(primaryFile))
@@ -1218,7 +1244,7 @@ public partial class MainViewModel : ObservableRecipient
 
     public static bool IsRawFile(string extension)
     {
-        return RawExtensions.Contains(extension);
+        return ImageFormatRegistry.IsRaw(extension);
     }
 
     public static bool IsJpgFile(string extension)
@@ -1241,6 +1267,41 @@ public partial class MainViewModel : ObservableRecipient
         }
         ImagesChanged?.Invoke(this, EventArgs.Empty);
         UpdatePendingDeleteCount();
+    }
+
+    private void OnPreferPsdAsPrimaryPreviewChanged(object? sender, bool enabled)
+    {
+        ReapplyPrimaryImagesForCurrentGroups();
+    }
+
+    private void ReapplyPrimaryImagesForCurrentGroups()
+    {
+        var groups = _allImages
+            .Select(image => image.Group)
+            .Where(group => group != null)
+            .Distinct()
+            .Cast<ImageGroup>()
+            .ToList();
+
+        if (groups.Count == 0)
+            return;
+
+        var cancellationToken = _loadImagesCts?.Token ?? CancellationToken.None;
+        _allImages.Clear();
+
+        foreach (var group in groups)
+        {
+            group.ReapplyPrimary(_settingsService.PreferPsdAsPrimaryPreview);
+            group.PrimaryImage.UpdateDisplaySize(ThumbnailSize);
+            _allImages.Add(group.PrimaryImage);
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                StartDeferredImageInfoLoad(group.PrimaryImage, cancellationToken);
+            }
+        }
+
+        ApplyFilter();
+        QueueRatingPreloadForCurrentImages(cancellationToken);
     }
 
     private bool MatchFilter(ImageFileInfo image)

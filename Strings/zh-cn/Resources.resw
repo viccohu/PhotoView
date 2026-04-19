@@ -228,6 +228,12 @@
   <data name="Settings_AlwaysDecodeRaw.Description" xml:space="preserve">
     <value>关闭时优先展示内置 HD 图片</value>
   </data>
+  <data name="Settings_PreferPsdAsPrimaryPreview.Header" xml:space="preserve">
+    <value>优先展示 PSD</value>
+  </data>
+  <data name="Settings_PreferPsdAsPrimaryPreview.Description" xml:space="preserve">
+    <value>同名文件中优先使用 PSD/PSB 作为预览主图</value>
+  </data>
   <data name="Settings_RememberLastFolder.Header" xml:space="preserve">
     <value>记住上次文件夹</value>
   </data>

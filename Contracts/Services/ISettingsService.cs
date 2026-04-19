@@ -90,6 +90,11 @@ public interface ISettingsService
         set;
     }
 
+    bool PreferPsdAsPrimaryPreview {
+        get;
+        set;
+    }
+
     event EventHandler<NavigationViewPaneDisplayMode> NavigationViewModeChanged;
     event EventHandler<int> BatchSizeChanged;
     event EventHandler<PerformanceMode>? PerformanceModeChanged;
@@ -98,6 +103,7 @@ public interface ISettingsService
     event EventHandler<bool>? DeleteToRecycleBinChanged;
     event EventHandler<bool>? AlwaysDecodeRawChanged;
     event EventHandler<bool>? MainPageAutoCollapseSidebarChanged;
+    event EventHandler<bool>? PreferPsdAsPrimaryPreviewChanged;
 
     Task SaveNavigationViewModeAsync(NavigationViewPaneDisplayMode mode);
     Task<NavigationViewPaneDisplayMode> LoadNavigationViewModeAsync();
@@ -135,6 +141,8 @@ public interface ISettingsService
     Task<bool> LoadAlwaysDecodeRawAsync();
     Task SaveMainPageAutoCollapseSidebarAsync(bool enabled);
     Task<bool> LoadMainPageAutoCollapseSidebarAsync();
+    Task SavePreferPsdAsPrimaryPreviewAsync(bool enabled);
+    Task<bool> LoadPreferPsdAsPrimaryPreviewAsync();
     void SuspendAlwaysDecodeRawPersistence(string reason);
     Task ResumeAlwaysDecodeRawPersistenceAsync(string reason);
 

@@ -996,54 +996,22 @@ public class ImageFileInfo : INotifyPropertyChanged
 
     private static string NormalizeFormatExtension(string ext)
     {
-        if (string.IsNullOrWhiteSpace(ext))
-            return string.Empty;
-
-        ext = ext.Trim().ToLowerInvariant();
-        return ext.StartsWith('.') ? ext : $".{ext}";
+        return ImageFormatRegistry.NormalizeExtension(ext);
     }
 
     private bool IsRawFormat(string ext)
     {
-        ext = NormalizeFormatExtension(ext);
-        return ext switch
-        {
-            ".cr2" or ".cr3" or ".crw" or ".nef" or ".nrw" or ".arw" or ".srf" or ".sr2" or ".dng" or ".orf" or ".pef" or ".raf" or ".rw2" or ".raw" or ".3fr" or ".fff" or ".mos" or ".erf" or ".dcr" or ".mrw" or ".rwl" or ".srw" => true,
-            _ => false
-        };
+        return ImageFormatRegistry.IsRaw(ext);
     }
 
     private string GetFormatDisplayName(string ext)
     {
-        ext = NormalizeFormatExtension(ext);
-        return ext switch
-        {
-            ".jpg" or ".jpeg" => "JPG",
-            ".png" => "PNG",
-            ".gif" => "GIF",
-            ".bmp" => "BMP",
-            ".tiff" or ".tif" => "TIF",
-            ".webp" => "WebP",
-            ".cr2" or ".cr3" or ".crw" or ".nef" or ".nrw" or ".arw" or ".srf" or ".sr2" or ".dng" or ".orf" or ".pef" or ".raf" or ".rw2" or ".raw" or ".3fr" or ".fff" or ".mos" or ".erf" or ".dcr" or ".mrw" or ".rwl" or ".srw" => "RAW",
-            _ => ext.ToUpper().TrimStart('.')
-        };
+        return ImageFormatRegistry.GetFormatDisplayName(ext);
     }
 
     private string GetFormatColor(string ext)
     {
-        ext = NormalizeFormatExtension(ext);
-        var compressedFormats = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
-        var rawFormats = new[] { ".cr2", ".cr3", ".crw", ".nef", ".nrw", ".arw", ".srf", ".sr2", ".dng", ".orf", ".pef", ".raf", ".rw2", ".raw", ".3fr", ".fff", ".mos", ".erf", ".dcr", ".mrw", ".rwl", ".srw" };
-        var losslessFormats = new[] { ".tiff", ".tif", ".bmp" };
-
-        if (compressedFormats.Contains(ext))
-            return "#00c8ff";
-        if (rawFormats.Contains(ext))
-            return "#ffb300";
-        if (losslessFormats.Contains(ext))
-            return "#2bff00";
-
-        return "#808080";
+        return ImageFormatRegistry.GetFormatColor(ext);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

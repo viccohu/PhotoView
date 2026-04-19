@@ -120,6 +120,13 @@
                         </toolkit:SettingsCard.HeaderIcon>
                         <ToggleSwitch x:Name="AlwaysDecodeRawToggleSwitch" Toggled="AlwaysDecodeRawToggleSwitch_Toggled" />
                     </toolkit:SettingsCard>
+
+                    <toolkit:SettingsCard x:Uid="Settings_PreferPsdAsPrimaryPreview">
+                        <toolkit:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE7C3;" />
+                        </toolkit:SettingsCard.HeaderIcon>
+                        <ToggleSwitch x:Name="PreferPsdAsPrimaryPreviewToggleSwitch" Toggled="PreferPsdAsPrimaryPreviewToggleSwitch_Toggled" />
+                    </toolkit:SettingsCard>
                     
                     <!-- Display -->
                     <TextBlock x:Uid="Settings_Section_Display" Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" />

@@ -24,6 +24,7 @@ public class SettingsService : ISettingsService
     private double _decodeScaleFactor = 2.0;
     private bool _alwaysDecodeRaw = false;
     private bool _mainPageAutoCollapseSidebar = false;
+    private bool _preferPsdAsPrimaryPreview = false;
 
     public event EventHandler<NavigationViewPaneDisplayMode>? NavigationViewModeChanged;
     public event EventHandler<int>? BatchSizeChanged;
@@ -33,6 +34,7 @@ public class SettingsService : ISettingsService
     public event EventHandler<bool>? DeleteToRecycleBinChanged;
     public event EventHandler<bool>? AlwaysDecodeRawChanged;
     public event EventHandler<bool>? MainPageAutoCollapseSidebarChanged;
+    public event EventHandler<bool>? PreferPsdAsPrimaryPreviewChanged;
 
     public NavigationViewPaneDisplayMode NavigationViewMode
     {
@@ -242,6 +244,19 @@ public class SettingsService : ISettingsService
             {
                 _mainPageAutoCollapseSidebar = value;
                 MainPageAutoCollapseSidebarChanged?.Invoke(this, value);
+            }
+        }
+    }
+
+    public bool PreferPsdAsPrimaryPreview
+    {
+        get => _preferPsdAsPrimaryPreview;
+        set
+        {
+            if (_preferPsdAsPrimaryPreview != value)
+            {
+                _preferPsdAsPrimaryPreview = value;
+                PreferPsdAsPrimaryPreviewChanged?.Invoke(this, value);
             }
         }
     }
@@ -535,6 +550,23 @@ public class SettingsService : ISettingsService
         return _mainPageAutoCollapseSidebar;
     }
 
+    public async Task SavePreferPsdAsPrimaryPreviewAsync(bool enabled)
+    {
+        await _localSettingsService.SaveSettingAsync("PreferPsdAsPrimaryPreview", enabled);
+    }
+
+    public async Task<bool> LoadPreferPsdAsPrimaryPreviewAsync()
+    {
+        var enabled = await _localSettingsService.ReadSettingAsync<bool?>("PreferPsdAsPrimaryPreview");
+        if (enabled.HasValue)
+        {
+            _preferPsdAsPrimaryPreview = enabled.Value;
+            return enabled.Value;
+        }
+
+        return _preferPsdAsPrimaryPreview;
+    }
+
     public void SuspendAlwaysDecodeRawPersistence(string reason)
     {
         // Reserved hook for viewer lifetime; the setting is only persisted by explicit save calls.
@@ -564,5 +596,6 @@ public class SettingsService : ISettingsService
         await LoadDecodeScaleFactorAsync();
         await LoadAlwaysDecodeRawAsync();
         await LoadMainPageAutoCollapseSidebarAsync();
+        await LoadPreferPsdAsPrimaryPreviewAsync();
     }
 }

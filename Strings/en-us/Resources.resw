@@ -228,6 +228,12 @@
   <data name="Settings_AlwaysDecodeRaw.Description" xml:space="preserve">
     <value>Prioritize displaying built-in HD images when closing</value>
   </data>
+  <data name="Settings_PreferPsdAsPrimaryPreview.Header" xml:space="preserve">
+    <value>Prefer PSD preview</value>
+  </data>
+  <data name="Settings_PreferPsdAsPrimaryPreview.Description" xml:space="preserve">
+    <value>Use PSD/PSB as the primary preview for files with the same name</value>
+  </data>
   <data name="Settings_RememberLastFolder.Header" xml:space="preserve">
     <value>Remember last folder</value>
   </data>

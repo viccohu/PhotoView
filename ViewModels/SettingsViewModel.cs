@@ -149,6 +149,19 @@ public class SettingsViewModel : ObservableRecipient
         }
     }
 
+    public bool PreferPsdAsPrimaryPreview
+    {
+        get => _settingsService.PreferPsdAsPrimaryPreview;
+        set
+        {
+            if (_settingsService.PreferPsdAsPrimaryPreview != value)
+            {
+                _settingsService.PreferPsdAsPrimaryPreview = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public ICommand SwitchThemeCommand
     {
         get;
@@ -190,6 +203,11 @@ public class SettingsViewModel : ObservableRecipient
     }
 
     public ICommand SetMainPageAutoCollapseSidebarCommand
+    {
+        get;
+    }
+
+    public ICommand SetPreferPsdAsPrimaryPreviewCommand
     {
         get;
     }
@@ -295,6 +313,16 @@ public class SettingsViewModel : ObservableRecipient
                 {
                     MainPageAutoCollapseSidebar = param;
                     await _settingsService.SaveMainPageAutoCollapseSidebarAsync(param);
+                }
+            });
+
+        SetPreferPsdAsPrimaryPreviewCommand = new RelayCommand<bool>(
+            async (param) =>
+            {
+                if (PreferPsdAsPrimaryPreview != param)
+                {
+                    PreferPsdAsPrimaryPreview = param;
+                    await _settingsService.SavePreferPsdAsPrimaryPreviewAsync(param);
                 }
             });
 

@@ -15,7 +15,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
 {
     private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp",
+        ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif", ".webp", ".psd", ".psb",
         ".cr2", ".cr3", ".crw", ".nef", ".nrw", ".arw", ".sr2", ".raf",
         ".orf", ".rw2", ".pef", ".dng", ".srw", ".raw", ".iiq", ".3fr",
         ".mef", ".mos", ".x3f", ".erf", ".dcr", ".kdc"
@@ -46,6 +46,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     {
         _workspaceService = workspaceService;
         _settingsService = settingsService;
+        _settingsService.PreferPsdAsPrimaryPreviewChanged += OnPreferPsdAsPrimaryPreviewChanged;
         _ratingService = ratingService;
         _folderTreeService = folderTreeService;
 
@@ -321,6 +322,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
 
     public void Dispose()
     {
+        _settingsService.PreferPsdAsPrimaryPreviewChanged -= OnPreferPsdAsPrimaryPreviewChanged;
         _workspaceService.SourcesChanged -= WorkspaceService_SourcesChanged;
         _loadCts?.Cancel();
         _metadataCts?.Cancel();
@@ -453,7 +455,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
                 continue;
 
             var sortedFiles = groupFiles
-                .OrderBy(file => ImageGroup.GetFormatPriority(file.FileType))
+                .OrderBy(file => ImageGroup.GetFormatPriority(file.FileType, _settingsService.PreferPsdAsPrimaryPreview))
                 .ToList();
             if (sortedFiles.Count == 0)
                 continue;
@@ -461,7 +463,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
             var imageInfos = sortedFiles
                 .Select(CreatePlaceholderImageInfo)
                 .ToList();
-            var group = new ImageGroup(groupKey, imageInfos);
+            var group = new ImageGroup(groupKey, imageInfos, _settingsService.PreferPsdAsPrimaryPreview);
             group.PrimaryImage.UpdateDisplaySize(ThumbnailSize);
 
             _allImages.Add(group.PrimaryImage);
@@ -586,6 +588,16 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
                 imageInfo.UpdateMetadata(width, height, properties.Title);
             }
 
+            if ((imageInfo.Width <= 200 || imageInfo.Height <= 200) &&
+                ImageFormatRegistry.IsPhotoshop(imageInfo.ImageFile.FileType))
+            {
+                var photoshopSize = await PhotoshopImageInfoReader.TryReadSizeAsync(imageInfo.ImageFile, cancellationToken);
+                if (photoshopSize.HasValue)
+                {
+                    imageInfo.UpdateMetadata(photoshopSize.Value.Width, photoshopSize.Value.Height, properties.Title);
+                }
+            }
+
             imageInfo.SetRatingFromProperties(properties.Rating, RatingSource.WinRT);
 
             if (properties.DateTaken != DateTimeOffset.MinValue && properties.DateTaken != default)
@@ -609,6 +621,33 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
 
     private void OnFilterChanged(object? sender, EventArgs e)
     {
+        ApplyFilter();
+    }
+
+    private void OnPreferPsdAsPrimaryPreviewChanged(object? sender, bool enabled)
+    {
+        var groups = _allImages
+            .Select(image => image.Group)
+            .Where(group => group != null)
+            .Distinct()
+            .Cast<ImageGroup>()
+            .ToList();
+
+        if (groups.Count == 0)
+            return;
+
+        var cancellationToken = _metadataCts?.Token ?? CancellationToken.None;
+        _allImages.Clear();
+        ClearMetadataHydrationQueue();
+
+        foreach (var group in groups)
+        {
+            group.ReapplyPrimary(enabled);
+            group.PrimaryImage.UpdateDisplaySize(ThumbnailSize);
+            _allImages.Add(group.PrimaryImage);
+            StartImageInfoLoad(group.PrimaryImage, cancellationToken, immediate: false);
+        }
+
         ApplyFilter();
     }
 

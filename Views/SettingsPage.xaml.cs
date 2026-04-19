@@ -60,6 +60,7 @@ public sealed partial class SettingsPage : Page
         UpdateDeleteToRecycleBinSelection();
         UpdateAlwaysDecodeRawSelection();
         UpdateMainPageAutoCollapseSidebarSelection();
+        UpdatePreferPsdAsPrimaryPreviewSelection();
         UpdateLanguageSelection();
         
         _isInitialized = true;
@@ -140,6 +141,11 @@ public sealed partial class SettingsPage : Page
     private void UpdateMainPageAutoCollapseSidebarSelection()
     {
         MainPageAutoCollapseSidebarToggleSwitch.IsOn = ViewModel.MainPageAutoCollapseSidebar;
+    }
+
+    private void UpdatePreferPsdAsPrimaryPreviewSelection()
+    {
+        PreferPsdAsPrimaryPreviewToggleSwitch.IsOn = ViewModel.PreferPsdAsPrimaryPreview;
     }
 
     private void themeMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -242,6 +248,14 @@ public sealed partial class SettingsPage : Page
             return;
 
         ViewModel.SetMainPageAutoCollapseSidebarCommand.Execute(MainPageAutoCollapseSidebarToggleSwitch.IsOn);
+    }
+
+    private void PreferPsdAsPrimaryPreviewToggleSwitch_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (!_isInitialized)
+            return;
+
+        ViewModel.SetPreferPsdAsPrimaryPreviewCommand.Execute(PreferPsdAsPrimaryPreviewToggleSwitch.IsOn);
     }
 
     private void languageComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
