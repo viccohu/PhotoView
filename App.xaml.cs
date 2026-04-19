@@ -63,6 +63,7 @@ public partial class App : Application
             services.AddSingleton<RatingService>();
             services.AddSingleton<IThumbnailService, ThumbnailService>();
             services.AddSingleton<IExifService, ExifService>();
+            services.AddSingleton<IExternalDeviceWatcherService, ExternalDeviceWatcherService>();
             services.AddSingleton<PreviewWorkspaceService>();
             services.AddSingleton<FolderTreeService>();
             services.AddSingleton<ShellToolbarService>();
@@ -104,5 +105,9 @@ public partial class App : Application
         base.OnLaunched(args);
 
         await App.GetService<IActivationService>().ActivateAsync(args);
+
+        var externalDeviceWatcher = App.GetService<IExternalDeviceWatcherService>();
+        externalDeviceWatcher.AttachWindow(WinRT.Interop.WindowNative.GetWindowHandle(MainWindow));
+        MainWindow.Closed += (_, __) => externalDeviceWatcher.DetachWindow();
     }
 }

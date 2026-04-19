@@ -17,6 +17,7 @@ public partial class MainViewModel : ObservableRecipient
     private readonly ISettingsService _settingsService;
     private readonly RatingService _ratingService;
     private readonly FolderTreeService _folderTreeService;
+    private readonly IExternalDeviceWatcherService _externalDeviceWatcherService;
     private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         // 常见图片格式
@@ -147,12 +148,15 @@ public partial class MainViewModel : ObservableRecipient
     public MainViewModel(
         ISettingsService settingsService,
         RatingService ratingService,
-        FolderTreeService folderTreeService)
+        FolderTreeService folderTreeService,
+        IExternalDeviceWatcherService externalDeviceWatcherService)
     {
         _settingsService = settingsService;
         _ratingService = ratingService;
         _folderTreeService = folderTreeService;
+        _externalDeviceWatcherService = externalDeviceWatcherService;
         _settingsService.PreferPsdAsPrimaryPreviewChanged += OnPreferPsdAsPrimaryPreviewChanged;
+        _externalDeviceWatcherService.ExternalDevicesChanged += OnExternalDevicesChanged;
         _thumbnailSize = _settingsService.ThumbnailSize;
         _folderTree = new ObservableCollection<FolderNode>();
         _breadcrumbPath = new ObservableCollection<FolderNode>();
@@ -240,6 +244,28 @@ public partial class MainViewModel : ObservableRecipient
         }
 
         await SyncCurrentSubFoldersAsync(SelectedFolder ?? _externalDeviceNode, CancellationToken.None);
+    }
+
+    private void OnExternalDevicesChanged(object? sender, EventArgs e)
+    {
+        var dispatcher = App.MainWindow.DispatcherQueue;
+        if (dispatcher == null)
+            return;
+
+        dispatcher.TryEnqueue(async () =>
+        {
+            if (AppLifetime.IsShuttingDown || _externalDeviceNode == null)
+                return;
+
+            if (!_externalDeviceNode.IsLoaded && !ReferenceEquals(SelectedFolder, _externalDeviceNode))
+            {
+                _externalDeviceNode.HasSubFolders = true;
+                _externalDeviceNode.RefreshExpandableState();
+                return;
+            }
+
+            await RefreshExternalDevicesAsync();
+        });
     }
 
     private static bool IsPathUnderAnyChild(string? path, FolderNode parent)
@@ -1019,6 +1045,7 @@ public partial class MainViewModel : ObservableRecipient
     public void Dispose()
     {
         _settingsService.PreferPsdAsPrimaryPreviewChanged -= OnPreferPsdAsPrimaryPreviewChanged;
+        _externalDeviceWatcherService.ExternalDevicesChanged -= OnExternalDevicesChanged;
         _loadImagesCts?.Cancel();
         CancelRatingPreload();
 

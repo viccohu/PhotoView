@@ -27,6 +27,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     private readonly ISettingsService _settingsService;
     private readonly RatingService _ratingService;
     private readonly FolderTreeService _folderTreeService;
+    private readonly IExternalDeviceWatcherService _externalDeviceWatcherService;
     private readonly SemaphoreSlim _metadataHydrationGate = new(2);
     private readonly object _metadataHydrationQueueLock = new();
     private readonly List<ImageFileInfo> _allImages = new();
@@ -42,13 +43,16 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         PreviewWorkspaceService workspaceService,
         ISettingsService settingsService,
         RatingService ratingService,
-        FolderTreeService folderTreeService)
+        FolderTreeService folderTreeService,
+        IExternalDeviceWatcherService externalDeviceWatcherService)
     {
         _workspaceService = workspaceService;
         _settingsService = settingsService;
         _settingsService.PreferPsdAsPrimaryPreviewChanged += OnPreferPsdAsPrimaryPreviewChanged;
         _ratingService = ratingService;
         _folderTreeService = folderTreeService;
+        _externalDeviceWatcherService = externalDeviceWatcherService;
+        _externalDeviceWatcherService.ExternalDevicesChanged += OnExternalDevicesChanged;
 
         FolderTree = new ObservableCollection<FolderNode>();
         Images = new ObservableCollection<ImageFileInfo>();
@@ -152,6 +156,32 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         {
             await _folderTreeService.RefreshExternalDevicesAsync(externalDevicesRoot);
         }
+    }
+
+    private void OnExternalDevicesChanged(object? sender, EventArgs e)
+    {
+        var dispatcher = App.MainWindow.DispatcherQueue;
+        if (dispatcher == null)
+            return;
+
+        dispatcher.TryEnqueue(async () =>
+        {
+            if (AppLifetime.IsShuttingDown)
+                return;
+
+            var externalDevicesRoot = FolderTree.FirstOrDefault(node => node.NodeType == NodeType.ExternalDevice);
+            if (externalDevicesRoot == null)
+                return;
+
+            if (!externalDevicesRoot.IsLoaded)
+            {
+                externalDevicesRoot.HasSubFolders = true;
+                externalDevicesRoot.RefreshExpandableState();
+                return;
+            }
+
+            await RefreshExternalDevicesAsync();
+        });
     }
 
     public async Task LoadPreviewAsync()
@@ -323,6 +353,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     public void Dispose()
     {
         _settingsService.PreferPsdAsPrimaryPreviewChanged -= OnPreferPsdAsPrimaryPreviewChanged;
+        _externalDeviceWatcherService.ExternalDevicesChanged -= OnExternalDevicesChanged;
         _workspaceService.SourcesChanged -= WorkspaceService_SourcesChanged;
         _loadCts?.Cancel();
         _metadataCts?.Cancel();

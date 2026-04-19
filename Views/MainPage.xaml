@@ -700,7 +700,10 @@
             Grid.Row="2"
             ItemsSource="{x:Bind ViewModel.Images}"
             SelectionMode="Extended"
+            CanDragItems="True"
+            CanReorderItems="False"
             SelectionChanged="ImageGridView_SelectionChanged"
+            DragItemsStarting="ImageGridView_DragItemsStarting"
             ContainerContentChanging="ImageGridView_ContainerContentChanging"
             SizeChanged="ImageGridView_SizeChanged"
             
@@ -712,6 +715,7 @@
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Stretch"
                         Tag="{x:Bind}"
+                        PointerPressed="ImageItem_PointerPressed"
                         Tapped="ImageItem_Tapped"
                         RightTapped="ImageItem_RightTapped">
                         <FlyoutBase.AttachedFlyout>
@@ -825,6 +829,8 @@
                         </Grid>
                         
                         <Border
+                            x:Name="RatingHost"
+                            CanDrag="False"
                             MaxWidth="160"
                             MinWidth="96"
                             Height="26"
@@ -837,6 +843,7 @@
                                 <controls:ShimmerControl.Content>
                                     <Grid>
                                         <RatingControl
+                                            CanDrag="False"
                                             HorizontalAlignment="Center"
                                             VerticalAlignment="Center"
                                             Value="{x:Bind RatingValue, Mode=TwoWay}"

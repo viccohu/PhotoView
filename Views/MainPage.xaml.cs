@@ -18,6 +18,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.System;
 
@@ -73,6 +74,7 @@ public sealed partial class MainPage : Page
     private bool _isNavigationDrawerPinnedCollapsed;
     private bool _isNavigationDrawerTemporarilyExpanded;
     private bool _isImageGridPointerWheelHandlerAttached;
+    private bool _suppressNextImageDragStart;
     private double _lastImageGridVerticalOffset;
     private int _immediateVisibleThumbnailStartCount;
     private int _folderDrawerAnimationVersion;
@@ -1812,6 +1814,74 @@ public sealed partial class MainPage : Page
         SyncSelectedStateFromGridView(e);
     }
 
+    private void ImageGridView_DragItemsStarting(object sender, DragItemsStartingEventArgs e)
+    {
+        if (_suppressNextImageDragStart)
+        {
+            _suppressNextImageDragStart = false;
+            e.Cancel = true;
+            return;
+        }
+
+        var dragImages = GetDragImagesFromItems(e.Items).ToList();
+        if (dragImages.Count == 0)
+        {
+            e.Cancel = true;
+            return;
+        }
+
+        var storageFiles = dragImages
+            .Select(image => image.ImageFile)
+            .Where(file => file != null && !string.IsNullOrWhiteSpace(file.Path) && File.Exists(file.Path))
+            .Cast<StorageFile>()
+            .ToList();
+
+        if (storageFiles.Count == 0)
+        {
+            e.Cancel = true;
+            return;
+        }
+
+        e.Data.RequestedOperation = DataPackageOperation.Copy;
+        e.Data.Properties.ApplicationName = "PhotoView";
+        e.Data.Properties.Title = storageFiles.Count == 1
+            ? storageFiles[0].Name
+            : $"{storageFiles.Count} 个文件";
+        e.Data.SetStorageItems(storageFiles);
+    }
+
+    private IEnumerable<ImageFileInfo> GetDragImagesFromItems(IList<object> dragItems)
+    {
+        var dragImage = dragItems.OfType<ImageFileInfo>().FirstOrDefault();
+        if (dragImage == null)
+            return Array.Empty<ImageFileInfo>();
+
+        if (ImageGridView.SelectedItems.Contains(dragImage))
+        {
+            return GetOrderedSelectedImagesForDrag();
+        }
+
+        ExecuteProgrammaticSelectionChange(() =>
+        {
+            ImageGridView.SelectedItems.Clear();
+            ImageGridView.SelectedItem = dragImage;
+        });
+
+        return new[] { dragImage };
+    }
+
+    private IEnumerable<ImageFileInfo> GetOrderedSelectedImagesForDrag()
+    {
+        var selected = ImageGridView.SelectedItems
+            .OfType<ImageFileInfo>()
+            .ToHashSet();
+
+        if (selected.Count == 0)
+            return Array.Empty<ImageFileInfo>();
+
+        return ViewModel.Images.Where(selected.Contains).ToList();
+    }
+
     private void SyncSelectedStateFromGridView(Microsoft.UI.Xaml.Controls.SelectionChangedEventArgs e)
     {
         foreach (var removedItem in e.RemovedItems)
@@ -1861,6 +1931,25 @@ public sealed partial class MainPage : Page
         {
             AutoCollapseImageBrowsingChrome("image-tapped");
         }
+    }
+
+    private void ImageItem_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        _suppressNextImageDragStart = IsWithinRatingControl(e.OriginalSource as DependencyObject);
+    }
+
+    private static bool IsWithinRatingControl(DependencyObject? source)
+    {
+        var current = source;
+        while (current != null)
+        {
+            if (current is RatingControl)
+                return true;
+
+            current = VisualTreeHelper.GetParent(current);
+        }
+
+        return false;
     }
 
     private void ImageItem_RightTapped(object sender, RightTappedRoutedEventArgs e)
