@@ -60,7 +60,6 @@ public sealed partial class MainPage : Page
     private const int WarmPreviewScrollBudgetPerTick = 1;
     private const int MaxActiveWarmPreviewLoads = 2;
     private const uint WarmPreviewLongSidePixels = 160;
-    private static readonly Windows.UI.Color ToolbarActiveColor = Windows.UI.Color.FromArgb(0xFF, 0x08, 0x6e, 0xbe);
     private readonly PointerEventHandler _imageGridPointerWheelHandler;
     private readonly KeyEventHandler _imageGridKeyDownHandler;
     private readonly IKeyboardShortcutService _shortcutService;
@@ -97,6 +96,8 @@ public sealed partial class MainPage : Page
     private Button? _shellDeleteButton;
     private ToggleButton? _shellAutoExpandBurstToggleButton;
     private SplitButton? _shellFilterSplitButton;
+    private Microsoft.UI.Xaml.Shapes.Rectangle? _shellAutoExpandBurstActiveIndicator;
+    private Microsoft.UI.Xaml.Shapes.Rectangle? _shellFilterActiveIndicator;
 
     public MainPage()
     {
@@ -282,9 +283,11 @@ public sealed partial class MainPage : Page
         _shellFilterSplitButton = new SplitButton
         {
             Padding = new Thickness(8),
-            Content = CreateToolbarIcon("\uE71C"),
             Flyout = CreateFilterFlyout()
         };
+        _shellFilterSplitButton.Content = CreateToolbarActiveIndicatorContent(
+            CreateToolbarIcon("\uE71C"),
+            out _shellFilterActiveIndicator);
         ApplyToolbarButtonChrome(_shellFilterSplitButton);
         _shellFilterSplitButton.Click += FilterSplitButton_Click;
         toolbar.Children.Add(_shellFilterSplitButton);
@@ -293,10 +296,13 @@ public sealed partial class MainPage : Page
         {
             Padding = new Thickness(8),
             IsChecked = _settingsService.AutoExpandBurstOnDirectionalNavigation,
-            Content = CreateToolbarFoldIcon()
         };
+        _shellAutoExpandBurstToggleButton.Content = CreateToolbarActiveIndicatorContent(
+            CreateToolbarFoldIcon(),
+            out _shellAutoExpandBurstActiveIndicator);
         ApplyToolbarButtonChrome(_shellAutoExpandBurstToggleButton);
         ApplyToolbarToggleButtonCheckedChrome(_shellAutoExpandBurstToggleButton);
+        UpdateToolbarActiveIndicator(_shellAutoExpandBurstActiveIndicator, _shellAutoExpandBurstToggleButton.IsChecked == true);
         ToolTipService.SetToolTip(_shellAutoExpandBurstToggleButton, "方向键展开连拍堆叠");
         _shellAutoExpandBurstToggleButton.Checked += AutoExpandBurstToggleButton_CheckedChanged;
         _shellAutoExpandBurstToggleButton.Unchecked += AutoExpandBurstToggleButton_CheckedChanged;
@@ -348,17 +354,34 @@ public sealed partial class MainPage : Page
 
     private static void ApplyToolbarToggleButtonCheckedChrome(ToggleButton toggleButton)
     {
-        var activeBrush = new SolidColorBrush(ToolbarActiveColor);
-        var activePointerOverBrush = new SolidColorBrush(ToolbarActiveColor);
-        var activePressedBrush = new SolidColorBrush(ToolbarActiveColor);
-        var transparentBrush = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        var transparentBrush = GetThemeBrush("TransparentFillColor", Microsoft.UI.Colors.Transparent);
 
-        toggleButton.Resources["ToggleButtonBackgroundChecked"] = activeBrush;
-        toggleButton.Resources["ToggleButtonBackgroundCheckedPointerOver"] = activePointerOverBrush;
-        toggleButton.Resources["ToggleButtonBackgroundCheckedPressed"] = activePressedBrush;
+        toggleButton.Resources["ToggleButtonBackgroundChecked"] = GetToolbarActiveBackgroundBrush();
+        toggleButton.Resources["ToggleButtonBackgroundCheckedPointerOver"] = transparentBrush;
+        toggleButton.Resources["ToggleButtonBackgroundCheckedPressed"] = transparentBrush;
         toggleButton.Resources["ToggleButtonBorderBrushChecked"] = transparentBrush;
         toggleButton.Resources["ToggleButtonBorderBrushCheckedPointerOver"] = transparentBrush;
         toggleButton.Resources["ToggleButtonBorderBrushCheckedPressed"] = transparentBrush;
+    }
+
+    private static Brush GetToolbarActiveBackgroundBrush()
+    {
+        return GetThemeBrush("TransparentFillColor", Microsoft.UI.Colors.Transparent);
+    }
+
+    private static Brush GetToolbarActiveIndicatorBrush()
+    {
+        return GetThemeBrush("AccentFillColorDefaultBrush", Windows.UI.Color.FromArgb(0xFF, 0x00, 0x78, 0xD4));
+    }
+
+    private static Brush GetThemeBrush(string resourceKey, Windows.UI.Color fallbackColor)
+    {
+        if (Application.Current.Resources.TryGetValue(resourceKey, out var value) && value is Brush brush)
+        {
+            return brush;
+        }
+
+        return new SolidColorBrush(fallbackColor);
     }
 
     private static FontIcon CreateToolbarIcon(string glyph)
@@ -371,10 +394,55 @@ public sealed partial class MainPage : Page
         };
     }
 
-    private UIElement CreateToolbarFoldIcon()
+    private static Grid CreateToolbarActiveIndicatorContent(FrameworkElement icon, out Microsoft.UI.Xaml.Shapes.Rectangle indicator)
+    {
+        var root = new Grid
+        {
+            Width = 24,
+            Height = 24,
+            IsHitTestVisible = false
+        };
+
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(3) });
+
+        icon.HorizontalAlignment = HorizontalAlignment.Center;
+        icon.VerticalAlignment = VerticalAlignment.Center;
+
+        Grid.SetRow(icon, 0);
+        root.Children.Add(icon);
+
+        indicator = new Microsoft.UI.Xaml.Shapes.Rectangle
+        {
+            Width = 30,
+            Height = 3,
+            Fill = GetToolbarActiveIndicatorBrush(),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Bottom,
+            Margin= new Thickness(0, 1, 0, 0),
+            RadiusX = 1.5,
+            RadiusY = 1.5,
+            Opacity = 0
+        };
+
+        Grid.SetRow(indicator, 1);
+        root.Children.Add(indicator);
+
+        return root;
+    }
+
+    private static void UpdateToolbarActiveIndicator(Microsoft.UI.Xaml.Shapes.Rectangle? indicator, bool isActive)
+    {
+        if (indicator != null)
+        {
+            indicator.Opacity = isActive ? 1 : 0;
+        }
+    }
+
+    private FrameworkElement CreateToolbarFoldIcon()
     {
         return Resources["ToolbarFoldIconTemplate"] is DataTemplate template &&
-            template.LoadContent() is UIElement icon
+            template.LoadContent() is FrameworkElement icon
                 ? icon
                 : CreateToolbarIcon("\uE8B9");
     }
@@ -385,6 +453,11 @@ public sealed partial class MainPage : Page
             return;
 
         var enabled = toggleButton.IsChecked == true;
+        if (ReferenceEquals(toggleButton, _shellAutoExpandBurstToggleButton))
+        {
+            UpdateToolbarActiveIndicator(_shellAutoExpandBurstActiveIndicator, enabled);
+        }
+
         _settingsService.AutoExpandBurstOnDirectionalNavigation = enabled;
 
         try
@@ -626,13 +699,13 @@ public sealed partial class MainPage : Page
     private void UpdateFilterButtonState()
     {
         var isActive = ViewModel.Filter.IsFilterActive;
+        UpdateToolbarActiveIndicator(_shellFilterActiveIndicator, isActive);
         
         if (isActive)
         {
-            FilterSplitButton.Background = new SolidColorBrush(ToolbarActiveColor);
             if (_shellFilterSplitButton != null)
             {
-                _shellFilterSplitButton.Background = new SolidColorBrush(ToolbarActiveColor);
+                ApplyToolbarButtonChrome(_shellFilterSplitButton);
             }
         }
         else
@@ -825,6 +898,8 @@ public sealed partial class MainPage : Page
         _shellDeleteButton = null;
         _shellAutoExpandBurstToggleButton = null;
         _shellFilterSplitButton = null;
+        _shellAutoExpandBurstActiveIndicator = null;
+        _shellFilterActiveIndicator = null;
         if (_currentViewer != null)
         {
             _currentViewer.Closed -= ImageViewer_Closed;
