@@ -22,6 +22,7 @@ public class KeyboardShortcutService : IKeyboardShortcutService
         {
             if (window.Content is UIElement rootElement)
             {
+                rootElement.AddHandler(UIElement.PreviewKeyDownEvent, new KeyEventHandler(Window_PreviewKeyDown), handledEventsToo: true);
                 rootElement.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(Window_KeyDown), handledEventsToo: true);
                 Debug.WriteLine("[KeyboardShortcutService] 窗口级键盘事件已注册（handledEventsToo: true）");
             }
@@ -34,6 +35,31 @@ public class KeyboardShortcutService : IKeyboardShortcutService
         VirtualKey.Escape,
         VirtualKey.Delete,
     };
+
+    private static readonly HashSet<VirtualKey> DirectionalKeys = new()
+    {
+        VirtualKey.Left,
+        VirtualKey.Right,
+        VirtualKey.Up,
+        VirtualKey.Down,
+    };
+
+    private void Window_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (!DirectionalKeys.Contains(e.Key))
+            return;
+
+        if (IsTextInputFocused())
+            return;
+
+        if (string.IsNullOrEmpty(_currentPageKey))
+            return;
+
+        if (_pageHandlers.TryGetValue(_currentPageKey, out var handler) && handler(e))
+        {
+            e.Handled = true;
+        }
+    }
 
     private void Window_KeyDown(object sender, KeyRoutedEventArgs e)
     {

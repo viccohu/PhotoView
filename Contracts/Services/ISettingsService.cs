@@ -100,6 +100,11 @@ public interface ISettingsService
         set;
     }
 
+    bool CollapseBurstGroups {
+        get;
+        set;
+    }
+
     event EventHandler<NavigationViewPaneDisplayMode> NavigationViewModeChanged;
     event EventHandler<int> BatchSizeChanged;
     event EventHandler<PerformanceMode>? PerformanceModeChanged;
@@ -110,6 +115,7 @@ public interface ISettingsService
     event EventHandler<bool>? MainPageAutoCollapseSidebarChanged;
     event EventHandler<bool>? PreferPsdAsPrimaryPreviewChanged;
     event EventHandler<bool>? AutoExpandBurstOnDirectionalNavigationChanged;
+    event EventHandler<bool>? CollapseBurstGroupsChanged;
 
     Task SaveNavigationViewModeAsync(NavigationViewPaneDisplayMode mode);
     Task<NavigationViewPaneDisplayMode> LoadNavigationViewModeAsync();
@@ -151,6 +157,8 @@ public interface ISettingsService
     Task<bool> LoadPreferPsdAsPrimaryPreviewAsync();
     Task SaveAutoExpandBurstOnDirectionalNavigationAsync(bool enabled);
     Task<bool> LoadAutoExpandBurstOnDirectionalNavigationAsync();
+    Task SaveCollapseBurstGroupsAsync(bool enabled);
+    Task<bool> LoadCollapseBurstGroupsAsync();
     void SuspendAlwaysDecodeRawPersistence(string reason);
     Task ResumeAlwaysDecodeRawPersistenceAsync(string reason);
 

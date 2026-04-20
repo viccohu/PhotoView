@@ -23,6 +23,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
 
     private const uint FirstBatchSize = 30;
     private const int DeferredImageInfoLoadDelayMs = 400;
+    private const double BurstGroupingWindowSeconds = 2d;
     private readonly PreviewWorkspaceService _workspaceService;
     private readonly ISettingsService _settingsService;
     private readonly RatingService _ratingService;
@@ -31,6 +32,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     private readonly SemaphoreSlim _metadataHydrationGate = new(2);
     private readonly object _metadataHydrationQueueLock = new();
     private readonly List<ImageFileInfo> _allImages = new();
+    private readonly List<BurstPhotoGroup> _burstGroups = new();
     private readonly HashSet<ImageFileInfo> _metadataHydrationQueued = new();
     private readonly HashSet<string> _loadedSourcePaths = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? _loadCts;
@@ -192,6 +194,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
             ResetMetadataHydrationQueue();
             ReplaceImageList(Array.Empty<ImageFileInfo>());
             _allImages.Clear();
+            ClearBurstGroups();
             _loadedSourcePaths.Clear();
             StatusText = "添加文件夹后载入";
             return;
@@ -319,6 +322,8 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
             Images.Remove(deletedImage);
         }
 
+        RebuildBurstGroups();
+
         if (SelectedImage != null && deletedSet.Contains(SelectedImage))
         {
             SelectedImage = Images.FirstOrDefault();
@@ -433,6 +438,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
 
                 if (addedImages.Count > 0)
                 {
+                    RebuildBurstGroups();
                     var appendResult = AppendImagesForCurrentFilter(addedImages, cancellationToken);
                     foreach (var imageInfo in addedImages)
                     {
@@ -582,6 +588,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
             {
                 DebugLoad($"Metadata load begin image={GetDebugName(imageInfo)} immediate={immediate}");
                 await HydrateImageMetadataAsync(imageInfo, cancellationToken);
+                RefreshBurstGroupsAfterMetadataLoad();
                 DebugLoad($"Metadata load complete image={GetDebugName(imageInfo)} size={imageInfo.Width}x{imageInfo.Height}");
             }
             finally
@@ -679,8 +686,162 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
             StartImageInfoLoad(group.PrimaryImage, cancellationToken, immediate: false);
         }
 
+        RebuildBurstGroups();
         ApplyFilter();
     }
+
+    private void RebuildBurstGroups()
+    {
+        foreach (var image in _allImages)
+        {
+            image.ClearBurstInfo();
+        }
+
+        _burstGroups.Clear();
+
+        var candidates = _allImages
+            .Select((image, index) => new BurstCandidate(
+                image,
+                index,
+                GetBurstGroupKey(image),
+                GetBurstSortTime(image),
+                image.DateTaken.HasValue))
+            .Where(candidate => !string.IsNullOrWhiteSpace(candidate.GroupKey) && candidate.SortTime != DateTimeOffset.MinValue)
+            .GroupBy(candidate => candidate.GroupKey, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var keyGroup in candidates)
+        {
+            var orderedCandidates = keyGroup
+                .OrderBy(candidate => candidate.SortTime)
+                .ThenBy(candidate => candidate.OriginalIndex)
+                .ToList();
+
+            var cluster = new List<BurstCandidate>();
+            foreach (var candidate in orderedCandidates)
+            {
+                if (cluster.Count == 0)
+                {
+                    cluster.Add(candidate);
+                    continue;
+                }
+
+                var previous = cluster[^1];
+                if (AreBurstCandidatesAdjacent(previous, candidate))
+                {
+                    cluster.Add(candidate);
+                }
+                else
+                {
+                    AddBurstGroupIfNeeded(keyGroup.Key, cluster);
+                    cluster = new List<BurstCandidate> { candidate };
+                }
+            }
+
+            AddBurstGroupIfNeeded(keyGroup.Key, cluster);
+        }
+
+        foreach (var image in _allImages)
+        {
+            image.RefreshBurstProperties();
+        }
+    }
+
+    private void ClearBurstGroups()
+    {
+        foreach (var image in _allImages)
+        {
+            image.ClearBurstInfo();
+        }
+
+        _burstGroups.Clear();
+    }
+
+    private void AddBurstGroupIfNeeded(string groupKey, IReadOnlyList<BurstCandidate> candidates)
+    {
+        if (candidates.Count < 2)
+            return;
+
+        var orderedImages = candidates
+            .OrderBy(candidate => candidate.OriginalIndex)
+            .Select(candidate => candidate.Image)
+            .ToList();
+
+        _burstGroups.Add(new BurstPhotoGroup(groupKey, orderedImages));
+    }
+
+    private static string GetBurstGroupKey(ImageFileInfo image)
+    {
+        var name = Path.GetFileNameWithoutExtension(image.ImageFile?.Name ?? image.ImageName);
+        if (string.IsNullOrWhiteSpace(name))
+            return string.Empty;
+
+        var end = name.Length - 1;
+        while (end >= 0 && char.IsDigit(name[end]))
+        {
+            end--;
+        }
+
+        if (end == name.Length - 1)
+            return string.Empty;
+
+        while (end >= 0 && IsBurstNameSeparator(name[end]))
+        {
+            end--;
+        }
+
+        if (end < 2)
+            return string.Empty;
+
+        return name[..(end + 1)].ToUpperInvariant();
+    }
+
+    private static bool IsBurstNameSeparator(char value)
+    {
+        return value == '_' || value == '-' || value == '.' || char.IsWhiteSpace(value);
+    }
+
+    private static DateTimeOffset GetBurstSortTime(ImageFileInfo image)
+    {
+        if (image.DateTaken.HasValue)
+            return new DateTimeOffset(image.DateTaken.Value);
+
+        var created = image.ImageFile?.DateCreated;
+        if (created.HasValue && created.Value != default)
+            return created.Value;
+
+        return DateTimeOffset.MinValue;
+    }
+
+    private void RefreshBurstGroupsAfterMetadataLoad()
+    {
+        var dispatcher = App.MainWindow.DispatcherQueue;
+        if (dispatcher.HasThreadAccess)
+        {
+            RebuildBurstGroups();
+            return;
+        }
+
+        dispatcher.TryEnqueue(RebuildBurstGroups);
+    }
+
+    private static bool AreBurstCandidatesAdjacent(BurstCandidate previous, BurstCandidate candidate)
+    {
+        var deltaSeconds = Math.Abs((candidate.SortTime - previous.SortTime).TotalSeconds);
+        if (deltaSeconds > BurstGroupingWindowSeconds)
+            return false;
+
+        if (previous.HasDateTaken && candidate.HasDateTaken)
+            return true;
+
+        return deltaSeconds > 0;
+    }
+
+    private readonly record struct BurstCandidate(
+        ImageFileInfo Image,
+        int OriginalIndex,
+        string GroupKey,
+        DateTimeOffset SortTime,
+        bool HasDateTaken);
 
     private bool MatchFilter(ImageFileInfo image)
     {
@@ -737,6 +898,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         _allImages.Clear();
         ClearMetadataHydrationQueue();
         _allImages.AddRange(images);
+        RebuildBurstGroups();
         ApplyFilter();
     }
 

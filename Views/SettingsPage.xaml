@@ -148,6 +148,13 @@
                             <ComboBoxItem x:Uid="Settings_ThumbnailSize_Large" Tag="Large" />
                         </ComboBox>
                     </toolkit:SettingsCard>
+
+                    <toolkit:SettingsCard Header="连拍折叠" Description="在主缩略图页将连拍照片折叠为一组">
+                        <toolkit:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE8B7;" />
+                        </toolkit:SettingsCard.HeaderIcon>
+                        <ToggleSwitch x:Name="CollapseBurstGroupsToggleSwitch" Toggled="CollapseBurstGroupsToggleSwitch_Toggled" />
+                    </toolkit:SettingsCard>
                     
                     <!-- File Operations -->
                     <TextBlock x:Uid="Settings_Section_FileOperations" Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" />

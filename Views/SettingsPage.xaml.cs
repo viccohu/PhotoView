@@ -61,6 +61,7 @@ public sealed partial class SettingsPage : Page
         UpdateAlwaysDecodeRawSelection();
         UpdateMainPageAutoCollapseSidebarSelection();
         UpdatePreferPsdAsPrimaryPreviewSelection();
+        UpdateCollapseBurstGroupsSelection();
         UpdateLanguageSelection();
         
         _isInitialized = true;
@@ -146,6 +147,11 @@ public sealed partial class SettingsPage : Page
     private void UpdatePreferPsdAsPrimaryPreviewSelection()
     {
         PreferPsdAsPrimaryPreviewToggleSwitch.IsOn = ViewModel.PreferPsdAsPrimaryPreview;
+    }
+
+    private void UpdateCollapseBurstGroupsSelection()
+    {
+        CollapseBurstGroupsToggleSwitch.IsOn = ViewModel.CollapseBurstGroups;
     }
 
     private void themeMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -256,6 +262,14 @@ public sealed partial class SettingsPage : Page
             return;
 
         ViewModel.SetPreferPsdAsPrimaryPreviewCommand.Execute(PreferPsdAsPrimaryPreviewToggleSwitch.IsOn);
+    }
+
+    private void CollapseBurstGroupsToggleSwitch_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (!_isInitialized)
+            return;
+
+        ViewModel.SetCollapseBurstGroupsCommand.Execute(CollapseBurstGroupsToggleSwitch.IsOn);
     }
 
     private void languageComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)

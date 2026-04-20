@@ -26,6 +26,7 @@ public class SettingsService : ISettingsService
     private bool _mainPageAutoCollapseSidebar = false;
     private bool _preferPsdAsPrimaryPreview = false;
     private bool _autoExpandBurstOnDirectionalNavigation = true;
+    private bool _collapseBurstGroups = true;
 
     public event EventHandler<NavigationViewPaneDisplayMode>? NavigationViewModeChanged;
     public event EventHandler<int>? BatchSizeChanged;
@@ -37,6 +38,7 @@ public class SettingsService : ISettingsService
     public event EventHandler<bool>? MainPageAutoCollapseSidebarChanged;
     public event EventHandler<bool>? PreferPsdAsPrimaryPreviewChanged;
     public event EventHandler<bool>? AutoExpandBurstOnDirectionalNavigationChanged;
+    public event EventHandler<bool>? CollapseBurstGroupsChanged;
 
     public NavigationViewPaneDisplayMode NavigationViewMode
     {
@@ -272,6 +274,19 @@ public class SettingsService : ISettingsService
             {
                 _autoExpandBurstOnDirectionalNavigation = value;
                 AutoExpandBurstOnDirectionalNavigationChanged?.Invoke(this, value);
+            }
+        }
+    }
+
+    public bool CollapseBurstGroups
+    {
+        get => _collapseBurstGroups;
+        set
+        {
+            if (_collapseBurstGroups != value)
+            {
+                _collapseBurstGroups = value;
+                CollapseBurstGroupsChanged?.Invoke(this, value);
             }
         }
     }
@@ -599,6 +614,23 @@ public class SettingsService : ISettingsService
         return _autoExpandBurstOnDirectionalNavigation;
     }
 
+    public async Task SaveCollapseBurstGroupsAsync(bool enabled)
+    {
+        await _localSettingsService.SaveSettingAsync("CollapseBurstGroups", enabled);
+    }
+
+    public async Task<bool> LoadCollapseBurstGroupsAsync()
+    {
+        var enabled = await _localSettingsService.ReadSettingAsync<bool?>("CollapseBurstGroups");
+        if (enabled.HasValue)
+        {
+            _collapseBurstGroups = enabled.Value;
+            return enabled.Value;
+        }
+
+        return _collapseBurstGroups;
+    }
+
     public void SuspendAlwaysDecodeRawPersistence(string reason)
     {
         // Reserved hook for viewer lifetime; the setting is only persisted by explicit save calls.
@@ -630,5 +662,6 @@ public class SettingsService : ISettingsService
         await LoadMainPageAutoCollapseSidebarAsync();
         await LoadPreferPsdAsPrimaryPreviewAsync();
         await LoadAutoExpandBurstOnDirectionalNavigationAsync();
+        await LoadCollapseBurstGroupsAsync();
     }
 }

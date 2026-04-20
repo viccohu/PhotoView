@@ -158,6 +158,7 @@ public partial class MainViewModel : ObservableRecipient
         _folderTreeService = folderTreeService;
         _externalDeviceWatcherService = externalDeviceWatcherService;
         _settingsService.PreferPsdAsPrimaryPreviewChanged += OnPreferPsdAsPrimaryPreviewChanged;
+        _settingsService.CollapseBurstGroupsChanged += OnCollapseBurstGroupsChanged;
         _externalDeviceWatcherService.ExternalDevicesChanged += OnExternalDevicesChanged;
         _thumbnailSize = _settingsService.ThumbnailSize;
         _folderTree = new ObservableCollection<FolderNode>();
@@ -1091,6 +1092,7 @@ public partial class MainViewModel : ObservableRecipient
     public void Dispose()
     {
         _settingsService.PreferPsdAsPrimaryPreviewChanged -= OnPreferPsdAsPrimaryPreviewChanged;
+        _settingsService.CollapseBurstGroupsChanged -= OnCollapseBurstGroupsChanged;
         _externalDeviceWatcherService.ExternalDevicesChanged -= OnExternalDevicesChanged;
         _loadImagesCts?.Cancel();
         CancelRatingPreload();
@@ -1369,6 +1371,9 @@ public partial class MainViewModel : ObservableRecipient
 
     public void ToggleBurstExpansion(ImageFileInfo image)
     {
+        if (!_settingsService.CollapseBurstGroups)
+            return;
+
         var burstGroup = image.BurstGroup;
         if (burstGroup == null || burstGroup.Images.Count < 2)
             return;
@@ -1386,6 +1391,9 @@ public partial class MainViewModel : ObservableRecipient
 
         var currentDisplay = Images[displayIndex];
         var expand = !burstGroup.IsExpanded;
+        if (!expand && HasPendingDeleteBurstMember(burstGroup))
+            return;
+
         if (!expand)
         {
             burstGroup.RecalculateCover();
@@ -1463,6 +1471,9 @@ public partial class MainViewModel : ObservableRecipient
 
     public ImageFileInfo? ExpandBurstForDirectionalNavigation(ImageFileInfo image, int direction)
     {
+        if (!_settingsService.CollapseBurstGroups)
+            return null;
+
         var burstGroup = image.BurstGroup;
         if (burstGroup == null || burstGroup.Images.Count < 2)
             return null;
@@ -1523,7 +1534,13 @@ public partial class MainViewModel : ObservableRecipient
 
     public ImageFileInfo? CollapseBurstGroup(BurstPhotoGroup burstGroup)
     {
+        if (!_settingsService.CollapseBurstGroups)
+            return null;
+
         if (burstGroup.Images.Count < 2 || !burstGroup.IsExpanded)
+            return null;
+
+        if (HasPendingDeleteBurstMember(burstGroup))
             return null;
 
         var visibleMembers = GetVisibleBurstMembers(burstGroup);
@@ -1556,18 +1573,27 @@ public partial class MainViewModel : ObservableRecipient
 
     public bool CollapseExpandedBurstGroupsExcept(BurstPhotoGroup? preservedGroup)
     {
+        if (!_settingsService.CollapseBurstGroups)
+            return false;
+
         var expandedGroups = _burstGroups
             .Where(group => group.IsExpanded && !ReferenceEquals(group, preservedGroup))
             .ToList();
         if (expandedGroups.Count == 0)
             return false;
 
+        var collapsedAny = false;
         foreach (var group in expandedGroups)
         {
-            CollapseBurstGroup(group);
+            collapsedAny |= CollapseBurstGroup(group) != null;
         }
 
-        return true;
+        return collapsedAny;
+    }
+
+    private static bool HasPendingDeleteBurstMember(BurstPhotoGroup burstGroup)
+    {
+        return burstGroup.Images.Any(member => member.IsPendingDelete);
     }
 
     private List<ImageFileInfo> GetVisibleBurstMembers(BurstPhotoGroup burstGroup)
@@ -1591,6 +1617,9 @@ public partial class MainViewModel : ObservableRecipient
 
     public IReadOnlyList<ImageFileInfo> GetBurstExpansionWarmupImages(ImageFileInfo image)
     {
+        if (!_settingsService.CollapseBurstGroups)
+            return Array.Empty<ImageFileInfo>();
+
         var burstGroup = image.BurstGroup;
         if (burstGroup == null || burstGroup.Images.Count < 2 || burstGroup.IsExpanded)
             return Array.Empty<ImageFileInfo>();
@@ -1607,6 +1636,18 @@ public partial class MainViewModel : ObservableRecipient
             return;
 
         burstGroup.RecalculateCover();
+        if (!_settingsService.CollapseBurstGroups)
+        {
+            foreach (var member in burstGroup.Images)
+            {
+                member.SetBurstDisplayCover(false);
+                member.SetBurstChildVisible(true);
+            }
+
+            ImagesChanged?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
         if (burstGroup.IsExpanded)
         {
             var expandedVisibleMembers = burstGroup.Images
@@ -1681,6 +1722,25 @@ public partial class MainViewModel : ObservableRecipient
         foreach (var image in _allImages)
         {
             image.SetBurstDisplayCover(false);
+            image.SetBurstChildVisible(false);
+        }
+
+        if (!_settingsService.CollapseBurstGroups)
+        {
+            foreach (var image in _allImages)
+            {
+                if (!MatchFilter(image))
+                    continue;
+
+                var isBurstMember = image.BurstGroup?.Images.Count > 1;
+                image.SetBurstDisplayCover(false);
+                image.SetBurstChildVisible(isBurstMember == true);
+                Images.Add(image);
+            }
+
+            ImagesChanged?.Invoke(this, EventArgs.Empty);
+            UpdatePendingDeleteCount();
+            return;
         }
 
         var processedBurstGroups = new HashSet<BurstPhotoGroup>();
@@ -1753,8 +1813,9 @@ public partial class MainViewModel : ObservableRecipient
                 image,
                 index,
                 GetBurstGroupKey(image),
-                GetBurstSortTime(image)))
-            .Where(candidate => !string.IsNullOrWhiteSpace(candidate.GroupKey))
+                GetBurstSortTime(image),
+                image.DateTaken.HasValue))
+            .Where(candidate => !string.IsNullOrWhiteSpace(candidate.GroupKey) && candidate.SortTime != DateTimeOffset.MinValue)
             .GroupBy(candidate => candidate.GroupKey, StringComparer.OrdinalIgnoreCase);
 
         foreach (var keyGroup in candidates)
@@ -1774,8 +1835,7 @@ public partial class MainViewModel : ObservableRecipient
                 }
 
                 var previous = cluster[^1];
-                var deltaSeconds = Math.Abs((candidate.SortTime - previous.SortTime).TotalSeconds);
-                if (deltaSeconds <= BurstGroupingWindowSeconds)
+                if (AreBurstCandidatesAdjacent(previous, candidate))
                 {
                     cluster.Add(candidate);
                 }
@@ -1861,15 +1921,48 @@ public partial class MainViewModel : ObservableRecipient
         return DateTimeOffset.MinValue;
     }
 
+    private static bool AreBurstCandidatesAdjacent(BurstCandidate previous, BurstCandidate candidate)
+    {
+        var deltaSeconds = Math.Abs((candidate.SortTime - previous.SortTime).TotalSeconds);
+        if (deltaSeconds > BurstGroupingWindowSeconds)
+            return false;
+
+        if (previous.HasDateTaken && candidate.HasDateTaken)
+            return true;
+
+        return deltaSeconds > 0;
+    }
+
     private readonly record struct BurstCandidate(
         ImageFileInfo Image,
         int OriginalIndex,
         string GroupKey,
-        DateTimeOffset SortTime);
+        DateTimeOffset SortTime,
+        bool HasDateTaken);
 
     private void OnPreferPsdAsPrimaryPreviewChanged(object? sender, bool enabled)
     {
         ReapplyPrimaryImagesForCurrentGroups();
+    }
+
+    private void OnCollapseBurstGroupsChanged(object? sender, bool enabled)
+    {
+        ResetBurstExpansionState();
+        ApplyFilter();
+    }
+
+    private void ResetBurstExpansionState()
+    {
+        foreach (var group in _burstGroups)
+        {
+            group.SetExpanded(false);
+        }
+
+        foreach (var image in _allImages)
+        {
+            image.SetBurstDisplayCover(false);
+            image.SetBurstChildVisible(false);
+        }
     }
 
     private void ReapplyPrimaryImagesForCurrentGroups()

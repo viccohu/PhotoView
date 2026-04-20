@@ -811,7 +811,7 @@
                             BorderThickness="1"
                             CornerRadius="6"
                             Click="BurstToggleButton_Click"
-                            Visibility="{x:Bind IsBurstCover, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            Visibility="{x:Bind IsBurstFoldButtonVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                             <StackPanel Orientation="Horizontal" Spacing="4" Opacity=".8">
                                 <ContentControl Content="fold" ContentTemplate="{StaticResource FoldIconTemplate}"/>
                                 <TextBlock
@@ -821,6 +821,24 @@
                             Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
                             </StackPanel>
                         </Button>
+                        <Border
+                            Padding="30,10"
+                            HorizontalAlignment="Center"
+                            Margin="0,0,0,40"
+                            VerticalAlignment="Bottom"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CircleElevationBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Visibility="{x:Bind IsBurstInlineBadgeVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel Orientation="Horizontal" Spacing="4" Opacity=".8">
+                                <ContentControl Content="fold" ContentTemplate="{StaticResource FoldIconTemplate}"/>
+                                <TextBlock
+                                    Text="{x:Bind BurstOrdinalText, Mode=OneWay}"
+                                    FontSize="12"
+                                    Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                            </StackPanel>
+                        </Border>
                         <FontIcon
                             Glyph="&#xEB90;"
                             FontFamily="{StaticResource SymbolThemeFontFamily}"

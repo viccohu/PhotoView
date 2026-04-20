@@ -25,6 +25,7 @@ public sealed partial class CollectPage : Page
     private const double LoadDrawerCollapsedWidth = 25;
     private const int VisibleThumbnailStartBudgetPerTick = 16;
     private const int VisibleThumbnailPrefetchItemCount = 12;
+    private const int DirectionalNavigationRepeatIntervalMs = 180;
     private readonly DispatcherTimer _visibleThumbnailLoadTimer;
     private readonly DispatcherTimer _ratingDebounceTimer;
     private readonly IKeyboardShortcutService _shortcutService;
@@ -37,6 +38,7 @@ public sealed partial class CollectPage : Page
     private ItemsStackPanel? _thumbnailItemsPanel;
     private ScrollViewer? _thumbnailScrollViewer;
     private PointerEventHandler? _thumbnailWheelHandler;
+    private KeyEventHandler? _thumbnailPreviewKeyDownHandler;
     private Storyboard? _loadDrawerStoryboard;
     private bool _isUnloaded;
     private bool _isDisposed;
@@ -48,6 +50,8 @@ public sealed partial class CollectPage : Page
     private SplitButton? _shellFilterSplitButton;
     private (ImageFileInfo Image, uint Rating)? _pendingRatingUpdate;
     private int _selectedThumbnailLoadVersion;
+    private int _lastDirectionalNavigationDirection;
+    private long _lastDirectionalNavigationTick;
 
     public CollectViewModel ViewModel
     {
@@ -87,6 +91,8 @@ public sealed partial class CollectPage : Page
         PreviewCanvas.ZoomPercentChanged += PreviewCanvas_ZoomPercentChanged;
         _thumbnailWheelHandler = PreviewThumbnailGridView_PointerWheelChanged;
         PreviewThumbnailGridView.AddHandler(UIElement.PointerWheelChangedEvent, _thumbnailWheelHandler, true);
+        _thumbnailPreviewKeyDownHandler = PreviewThumbnailGridView_PreviewKeyDown;
+        PreviewThumbnailGridView.AddHandler(UIElement.PreviewKeyDownEvent, _thumbnailPreviewKeyDownHandler, true);
         Loaded += CollectPage_Loaded;
         Unloaded += CollectPage_Unloaded;
         
@@ -150,6 +156,11 @@ public sealed partial class CollectPage : Page
         {
             PreviewThumbnailGridView.RemoveHandler(UIElement.PointerWheelChangedEvent, _thumbnailWheelHandler);
             _thumbnailWheelHandler = null;
+        }
+        if (_thumbnailPreviewKeyDownHandler != null)
+        {
+            PreviewThumbnailGridView.RemoveHandler(UIElement.PreviewKeyDownEvent, _thumbnailPreviewKeyDownHandler);
+            _thumbnailPreviewKeyDownHandler = null;
         }
         Loaded -= CollectPage_Loaded;
         Unloaded -= CollectPage_Unloaded;
@@ -348,6 +359,21 @@ public sealed partial class CollectPage : Page
         _thumbnailScrollViewer.ChangeView(targetOffset, null, null, true);
         e.Handled = true;
         QueueVisibleThumbnailLoad("thumbnail-wheel");
+    }
+
+    private void PreviewThumbnailGridView_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Handled)
+            return;
+
+        if (_isDisposed || _isUnloaded || !TryGetDirectionalNavigationDelta(e.Key, out var direction))
+            return;
+
+        e.Handled = true;
+        if (ShouldProcessDirectionalNavigation(e.KeyStatus.WasKeyDown, direction))
+        {
+            MoveSelection(direction);
+        }
     }
 
     private void PreviewThumbnailGridView_ContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
@@ -1192,10 +1218,13 @@ public sealed partial class CollectPage : Page
             HandleRatingShortcut(e.Key - (VirtualKey.NumberPad0 - VirtualKey.Number0));
             return true;
         }
-        else if (e.Key == VirtualKey.Left || e.Key == VirtualKey.Right ||
-                 e.Key == VirtualKey.Up || e.Key == VirtualKey.Down)
+        else if (TryGetDirectionalNavigationDelta(e.Key, out var direction))
         {
-            MoveSelection(e.Key == VirtualKey.Right || e.Key == VirtualKey.Down ? 1 : -1);
+            if (ShouldProcessDirectionalNavigation(e.KeyStatus.WasKeyDown, direction))
+            {
+                MoveSelection(direction);
+            }
+
             return true;
         }
 
@@ -1280,6 +1309,39 @@ public sealed partial class CollectPage : Page
         PreviewThumbnailGridView.ScrollIntoView(nextImage, ScrollIntoViewAlignment.Default);
     }
 
+    private static bool TryGetDirectionalNavigationDelta(VirtualKey key, out int direction)
+    {
+        if (key == VirtualKey.Left || key == VirtualKey.Up)
+        {
+            direction = -1;
+            return true;
+        }
+
+        if (key == VirtualKey.Right || key == VirtualKey.Down)
+        {
+            direction = 1;
+            return true;
+        }
+
+        direction = 0;
+        return false;
+    }
+
+    private bool ShouldProcessDirectionalNavigation(bool wasKeyDown, int direction)
+    {
+        var now = Environment.TickCount64;
+        if (!wasKeyDown ||
+            _lastDirectionalNavigationDirection != direction ||
+            now - _lastDirectionalNavigationTick >= DirectionalNavigationRepeatIntervalMs)
+        {
+            _lastDirectionalNavigationDirection = direction;
+            _lastDirectionalNavigationTick = now;
+            return true;
+        }
+
+        return false;
+    }
+
     private static string GetDebugName(ImageFileInfo? imageInfo)
     {
         if (imageInfo == null)
@@ -1293,6 +1355,6 @@ public sealed partial class CollectPage : Page
     [Conditional("DEBUG")]
     private static void DebugThumbnailLoad(string message)
     {
-        Debug.WriteLine($"[CollectThumbnailLoad] {DateTime.Now:HH:mm:ss.fff} {message}");
+        //Debug.WriteLine($"[CollectThumbnailLoad] {DateTime.Now:HH:mm:ss.fff} {message}");
     }
 }

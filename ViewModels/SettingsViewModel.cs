@@ -162,6 +162,19 @@ public class SettingsViewModel : ObservableRecipient
         }
     }
 
+    public bool CollapseBurstGroups
+    {
+        get => _settingsService.CollapseBurstGroups;
+        set
+        {
+            if (_settingsService.CollapseBurstGroups != value)
+            {
+                _settingsService.CollapseBurstGroups = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public ICommand SwitchThemeCommand
     {
         get;
@@ -208,6 +221,11 @@ public class SettingsViewModel : ObservableRecipient
     }
 
     public ICommand SetPreferPsdAsPrimaryPreviewCommand
+    {
+        get;
+    }
+
+    public ICommand SetCollapseBurstGroupsCommand
     {
         get;
     }
@@ -323,6 +341,16 @@ public class SettingsViewModel : ObservableRecipient
                 {
                     PreferPsdAsPrimaryPreview = param;
                     await _settingsService.SavePreferPsdAsPrimaryPreviewAsync(param);
+                }
+            });
+
+        SetCollapseBurstGroupsCommand = new RelayCommand<bool>(
+            async (param) =>
+            {
+                if (CollapseBurstGroups != param)
+                {
+                    CollapseBurstGroups = param;
+                    await _settingsService.SaveCollapseBurstGroupsAsync(param);
                 }
             });
 

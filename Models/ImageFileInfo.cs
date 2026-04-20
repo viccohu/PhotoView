@@ -914,20 +914,48 @@ public class ImageFileInfo : INotifyPropertyChanged
 
     public int BurstCount => _burstGroup?.Images.Count ?? 0;
 
+    public bool IsBurstMember => BurstCount > 1;
+
+    public string BurstOrdinalText
+    {
+        get
+        {
+            if (_burstGroup == null || _burstGroup.Images.Count < 2)
+                return string.Empty;
+
+            var index = _burstGroup.Images.IndexOf(this);
+            return index < 0 ? string.Empty : $"{index + 1}/{_burstGroup.Images.Count}";
+        }
+    }
+
     public string BurstBadgeText => IsBurstExpanded ? $"收起 {BurstCount}" : $"连拍 {BurstCount}";
 
-    public bool IsCollapsedBurstCover => IsBurstCover && !IsBurstExpanded;
+    public bool IsCollapsedBurstCover => IsBurstCover && !IsBurstExpanded && !IsBurstChildVisible;
 
     public bool CanEditGridRating => !IsCollapsedBurstCover;
 
-    public bool IsBurstMemberVisualActive => BurstCount > 1 && IsBurstExpanded;
+    public bool IsBurstMemberVisualActive => BurstCount > 1 && (IsBurstExpanded || IsBurstChildVisible);
+
+    public bool IsBurstFoldButtonVisible => IsBurstCover && !IsBurstChildVisible;
+
+    public bool IsBurstInlineBadgeVisible => IsBurstMember && IsBurstChildVisible && !IsBurstExpanded;
 
     public string BurstAccentColor => _burstGroup?.AccentColor ?? "#808080";
 
     public bool IsBurstChildVisible
     {
         get => _isBurstChildVisible;
-        private set => SetProperty(ref _isBurstChildVisible, value);
+        private set
+        {
+            if (SetProperty(ref _isBurstChildVisible, value))
+            {
+                OnPropertyChanged(nameof(IsCollapsedBurstCover));
+                OnPropertyChanged(nameof(CanEditGridRating));
+                OnPropertyChanged(nameof(IsBurstMemberVisualActive));
+                OnPropertyChanged(nameof(IsBurstFoldButtonVisible));
+                OnPropertyChanged(nameof(IsBurstInlineBadgeVisible));
+            }
+        }
     }
 
     public List<ImageFileInfo>? AlternateFormats =>
@@ -1006,9 +1034,13 @@ public class ImageFileInfo : INotifyPropertyChanged
         OnPropertyChanged(nameof(IsBurstExpanded));
         OnPropertyChanged(nameof(BurstCount));
         OnPropertyChanged(nameof(BurstBadgeText));
+        OnPropertyChanged(nameof(IsBurstMember));
+        OnPropertyChanged(nameof(BurstOrdinalText));
         OnPropertyChanged(nameof(IsCollapsedBurstCover));
         OnPropertyChanged(nameof(CanEditGridRating));
         OnPropertyChanged(nameof(IsBurstMemberVisualActive));
+        OnPropertyChanged(nameof(IsBurstFoldButtonVisible));
+        OnPropertyChanged(nameof(IsBurstInlineBadgeVisible));
         OnPropertyChanged(nameof(BurstAccentColor));
         OnPropertyChanged(nameof(IsBurstChildVisible));
     }
