@@ -218,6 +218,45 @@ public sealed partial class CollectPage : Page
         ViewModel.AddSource(_rightClickedFolderNode);
     }
 
+    private void FolderTreeMenuFlyout_Opening(object sender, object e)
+    {
+        if (sender is not MenuFlyout flyout)
+            return;
+
+        var hasFolderPath = !string.IsNullOrWhiteSpace(_rightClickedFolderNode?.FullPath);
+        var isPinned = hasFolderPath && ViewModel.IsFolderPinned(_rightClickedFolderNode);
+        var isExternalDeviceNode = IsNodeUnderExternalDevices(_rightClickedFolderNode);
+
+        foreach (var item in flyout.Items)
+        {
+            if (item is not FrameworkElement element || element.Tag is not string tag)
+                continue;
+
+            element.Visibility = tag switch
+            {
+                "PinFolder" => hasFolderPath && !isPinned ? Visibility.Visible : Visibility.Collapsed,
+                "UnpinFolder" => hasFolderPath && isPinned ? Visibility.Visible : Visibility.Collapsed,
+                "PinSectionSeparator" => hasFolderPath ? Visibility.Visible : Visibility.Collapsed,
+                "RefreshExternalDevices" => isExternalDeviceNode ? Visibility.Visible : Visibility.Collapsed,
+                "ExternalDeviceSectionSeparator" => isExternalDeviceNode ? Visibility.Visible : Visibility.Collapsed,
+                _ => element.Visibility
+            };
+        }
+    }
+
+    private static bool IsNodeUnderExternalDevices(FolderNode? node)
+    {
+        while (node != null)
+        {
+            if (node.NodeType == NodeType.ExternalDevice)
+                return true;
+
+            node = node.Parent;
+        }
+
+        return false;
+    }
+
     private async void PinFolder_Click(object sender, RoutedEventArgs e)
     {
         await ViewModel.PinFolderAsync(_rightClickedFolderNode);

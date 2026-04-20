@@ -233,18 +233,18 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <FlyoutBase.AttachedFlyout>
-                                        <MenuFlyout Placement="Bottom">
+                                        <MenuFlyout Placement="Bottom" Opening="FolderTreeMenuFlyout_Opening">
                                             <MenuFlyoutItem Text="添加到载入区" Icon="Add" Click="AddFolderToPreviewSource_Click"/>
-                                            <MenuFlyoutSeparator/>
-                                            <MenuFlyoutItem Text="固定到常用文件夹" Icon="Pin" Click="PinFolder_Click"/>
-                                            <MenuFlyoutItem Text="取消固定" Icon="UnPin" Click="UnpinFolder_Click"/>
-                                            <MenuFlyoutSeparator/>
-                                            <MenuFlyoutItem Text="刷新外接设备" Icon="Refresh" Click="RefreshExternalDevices_Click"/>
+                                            <MenuFlyoutSeparator Tag="PinSectionSeparator"/>
+                                            <MenuFlyoutItem Tag="PinFolder" Text="固定到常用文件夹" Icon="Pin" Click="PinFolder_Click"/>
+                                            <MenuFlyoutItem Tag="UnpinFolder" Text="取消固定" Icon="UnPin" Click="UnpinFolder_Click"/>
+                                            <MenuFlyoutSeparator Tag="ExternalDeviceSectionSeparator"/>
+                                            <MenuFlyoutItem Tag="RefreshExternalDevices" Text="刷新外接设备" Icon="Refresh" Click="RefreshExternalDevices_Click"/>
                                         </MenuFlyout>
                                     </FlyoutBase.AttachedFlyout>
                                     <FontIcon
                                         Grid.Column="0"
-                                        Glyph="{Binding Converter={StaticResource NodeTypeToIconConverter}}"
+                                        Glyph="{x:Bind NodeType, Mode=OneWay, Converter={StaticResource NodeTypeToIconConverter}}"
                                         FontFamily="{StaticResource SymbolThemeFontFamily}"
                                         FontSize="16"
                                         Margin="0,0,6,0"/>

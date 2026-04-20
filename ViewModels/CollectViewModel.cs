@@ -146,6 +146,11 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         await _folderTreeService.PinFolderAsync(node, GetFavoritesRootNode());
     }
 
+    public bool IsFolderPinned(FolderNode? node)
+    {
+        return _folderTreeService.IsFolderPinned(node);
+    }
+
     public async Task UnpinFolderAsync(FolderNode? node)
     {
         await _folderTreeService.UnpinFolderAsync(node, GetFavoritesRootNode());
@@ -638,9 +643,10 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
 
             imageInfo.SetRatingFromProperties(properties.Rating, RatingSource.WinRT);
 
-            if (properties.DateTaken != DateTimeOffset.MinValue && properties.DateTaken != default)
+            var dateTaken = ImageMetadataDateHelper.NormalizeDateTaken(properties.DateTaken, imageInfo.FileType);
+            if (dateTaken.HasValue)
             {
-                imageInfo.SetDateTakenFromProperties(properties.DateTaken.LocalDateTime);
+                imageInfo.SetDateTakenFromProperties(dateTaken);
             }
         }
         catch (OperationCanceledException)
@@ -804,6 +810,9 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     {
         if (image.DateTaken.HasValue)
             return new DateTimeOffset(image.DateTaken.Value);
+
+        if (ImageFormatRegistry.IsPhotoshop(image.FileType))
+            return DateTimeOffset.MinValue;
 
         var created = image.ImageFile?.DateCreated;
         if (created.HasValue && created.Value != default)

@@ -783,7 +783,7 @@ public class ImageFileInfo : INotifyPropertyChanged
 
     public void SetDateTakenFromProperties(DateTime? dateTaken)
     {
-        DateTaken = dateTaken;
+        DateTaken = ImageMetadataDateHelper.NormalizeDateTaken(dateTaken, ImageFileType);
     }
 
     public async Task EnsureRatingAsync(RatingService ratingService)

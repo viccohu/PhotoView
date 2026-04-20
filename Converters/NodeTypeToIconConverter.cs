@@ -29,12 +29,12 @@ public class NodeTypeToIconConverter : IValueConverter
         {
             return nodeType switch
             {
-                NodeType.FavoritesRoot => "\xE734",
-                NodeType.PinnedFolder => "\xE840",
-                NodeType.RecentFolder => "\xE823",
-                NodeType.ThisPC => "\xEC4E",
+                NodeType.FavoritesRoot => "\xE728",
+                NodeType.PinnedFolder => "\xE735",
+                NodeType.RecentFolder => "\xE81C",
+                NodeType.ThisPC => "\xe977",
                 NodeType.ExternalDevice => "\xE88E",
-                NodeType.Drive => "\xE8DA",
+                NodeType.Drive => "\xeda2",
                 NodeType.KnownFolder => "\xE8B7",
                 NodeType.Folder => "\xE8B7",
                 _ => "\xE8B7"

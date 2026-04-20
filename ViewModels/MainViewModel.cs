@@ -884,9 +884,10 @@ public partial class MainViewModel : ObservableRecipient
             try
             {
                 var properties = await StorageFilePropertyReader.GetImagePropertiesAsync(image.ImageFile, cancellationToken);
-                if (properties.DateTaken != DateTimeOffset.MinValue && properties.DateTaken != default)
+                var dateTaken = ImageMetadataDateHelper.NormalizeDateTaken(properties.DateTaken, image.FileType);
+                if (dateTaken.HasValue)
                 {
-                    image.SetDateTakenFromProperties(properties.DateTaken.LocalDateTime);
+                    image.SetDateTakenFromProperties(dateTaken);
                 }
             }
             catch (OperationCanceledException)
@@ -960,10 +961,7 @@ public partial class MainViewModel : ObservableRecipient
 
             title = properties.Title;
 
-            if (properties.DateTaken != DateTimeOffset.MinValue && properties.DateTaken != default)
-            {
-                dateTaken = properties.DateTaken.LocalDateTime;
-            }
+            dateTaken = ImageMetadataDateHelper.NormalizeDateTaken(properties.DateTaken, file.FileType);
         }
         catch (OperationCanceledException)
         {
@@ -1913,6 +1911,9 @@ public partial class MainViewModel : ObservableRecipient
     {
         if (image.DateTaken.HasValue)
             return new DateTimeOffset(image.DateTaken.Value);
+
+        if (ImageFormatRegistry.IsPhotoshop(image.FileType))
+            return DateTimeOffset.MinValue;
 
         var created = image.ImageFile?.DateCreated;
         if (created.HasValue && created.Value != default)

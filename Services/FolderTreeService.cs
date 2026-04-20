@@ -159,7 +159,18 @@ public sealed class FolderTreeService
 
         var normalizedPath = NormalizePath(node.FullPath);
         if (_folderAccessHistory.PinnedPaths.Any(path => IsSamePath(path, normalizedPath)))
+        {
+            var removedRecent = _folderAccessHistory.RecentPaths.RemoveAll(path => IsSamePath(path, normalizedPath)) > 0;
+            if (removedRecent)
+            {
+                await SaveHistoryAndRefreshFavoritesAsync(favoritesRoot);
+            }
+            else
+            {
+                await RefreshFavoriteFoldersAsync(favoritesRoot);
+            }
             return;
+        }
 
         _folderAccessHistory.PinnedPaths.Insert(0, normalizedPath);
         _folderAccessHistory.RecentPaths.RemoveAll(path => IsSamePath(path, normalizedPath));
@@ -342,26 +353,16 @@ public sealed class FolderTreeService
             desiredNodes.Add(existingNode);
         }
 
-        for (var i = favoritesRoot.Children.Count - 1; i >= 0; i--)
+        if (favoritesRoot.Children.Count == desiredNodes.Count &&
+            favoritesRoot.Children.SequenceEqual(desiredNodes))
         {
-            if (!desiredNodes.Contains(favoritesRoot.Children[i]))
-            {
-                favoritesRoot.Children.RemoveAt(i);
-            }
+            return;
         }
 
-        for (var i = 0; i < desiredNodes.Count; i++)
+        favoritesRoot.Children.Clear();
+        foreach (var node in desiredNodes)
         {
-            var node = desiredNodes[i];
-            var currentIndex = favoritesRoot.Children.IndexOf(node);
-            if (currentIndex < 0)
-            {
-                favoritesRoot.Children.Insert(i, node);
-            }
-            else if (currentIndex != i)
-            {
-                favoritesRoot.Children.Move(currentIndex, i);
-            }
+            favoritesRoot.Children.Add(node);
         }
     }
 

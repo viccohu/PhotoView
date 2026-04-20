@@ -2537,6 +2537,58 @@ public sealed partial class MainPage : Page
     private FolderNode? _rightClickedFolderNode;
     private FolderNode? _rightClickedSubFolderNode;
 
+    private void FolderTreeMenuFlyout_Opening(object sender, object e)
+    {
+        if (sender is MenuFlyout flyout)
+        {
+            UpdateFolderPinMenuItems(flyout, _rightClickedFolderNode);
+        }
+    }
+
+    private void SubFolderMenuFlyout_Opening(object sender, object e)
+    {
+        if (sender is MenuFlyout flyout)
+        {
+            UpdateFolderPinMenuItems(flyout, _rightClickedSubFolderNode);
+        }
+    }
+
+    private void UpdateFolderPinMenuItems(MenuFlyout flyout, FolderNode? node)
+    {
+        var hasFolderPath = !string.IsNullOrWhiteSpace(node?.FullPath);
+        var isPinned = hasFolderPath && ViewModel.IsFolderPinned(node);
+        var isExternalDeviceNode = IsNodeUnderExternalDevices(node);
+
+        foreach (var item in flyout.Items)
+        {
+            if (item is not FrameworkElement element || element.Tag is not string tag)
+                continue;
+
+            element.Visibility = tag switch
+            {
+                "PinFolder" => hasFolderPath && !isPinned ? Visibility.Visible : Visibility.Collapsed,
+                "UnpinFolder" => hasFolderPath && isPinned ? Visibility.Visible : Visibility.Collapsed,
+                "PinSectionSeparator" => hasFolderPath ? Visibility.Visible : Visibility.Collapsed,
+                "RefreshExternalDevices" => isExternalDeviceNode ? Visibility.Visible : Visibility.Collapsed,
+                "ExternalDeviceSectionSeparator" => isExternalDeviceNode ? Visibility.Visible : Visibility.Collapsed,
+                _ => element.Visibility
+            };
+        }
+    }
+
+    private static bool IsNodeUnderExternalDevices(FolderNode? node)
+    {
+        while (node != null)
+        {
+            if (node.NodeType == NodeType.ExternalDevice)
+                return true;
+
+            node = node.Parent;
+        }
+
+        return false;
+    }
+
     private async void PinFolder_Click(object sender, RoutedEventArgs e)
     {
         await ViewModel.PinFolderAsync(_rightClickedFolderNode);

@@ -113,7 +113,7 @@ public class ExifService : IExifService
 
             if (cachedDateTaken.HasValue)
             {
-                exifData.DateTaken = cachedDateTaken;
+                exifData.DateTaken = ImageMetadataDateHelper.NormalizeDateTaken(cachedDateTaken, file.FileType);
             }
 
             using var stream = await file.OpenReadAsync().AsTask(cancellationToken);
@@ -142,7 +142,7 @@ public class ExifService : IExifService
                 {
                     if (properties.TryGetValue("System.Photo.DateTaken", out var dateProp) && dateProp.Value is DateTime dateTaken)
                     {
-                        exifData.DateTaken = dateTaken;
+                        exifData.DateTaken = ImageMetadataDateHelper.NormalizeDateTaken(dateTaken, file.FileType);
                     }
                 }
 
