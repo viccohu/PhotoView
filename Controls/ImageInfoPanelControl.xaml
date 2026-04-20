@@ -10,7 +10,7 @@
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Orientation="Vertical" Spacing="16" Padding="16,12,16,12">
+        <StackPanel Orientation="Vertical" Spacing="12" Padding="16,12,16,12">
             <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,0,0,8">
                 <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE91B;" FontSize="16" VerticalAlignment="Center"/>
                 <TextBlock Text="{Binding ImageName, Mode=OneWay}" FontSize="18" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
@@ -47,10 +47,10 @@
                     <controls:ShimmerControl.Content>
                         <Grid ColumnSpacing="0">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="70"/>
-                                <ColumnDefinition Width="70"/>
-                                <ColumnDefinition Width="70"/>
-                                <ColumnDefinition Width="80"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <Border Grid.Column="0" CornerRadius="4,0,0,4" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
                                 <TextBlock Text="{Binding CaptureYear, Mode=OneWay}" Style="{StaticResource BodyTextBlockStyle}" HorizontalAlignment="Center"/>
@@ -242,7 +242,7 @@
 
             <StackPanel Spacing="8">
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE97C;" FontSize="16" VerticalAlignment="Center"/>
+                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE71B;" FontSize="16" VerticalAlignment="Center"/>
                     <TextBlock Text="文件路径" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                 </StackPanel>
                 <ItemsControl ItemsSource="{Binding FilePaths, Mode=OneWay}">

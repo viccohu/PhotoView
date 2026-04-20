@@ -234,7 +234,7 @@
                                     </Grid.ColumnDefinitions>
                                     <FlyoutBase.AttachedFlyout>
                                         <MenuFlyout Placement="Bottom">
-                                            <MenuFlyoutItem Text="????????????" Icon="Add" Click="AddFolderToPreviewSource_Click"/>
+                                            <MenuFlyoutItem Text="添加到载入区" Icon="Add" Click="AddFolderToPreviewSource_Click"/>
                                             <MenuFlyoutSeparator/>
                                             <MenuFlyoutItem Text="固定到常用文件夹" Icon="Pin" Click="PinFolder_Click"/>
                                             <MenuFlyoutItem Text="取消固定" Icon="UnPin" Click="UnpinFolder_Click"/>
@@ -324,7 +324,7 @@
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Left">
                         <ToggleButton
                             IsChecked="{x:Bind ViewModel.IsThumbnailStripCollapsed, Mode=TwoWay}"
-                            ToolTipService.ToolTip="????????">
+                            ToolTipService.ToolTip="折叠缩略图">
                             <FontIcon Glyph="&#xE75B;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
                         </ToggleButton>
                         <Button Click="ToggleInfoDrawer_Click" ToolTipService.ToolTip="文件信息">
@@ -614,24 +614,44 @@
                                     CornerRadius="8,0,0,8"
                                     Opacity="0.8"
                                     Visibility="{x:Bind IsBurstMember, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                                <Border
-                                    Padding="10,8"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Bottom"
-                                    Margin="0,0,0,25"
-                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                    BorderBrush="{ThemeResource CircleElevationBorderBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Visibility="{x:Bind IsBurstMember, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                    <StackPanel Orientation="Horizontal" Spacing="4" Opacity=".8">
-                                        <ContentControl Content="fold" ContentTemplate="{StaticResource FoldIconTemplate}"/>
-                                        <TextBlock
-                                            Text="{x:Bind BurstOrdinalText, Mode=OneWay}"
-                                            FontSize="12"
-                                            Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
-                                    </StackPanel>
-                                </Border>
+                                <Grid Visibility="{x:Bind IsBurstMember, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <Border
+                                        Padding="10,8"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Bottom"
+                                        Margin="0,0,0,25"
+                                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CircleElevationBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Visibility="{Binding DataContext.IsThumbnailStripCollapsed, ElementName=PreviewThumbnailGridView, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                                        <StackPanel Orientation="Horizontal" Spacing="4" Opacity=".8">
+                                            <ContentControl Content="fold" ContentTemplate="{StaticResource FoldIconTemplate}"/>
+                                            <TextBlock
+                                                Text="{x:Bind BurstOrdinalText, Mode=OneWay}"
+                                                FontSize="12"
+                                                Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border
+                                        Padding="4,0"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Top"
+                                        Margin="0,6,8,0"
+                                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CircleElevationBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Visibility="{Binding DataContext.IsThumbnailStripCollapsed, ElementName=PreviewThumbnailGridView, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <StackPanel Orientation="Horizontal" Spacing="4" Opacity=".8">
+                                            <ContentControl Content="fold" ContentTemplate="{StaticResource FoldIconTemplate}"/>
+                                            <TextBlock
+                                                Text="{x:Bind BurstOrdinalText, Mode=OneWay}"
+                                                FontSize="12"
+                                                Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
                                 <Grid
                                     HorizontalAlignment="Right"
                                     VerticalAlignment="Top"
