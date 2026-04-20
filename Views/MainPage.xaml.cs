@@ -61,6 +61,7 @@ public sealed partial class MainPage : Page
     private const int MaxActiveWarmPreviewLoads = 2;
     private const uint WarmPreviewLongSidePixels = 160;
     private readonly PointerEventHandler _imageGridPointerWheelHandler;
+    private readonly KeyEventHandler _imageGridKeyDownHandler;
     private readonly IKeyboardShortcutService _shortcutService;
     private FolderNode? _pendingLoadNode;
     private ScrollViewer? _imageGridScrollViewer;
@@ -74,6 +75,8 @@ public sealed partial class MainPage : Page
     private bool _isNavigationDrawerPinnedCollapsed;
     private bool _isNavigationDrawerTemporarilyExpanded;
     private bool _isImageGridPointerWheelHandlerAttached;
+    private bool _isImageGridKeyDownHandlerAttached;
+    private bool _isHandlingDirectionalBurstNavigation;
     private bool _suppressNextImageDragStart;
     private double _lastImageGridVerticalOffset;
     private int _immediateVisibleThumbnailStartCount;
@@ -84,9 +87,14 @@ public sealed partial class MainPage : Page
     private Storyboard? _navigationDrawerStoryboard;
     private Storyboard? _folderDrawerStoryboard;
     private (ImageFileInfo Image, uint Rating)? _pendingRatingUpdate;
+    private (int Direction, ImageFileInfo? StartImage)? _pendingGridDirectionalNavigation;
+    private ImageFileInfo? _lastSelectionRemovedImage;
+    private ImageFileInfo? _lastSelectionAddedImage;
+    private long _lastSelectionChangedTick;
     private ImageFileInfo? _storedImageFileInfo;
     private Controls.ImageViewerControl? _currentViewer;
     private Button? _shellDeleteButton;
+    private ToggleButton? _shellAutoExpandBurstToggleButton;
     private SplitButton? _shellFilterSplitButton;
 
     public MainPage()
@@ -100,6 +108,7 @@ public sealed partial class MainPage : Page
         NavigationCacheMode = NavigationCacheMode.Enabled;
         InitializeComponent();
         _imageGridPointerWheelHandler = ImageGridView_PointerWheelChanged;
+        _imageGridKeyDownHandler = ImageGridView_KeyDown;
         FolderTreeView.DataContext = ViewModel;
 
         _loadImagesThrottleTimer = new DispatcherTimer
@@ -143,6 +152,8 @@ public sealed partial class MainPage : Page
         RegisterShellToolbar();
         ViewModel.Filter.FilterChanged += Filter_FilterChanged;
         ImageGridView.DoubleTapped += ImageGridView_DoubleTapped;
+        ImageGridView.Tapped += ImageGridView_Tapped;
+        AttachImageGridKeyDown();
         AttachImageGridScrollViewer();
         AttachImageGridPointerWheel();
         UpdateImageGridTileSize();
@@ -277,6 +288,18 @@ public sealed partial class MainPage : Page
         _shellFilterSplitButton.Click += FilterSplitButton_Click;
         toolbar.Children.Add(_shellFilterSplitButton);
 
+        _shellAutoExpandBurstToggleButton = new ToggleButton
+        {
+            Padding = new Thickness(8),
+            IsChecked = _settingsService.AutoExpandBurstOnDirectionalNavigation,
+            Content = CreateToolbarFoldIcon()
+        };
+        ApplyToolbarButtonChrome(_shellAutoExpandBurstToggleButton);
+        ToolTipService.SetToolTip(_shellAutoExpandBurstToggleButton, "方向键展开连拍堆叠");
+        _shellAutoExpandBurstToggleButton.Checked += AutoExpandBurstToggleButton_CheckedChanged;
+        _shellAutoExpandBurstToggleButton.Unchecked += AutoExpandBurstToggleButton_CheckedChanged;
+        toolbar.Children.Add(_shellAutoExpandBurstToggleButton);
+
         var sizeButton = new DropDownButton
         {
             Padding = new Thickness(8),
@@ -329,6 +352,32 @@ public sealed partial class MainPage : Page
             FontFamily = (FontFamily)Application.Current.Resources["SymbolThemeFontFamily"],
             FontSize = 16
         };
+    }
+
+    private UIElement CreateToolbarFoldIcon()
+    {
+        return Resources["ToolbarFoldIconTemplate"] is DataTemplate template &&
+            template.LoadContent() is UIElement icon
+                ? icon
+                : CreateToolbarIcon("\uE8B9");
+    }
+
+    private async void AutoExpandBurstToggleButton_CheckedChanged(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ToggleButton toggleButton)
+            return;
+
+        var enabled = toggleButton.IsChecked == true;
+        _settingsService.AutoExpandBurstOnDirectionalNavigation = enabled;
+
+        try
+        {
+            await _settingsService.SaveAutoExpandBurstOnDirectionalNavigationAsync(enabled);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainPage] save auto expand burst setting failed: {ex.Message}");
+        }
     }
 
     private Flyout CreateFilterFlyout()
@@ -442,13 +491,65 @@ public sealed partial class MainPage : Page
         if (currentImage == null)
             return;
 
-        var nextImage = GetAdjacentImage(currentImage, delta);
+        BurstPhotoGroup? burstGroupToCollapse = null;
+        var nextImage = GetDirectionalNavigationImage(currentImage, delta, out burstGroupToCollapse);
         if (nextImage == null || ReferenceEquals(nextImage, currentImage))
+        {
+            if (nextImage == null)
+                return;
+
+            _storedImageFileInfo = nextImage;
+            await SelectImageForViewerAsync(nextImage, "viewer-key-burst-expand", focusThumbnail: false);
             return;
+        }
 
         _storedImageFileInfo = nextImage;
         await SelectImageForViewerAsync(nextImage, "viewer-key-switch", focusThumbnail: false);
         await viewer.SwitchImageAsync(nextImage);
+
+        if (burstGroupToCollapse != null)
+        {
+            ViewModel.CollapseBurstGroup(burstGroupToCollapse);
+            await SelectImageForViewerAsync(nextImage, "viewer-key-collapse-burst", focusThumbnail: false);
+        }
+    }
+
+    private ImageFileInfo? GetDirectionalNavigationImage(
+        ImageFileInfo currentImage,
+        int delta,
+        out BurstPhotoGroup? burstGroupToCollapse)
+    {
+        burstGroupToCollapse = null;
+
+        if (!_settingsService.AutoExpandBurstOnDirectionalNavigation)
+        {
+            return GetAdjacentImage(currentImage, delta);
+        }
+
+        if (currentImage.BurstGroup is { Images.Count: > 1, IsExpanded: false })
+        {
+            var expandedTarget = ViewModel.ExpandBurstForDirectionalNavigation(currentImage, delta);
+            return expandedTarget ?? currentImage;
+        }
+
+        var currentExpandedGroup = currentImage.BurstGroup?.IsExpanded == true
+            ? currentImage.BurstGroup
+            : null;
+        var nextImage = GetAdjacentImage(currentImage, delta);
+        if (nextImage == null)
+            return null;
+
+        if (nextImage.BurstGroup is { Images.Count: > 1, IsExpanded: false })
+        {
+            nextImage = ViewModel.ExpandBurstForDirectionalNavigation(nextImage, delta) ?? nextImage;
+        }
+
+        if (currentExpandedGroup != null && !ReferenceEquals(nextImage.BurstGroup, currentExpandedGroup))
+        {
+            burstGroupToCollapse = currentExpandedGroup;
+        }
+
+        return nextImage;
     }
 
     private async Task SelectImageForViewerAsync(ImageFileInfo imageInfo, string reason, bool focusThumbnail)
@@ -706,6 +807,7 @@ public sealed partial class MainPage : Page
         _isUnloaded = true;
         _shellToolbarService.ClearToolbar(this);
         _shellDeleteButton = null;
+        _shellAutoExpandBurstToggleButton = null;
         _shellFilterSplitButton = null;
         if (_currentViewer != null)
         {
@@ -717,6 +819,8 @@ public sealed partial class MainPage : Page
 
         ViewModel.Filter.FilterChanged -= Filter_FilterChanged;
         ImageGridView.DoubleTapped -= ImageGridView_DoubleTapped;
+        ImageGridView.Tapped -= ImageGridView_Tapped;
+        DetachImageGridKeyDown();
         _loadImagesThrottleTimer.Stop();
         _ratingDebounceTimer.Stop();
         _visibleThumbnailLoadTimer.Stop();
@@ -1818,6 +1922,144 @@ public sealed partial class MainPage : Page
         SyncSelectedStateFromGridView(e);
     }
 
+    private async void ImageGridView_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (_currentViewer != null ||
+            _isHandlingDirectionalBurstNavigation ||
+            !_settingsService.AutoExpandBurstOnDirectionalNavigation ||
+            !TryGetDirectionalNavigationDelta(e.Key, out var direction))
+        {
+            return;
+        }
+
+        var currentImage = GetCurrentImageForViewerOrSelection();
+        if (currentImage == null)
+            return;
+
+        var recentSelectionStart = GetRecentDirectionalSelectionStart();
+        var recentSelectionTarget = GetRecentDirectionalSelectionTarget();
+
+        if (recentSelectionStart?.BurstGroup is { Images.Count: > 1, IsExpanded: false } recentCollapsedStart &&
+            !ReferenceEquals(recentSelectionTarget, recentSelectionStart))
+        {
+            e.Handled = true;
+            await ExpandBurstForGridNavigationAsync(recentSelectionStart, direction, "grid-key-current-burst");
+            return;
+        }
+
+        if (recentSelectionTarget?.BurstGroup is { Images.Count: > 1, IsExpanded: false })
+        {
+            e.Handled = true;
+            await ExpandBurstForGridNavigationAsync(recentSelectionTarget, direction, "grid-key-enter-burst");
+            return;
+        }
+
+        if (currentImage.BurstGroup is { Images.Count: > 1, IsExpanded: false })
+        {
+            e.Handled = true;
+            await ExpandBurstForGridNavigationAsync(currentImage, direction, "grid-key-current-burst");
+            return;
+        }
+
+        if (recentSelectionStart?.BurstGroup is { IsExpanded: true } recentExpandedStart &&
+            !ReferenceEquals(recentSelectionTarget?.BurstGroup, recentExpandedStart))
+        {
+            e.Handled = true;
+            await CollapseBurstAfterGridNavigationAsync(recentExpandedStart, recentSelectionTarget, "grid-key-leave-burst");
+            return;
+        }
+
+        _pendingGridDirectionalNavigation = (direction, currentImage);
+        DispatcherQueue.TryEnqueue(async () =>
+        {
+            await Task.Yield();
+            await CompletePendingGridDirectionalNavigationAsync("grid-key");
+        });
+    }
+
+    private ImageFileInfo? GetRecentDirectionalSelectionStart()
+    {
+        return Environment.TickCount64 - _lastSelectionChangedTick <= 250
+            ? _lastSelectionRemovedImage
+            : null;
+    }
+
+    private ImageFileInfo? GetRecentDirectionalSelectionTarget()
+    {
+        return Environment.TickCount64 - _lastSelectionChangedTick <= 250
+            ? _lastSelectionAddedImage
+            : null;
+    }
+
+    private async Task CompletePendingGridDirectionalNavigationAsync(string reason)
+    {
+        if (!_pendingGridDirectionalNavigation.HasValue ||
+            _isHandlingDirectionalBurstNavigation ||
+            !_settingsService.AutoExpandBurstOnDirectionalNavigation)
+        {
+            return;
+        }
+
+        var (direction, startImage) = _pendingGridDirectionalNavigation.Value;
+        _pendingGridDirectionalNavigation = null;
+
+        var currentImage = GetCurrentImageForViewerOrSelection();
+        if (currentImage == null)
+            return;
+
+        if (currentImage.BurstGroup is { Images.Count: > 1, IsExpanded: false })
+        {
+            await ExpandBurstForGridNavigationAsync(currentImage, direction, $"{reason}-enter-burst");
+            return;
+        }
+
+        if (startImage?.BurstGroup is { IsExpanded: true } startExpandedGroup &&
+            !ReferenceEquals(currentImage.BurstGroup, startExpandedGroup))
+        {
+            await CollapseBurstAfterGridNavigationAsync(startExpandedGroup, currentImage, $"{reason}-leave-burst");
+        }
+    }
+
+    private async Task ExpandBurstForGridNavigationAsync(ImageFileInfo imageInfo, int direction, string reason)
+    {
+        _isHandlingDirectionalBurstNavigation = true;
+        try
+        {
+            var targetImage = ViewModel.ExpandBurstForDirectionalNavigation(imageInfo, direction);
+            if (targetImage != null && ViewModel.Images.Contains(targetImage))
+            {
+                await SelectImageForViewerAsync(targetImage, reason, focusThumbnail: true);
+            }
+        }
+        finally
+        {
+            _isHandlingDirectionalBurstNavigation = false;
+        }
+    }
+
+    private async Task CollapseBurstAfterGridNavigationAsync(
+        BurstPhotoGroup burstGroup,
+        ImageFileInfo? targetImage,
+        string reason)
+    {
+        if (targetImage == null || !ViewModel.Images.Contains(targetImage))
+            return;
+
+        _isHandlingDirectionalBurstNavigation = true;
+        try
+        {
+            ViewModel.CollapseBurstGroup(burstGroup);
+            if (ViewModel.Images.Contains(targetImage))
+            {
+                await SelectImageForViewerAsync(targetImage, reason, focusThumbnail: true);
+            }
+        }
+        finally
+        {
+            _isHandlingDirectionalBurstNavigation = false;
+        }
+    }
+
     private void ImageGridView_DragItemsStarting(object sender, DragItemsStartingEventArgs e)
     {
         if (_suppressNextImageDragStart)
@@ -1888,6 +2130,10 @@ public sealed partial class MainPage : Page
 
     private void SyncSelectedStateFromGridView(Microsoft.UI.Xaml.Controls.SelectionChangedEventArgs e)
     {
+        _lastSelectionRemovedImage = e.RemovedItems.OfType<ImageFileInfo>().FirstOrDefault();
+        _lastSelectionAddedImage = e.AddedItems.OfType<ImageFileInfo>().FirstOrDefault();
+        _lastSelectionChangedTick = Environment.TickCount64;
+
         foreach (var removedItem in e.RemovedItems)
         {
             if (removedItem is ImageFileInfo imageInfo && _selectedImageState.Remove(imageInfo))
@@ -1935,6 +2181,81 @@ public sealed partial class MainPage : Page
         {
             AutoCollapseImageBrowsingChrome("image-tapped");
         }
+    }
+
+    private async void ImageGridView_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (_isUnloaded || AppLifetime.IsShuttingDown)
+            return;
+
+        var clickedImage = FindImageInfoFromOriginalSource(e.OriginalSource);
+        var targetImage = clickedImage ?? GetCurrentImageForViewerOrSelection();
+        var targetGroup = targetImage?.BurstGroup;
+        var anchorTop = targetImage != null ? TryGetItemTopRelativeToScrollViewer(targetImage) : null;
+
+        if (!ViewModel.CollapseExpandedBurstGroupsExcept(clickedImage?.BurstGroup))
+            return;
+
+        if (targetImage != null && !ViewModel.Images.Contains(targetImage) && targetGroup != null)
+        {
+            targetImage = targetGroup.Images.FirstOrDefault(ViewModel.Images.Contains);
+        }
+
+        if (targetImage == null || !ViewModel.Images.Contains(targetImage))
+            return;
+
+        await RestoreGridFocusAfterMouseCollapseAsync(targetImage, anchorTop);
+    }
+
+    private async Task RestoreGridFocusAfterMouseCollapseAsync(ImageFileInfo imageInfo, double? previousTop)
+    {
+        await Task.Yield();
+
+        if (_isUnloaded || AppLifetime.IsShuttingDown || !ViewModel.Images.Contains(imageInfo))
+            return;
+
+        ExecuteProgrammaticSelectionChange(() =>
+        {
+            ImageGridView.SelectedItems.Clear();
+            ImageGridView.SelectedItem = imageInfo;
+        });
+
+        if (previousTop.HasValue)
+        {
+            RestoreItemTopRelativeToScrollViewer(imageInfo, previousTop);
+            await Task.Yield();
+        }
+
+        await ScrollItemIntoViewAsync(imageInfo, "tap-collapse-burst", ScrollIntoViewAlignment.Default);
+        await Task.Yield();
+
+        if (ImageGridView.ContainerFromItem(imageInfo) is GridViewItem container)
+        {
+            container.Focus(FocusState.Programmatic);
+        }
+        else
+        {
+            ImageGridView.ScrollIntoView(imageInfo, ScrollIntoViewAlignment.Default);
+        }
+
+        QueueVisibleThumbnailLoad(imageInfo, "tap-collapse-burst");
+    }
+
+    private static ImageFileInfo? FindImageInfoFromOriginalSource(object originalSource)
+    {
+        var current = originalSource as DependencyObject;
+        while (current != null)
+        {
+            if (current is FrameworkElement { Tag: ImageFileInfo tagImage })
+                return tagImage;
+
+            if (current is FrameworkElement { DataContext: ImageFileInfo contextImage })
+                return contextImage;
+
+            current = VisualTreeHelper.GetParent(current);
+        }
+
+        return null;
     }
 
     private async void BurstToggleButton_Click(object sender, RoutedEventArgs e)
@@ -2310,6 +2631,24 @@ public sealed partial class MainPage : Page
             return true;
         }
 
+        return false;
+    }
+
+    private static bool TryGetDirectionalNavigationDelta(VirtualKey key, out int direction)
+    {
+        if (key == VirtualKey.Left || key == VirtualKey.Up)
+        {
+            direction = -1;
+            return true;
+        }
+
+        if (key == VirtualKey.Right || key == VirtualKey.Down)
+        {
+            direction = 1;
+            return true;
+        }
+
+        direction = 0;
         return false;
     }
 
@@ -2744,6 +3083,24 @@ public sealed partial class MainPage : Page
         _imageGridScrollViewer.ViewChanging -= ImageGridScrollViewer_ViewChanging;
         _imageGridScrollViewer.ViewChanged -= ImageGridScrollViewer_ViewChanged;
         _imageGridScrollViewer = null;
+    }
+
+    private void AttachImageGridKeyDown()
+    {
+        if (_isImageGridKeyDownHandlerAttached)
+            return;
+
+        ImageGridView.AddHandler(UIElement.KeyDownEvent, _imageGridKeyDownHandler, true);
+        _isImageGridKeyDownHandlerAttached = true;
+    }
+
+    private void DetachImageGridKeyDown()
+    {
+        if (!_isImageGridKeyDownHandlerAttached)
+            return;
+
+        ImageGridView.RemoveHandler(UIElement.KeyDownEvent, _imageGridKeyDownHandler);
+        _isImageGridKeyDownHandlerAttached = false;
     }
 
     private void AttachImageGridPointerWheel()

@@ -19,6 +19,38 @@
         <converters:IntToBoolConverter x:Key="IntToBoolConverter"/>
         <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
         <converters:StringToBrushConverter x:Key="StringToBrushConverter"/>
+
+        <DataTemplate x:Key="FoldIconTemplate">
+            <Viewbox Width="14" Height="14">
+                <Canvas Width="76.47" Height="76.47">
+                    <Path
+                        Fill="{ThemeResource TextFillColorPrimaryBrush}"
+                        Data="m64.01,23.92v27.16c0,2.31-1.87,4.17-4.17,4.17H14.92c-2.31,0-4.17-1.87-4.17-4.17v-1.29h43.63c2.31,0,4.17-1.87,4.17-4.17v-25.88h1.29c2.31,0,4.17,1.87,4.17,4.17Z"/>
+                    <Path
+                        Fill="{ThemeResource TextFillColorPrimaryBrush}"
+                        Data="m72.75,32.66v27.16c0,2.31-1.87,4.17-4.17,4.17H23.66c-2.31,0-4.17-1.87-4.17-4.17v-1.29h43.63c2.31,0,4.17-1.87,4.17-4.17v-25.88h1.29c2.31,0,4.17,1.87,4.17,4.17Z"/>
+                    <Path
+                        Fill="{ThemeResource TextFillColorPrimaryBrush}"
+                        Data="M6.17,11 H51.1 A4.17,4.17 0 0 1 55.27,15.17 V42.34 A4.17,4.17 0 0 1 51.1,46.51 H6.17 A4.17,4.17 0 0 1 2,42.34 V15.17 A4.17,4.17 0 0 1 6.17,11 Z"/>
+                </Canvas>
+            </Viewbox>
+        </DataTemplate>
+
+        <DataTemplate x:Key="ToolbarFoldIconTemplate">
+            <Viewbox Width="18" Height="18">
+                <Canvas Width="76.47" Height="76.47">
+                    <Path
+                        Fill="{ThemeResource TextFillColorPrimaryBrush}"
+                        Data="m64.01,23.92v27.16c0,2.31-1.87,4.17-4.17,4.17H14.92c-2.31,0-4.17-1.87-4.17-4.17v-1.29h43.63c2.31,0,4.17-1.87,4.17-4.17v-25.88h1.29c2.31,0,4.17,1.87,4.17,4.17Z"/>
+                    <Path
+                        Fill="{ThemeResource TextFillColorPrimaryBrush}"
+                        Data="m72.75,32.66v27.16c0,2.31-1.87,4.17-4.17,4.17H23.66c-2.31,0-4.17-1.87-4.17-4.17v-1.29h43.63c2.31,0,4.17-1.87,4.17-4.17v-25.88h1.29c2.31,0,4.17,1.87,4.17,4.17Z"/>
+                    <Path
+                        Fill="{ThemeResource TextFillColorPrimaryBrush}"
+                        Data="M6.17,11 H51.1 A4.17,4.17 0 0 1 55.27,15.17 V42.34 A4.17,4.17 0 0 1 51.1,46.51 H6.17 A4.17,4.17 0 0 1 2,42.34 V15.17 A4.17,4.17 0 0 1 6.17,11 Z"/>
+                </Canvas>
+            </Viewbox>
+        </DataTemplate>
         
         <Style x:Key="BreadcrumbButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
@@ -780,16 +812,12 @@
                             Click="BurstToggleButton_Click"
                             Visibility="{x:Bind IsBurstCover, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                             <StackPanel Orientation="Horizontal" Spacing="4">
-                                <FontIcon
-                                    Glyph="&#xE8B9;"
-                                    FontFamily="{StaticResource SymbolThemeFontFamily}"
-                                    FontSize="12"
-                                    Foreground="White"/>
+                                <ContentControl Content="fold" ContentTemplate="{StaticResource FoldIconTemplate}"/>
                                 <TextBlock
                                     Text="{x:Bind BurstBadgeText, Mode=OneWay}"
-                                    FontSize="12"
-                                    FontWeight="SemiBold"
-                                    Foreground="White"/>
+                            FontSize="12"
+                            FontWeight="SemiBold"
+                            Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
                             </StackPanel>
                         </Button>
                         <FontIcon

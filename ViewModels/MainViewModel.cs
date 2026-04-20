@@ -1461,6 +1461,134 @@ public partial class MainViewModel : ObservableRecipient
         return -1;
     }
 
+    public ImageFileInfo? ExpandBurstForDirectionalNavigation(ImageFileInfo image, int direction)
+    {
+        var burstGroup = image.BurstGroup;
+        if (burstGroup == null || burstGroup.Images.Count < 2)
+            return null;
+
+        var visibleMembers = GetVisibleBurstMembers(burstGroup);
+        if (visibleMembers.Count <= 1)
+            return image;
+
+        if (!burstGroup.IsExpanded)
+        {
+            var displayIndex = GetFirstVisibleBurstIndex(burstGroup);
+            if (displayIndex < 0)
+                return null;
+
+            var currentDisplay = Images[displayIndex];
+            burstGroup.SetExpanded(true);
+
+            foreach (var member in visibleMembers)
+            {
+                member.SetBurstDisplayCover(false);
+            }
+
+            var displayMembers = GetExpandedBurstDisplayMembers(burstGroup, visibleMembers);
+            var displayPrimary = displayMembers[0];
+            var insertIndex = displayIndex;
+
+            if (!ReferenceEquals(currentDisplay, displayPrimary))
+            {
+                Images[displayIndex] = displayPrimary;
+                currentDisplay.SetBurstChildVisible(true);
+                displayPrimary.SetBurstChildVisible(false);
+                insertIndex = displayIndex + 1;
+            }
+            else
+            {
+                currentDisplay.SetBurstChildVisible(false);
+                insertIndex = displayIndex + 1;
+            }
+
+            foreach (var member in displayMembers.Skip(1))
+            {
+                if (!Images.Contains(member))
+                {
+                    Images.Insert(insertIndex, member);
+                    insertIndex++;
+                }
+
+                member.SetBurstChildVisible(true);
+            }
+
+            ImagesChanged?.Invoke(this, EventArgs.Empty);
+            UpdatePendingDeleteCount();
+        }
+
+        var expandedMembers = GetExpandedBurstDisplayMembers(burstGroup, visibleMembers);
+        return direction < 0 ? expandedMembers[^1] : expandedMembers[0];
+    }
+
+    public ImageFileInfo? CollapseBurstGroup(BurstPhotoGroup burstGroup)
+    {
+        if (burstGroup.Images.Count < 2 || !burstGroup.IsExpanded)
+            return null;
+
+        var visibleMembers = GetVisibleBurstMembers(burstGroup);
+        if (visibleMembers.Count == 0)
+            return null;
+
+        var displayIndex = GetFirstVisibleBurstIndex(burstGroup);
+        if (displayIndex < 0)
+            return null;
+
+        burstGroup.RecalculateCover();
+        burstGroup.SetExpanded(false);
+        var coverImage = burstGroup.GetCoverImage(visibleMembers);
+
+        foreach (var member in visibleMembers)
+        {
+            Images.Remove(member);
+            member.SetBurstChildVisible(false);
+            member.SetBurstDisplayCover(false);
+        }
+
+        Images.Insert(Math.Clamp(displayIndex, 0, Images.Count), coverImage);
+        coverImage.SetBurstChildVisible(false);
+        coverImage.SetBurstDisplayCover(true);
+
+        ImagesChanged?.Invoke(this, EventArgs.Empty);
+        UpdatePendingDeleteCount();
+        return coverImage;
+    }
+
+    public bool CollapseExpandedBurstGroupsExcept(BurstPhotoGroup? preservedGroup)
+    {
+        var expandedGroups = _burstGroups
+            .Where(group => group.IsExpanded && !ReferenceEquals(group, preservedGroup))
+            .ToList();
+        if (expandedGroups.Count == 0)
+            return false;
+
+        foreach (var group in expandedGroups)
+        {
+            CollapseBurstGroup(group);
+        }
+
+        return true;
+    }
+
+    private List<ImageFileInfo> GetVisibleBurstMembers(BurstPhotoGroup burstGroup)
+    {
+        return burstGroup.Images
+            .Where(MatchFilter)
+            .OrderBy(member => _allImages.IndexOf(member))
+            .ToList();
+    }
+
+    private List<ImageFileInfo> GetExpandedBurstDisplayMembers(
+        BurstPhotoGroup burstGroup,
+        IReadOnlyList<ImageFileInfo> visibleMembers)
+    {
+        var displayPrimary = burstGroup.GetCoverImage(visibleMembers);
+        return visibleMembers
+            .OrderBy(member => ReferenceEquals(member, displayPrimary) ? 0 : 1)
+            .ThenBy(member => _allImages.IndexOf(member))
+            .ToList();
+    }
+
     public IReadOnlyList<ImageFileInfo> GetBurstExpansionWarmupImages(ImageFileInfo image)
     {
         var burstGroup = image.BurstGroup;

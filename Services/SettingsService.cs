@@ -25,6 +25,7 @@ public class SettingsService : ISettingsService
     private bool _alwaysDecodeRaw = false;
     private bool _mainPageAutoCollapseSidebar = false;
     private bool _preferPsdAsPrimaryPreview = false;
+    private bool _autoExpandBurstOnDirectionalNavigation = true;
 
     public event EventHandler<NavigationViewPaneDisplayMode>? NavigationViewModeChanged;
     public event EventHandler<int>? BatchSizeChanged;
@@ -35,6 +36,7 @@ public class SettingsService : ISettingsService
     public event EventHandler<bool>? AlwaysDecodeRawChanged;
     public event EventHandler<bool>? MainPageAutoCollapseSidebarChanged;
     public event EventHandler<bool>? PreferPsdAsPrimaryPreviewChanged;
+    public event EventHandler<bool>? AutoExpandBurstOnDirectionalNavigationChanged;
 
     public NavigationViewPaneDisplayMode NavigationViewMode
     {
@@ -257,6 +259,19 @@ public class SettingsService : ISettingsService
             {
                 _preferPsdAsPrimaryPreview = value;
                 PreferPsdAsPrimaryPreviewChanged?.Invoke(this, value);
+            }
+        }
+    }
+
+    public bool AutoExpandBurstOnDirectionalNavigation
+    {
+        get => _autoExpandBurstOnDirectionalNavigation;
+        set
+        {
+            if (_autoExpandBurstOnDirectionalNavigation != value)
+            {
+                _autoExpandBurstOnDirectionalNavigation = value;
+                AutoExpandBurstOnDirectionalNavigationChanged?.Invoke(this, value);
             }
         }
     }
@@ -567,6 +582,23 @@ public class SettingsService : ISettingsService
         return _preferPsdAsPrimaryPreview;
     }
 
+    public async Task SaveAutoExpandBurstOnDirectionalNavigationAsync(bool enabled)
+    {
+        await _localSettingsService.SaveSettingAsync("AutoExpandBurstOnDirectionalNavigation", enabled);
+    }
+
+    public async Task<bool> LoadAutoExpandBurstOnDirectionalNavigationAsync()
+    {
+        var enabled = await _localSettingsService.ReadSettingAsync<bool?>("AutoExpandBurstOnDirectionalNavigation");
+        if (enabled.HasValue)
+        {
+            _autoExpandBurstOnDirectionalNavigation = enabled.Value;
+            return enabled.Value;
+        }
+
+        return _autoExpandBurstOnDirectionalNavigation;
+    }
+
     public void SuspendAlwaysDecodeRawPersistence(string reason)
     {
         // Reserved hook for viewer lifetime; the setting is only persisted by explicit save calls.
@@ -597,5 +629,6 @@ public class SettingsService : ISettingsService
         await LoadAlwaysDecodeRawAsync();
         await LoadMainPageAutoCollapseSidebarAsync();
         await LoadPreferPsdAsPrimaryPreviewAsync();
+        await LoadAutoExpandBurstOnDirectionalNavigationAsync();
     }
 }
