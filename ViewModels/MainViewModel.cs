@@ -1380,14 +1380,11 @@ public partial class MainViewModel : ObservableRecipient
         if (visibleMembers.Count <= 1)
             return;
 
-        var currentDisplay = visibleMembers.FirstOrDefault(member => Images.Contains(member));
-        if (currentDisplay == null)
-            return;
-
-        var displayIndex = Images.IndexOf(currentDisplay);
+        var displayIndex = GetFirstVisibleBurstIndex(burstGroup);
         if (displayIndex < 0)
             return;
 
+        var currentDisplay = Images[displayIndex];
         var expand = !burstGroup.IsExpanded;
         if (!expand)
         {
@@ -1403,22 +1400,24 @@ public partial class MainViewModel : ObservableRecipient
                 member.SetBurstDisplayCover(false);
             }
 
+            var displayPrimary = burstGroup.GetCoverImage(visibleMembers);
             var insertIndex = displayIndex;
-            if (!ReferenceEquals(currentDisplay, visibleMembers[0]))
+            if (!ReferenceEquals(currentDisplay, displayPrimary))
             {
-                Images[displayIndex] = visibleMembers[0];
+                Images[displayIndex] = displayPrimary;
                 currentDisplay.SetBurstChildVisible(true);
-                visibleMembers[0].SetBurstChildVisible(false);
+                displayPrimary.SetBurstChildVisible(false);
                 insertIndex = displayIndex + 1;
             }
             else
             {
+                currentDisplay.SetBurstChildVisible(false);
                 insertIndex = displayIndex + 1;
             }
 
             foreach (var member in visibleMembers)
             {
-                if (ReferenceEquals(member, visibleMembers[0]))
+                if (ReferenceEquals(member, displayPrimary))
                     continue;
 
                 if (!Images.Contains(member))
@@ -1449,6 +1448,19 @@ public partial class MainViewModel : ObservableRecipient
         UpdatePendingDeleteCount();
     }
 
+    private int GetFirstVisibleBurstIndex(BurstPhotoGroup burstGroup)
+    {
+        for (var i = 0; i < Images.Count; i++)
+        {
+            if (ReferenceEquals(Images[i].BurstGroup, burstGroup))
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
     public IReadOnlyList<ImageFileInfo> GetBurstExpansionWarmupImages(ImageFileInfo image)
     {
         var burstGroup = image.BurstGroup;
@@ -1469,10 +1481,40 @@ public partial class MainViewModel : ObservableRecipient
         burstGroup.RecalculateCover();
         if (burstGroup.IsExpanded)
         {
-            foreach (var member in burstGroup.Images)
+            var expandedVisibleMembers = burstGroup.Images
+                .Where(MatchFilter)
+                .OrderBy(member => _allImages.IndexOf(member))
+                .ToList();
+            if (expandedVisibleMembers.Count == 0)
+                return;
+
+            var expandedVisibleIndex = Images
+                .Select((member, index) => new { Member = member, Index = index })
+                .FirstOrDefault(candidate => candidate.Member.BurstGroup == burstGroup)
+                ?.Index ?? -1;
+            if (expandedVisibleIndex < 0)
+                return;
+
+            var expandedCoverImage = burstGroup.GetCoverImage(expandedVisibleMembers);
+            foreach (var member in expandedVisibleMembers)
             {
-                member.RefreshBurstProperties();
+                Images.Remove(member);
+                member.SetBurstDisplayCover(false);
+                member.SetBurstChildVisible(!ReferenceEquals(member, expandedCoverImage));
             }
+
+            Images.Insert(Math.Clamp(expandedVisibleIndex, 0, Images.Count), expandedCoverImage);
+            var expandedInsertIndex = expandedVisibleIndex + 1;
+            foreach (var member in expandedVisibleMembers)
+            {
+                if (ReferenceEquals(member, expandedCoverImage))
+                    continue;
+
+                Images.Insert(Math.Clamp(expandedInsertIndex, 0, Images.Count), member);
+                expandedInsertIndex++;
+            }
+
+            ImagesChanged?.Invoke(this, EventArgs.Empty);
             return;
         }
 
@@ -1538,9 +1580,7 @@ public partial class MainViewModel : ObservableRecipient
             if (visibleMembers.Count == 0)
                 continue;
 
-            var displayPrimary = burstGroup.IsExpanded
-                ? visibleMembers[0]
-                : burstGroup.GetCoverImage(visibleMembers);
+            var displayPrimary = burstGroup.GetCoverImage(visibleMembers);
 
             Images.Add(displayPrimary);
             displayPrimary.SetBurstChildVisible(false);
