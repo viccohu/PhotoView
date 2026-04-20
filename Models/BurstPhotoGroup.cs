@@ -2,17 +2,7 @@ namespace PhotoView.Models;
 
 public sealed class BurstPhotoGroup
 {
-    private static readonly string[] AccentPalette =
-    {
-        "#2E7D32",
-        "#0078D4",
-        "#C239B3",
-        "#D83B01",
-        "#8764B8",
-        "#008575",
-        "#E3008C",
-        "#498205"
-    };
+    private const string AccentColorValue = "#8080ff";
 
     private bool _isExpanded;
 
@@ -22,7 +12,7 @@ public sealed class BurstPhotoGroup
         Images = images.ToList();
         PrimaryImage = Images.First();
         CoverImage = SelectCover(Images);
-        AccentColor = SelectAccentColor(groupKey);
+        AccentColor = AccentColorValue;
 
         foreach (var image in Images)
         {
@@ -92,12 +82,5 @@ public sealed class BurstPhotoGroup
             .OrderByDescending(image => ImageFileInfo.RatingToStars(image.Rating))
             .ThenBy(image => Images.IndexOf(image) < 0 ? int.MaxValue : Images.IndexOf(image))
             .First();
-    }
-
-    private static string SelectAccentColor(string groupKey)
-    {
-        var hash = StringComparer.OrdinalIgnoreCase.GetHashCode(groupKey ?? string.Empty);
-        var index = (hash & int.MaxValue) % AccentPalette.Length;
-        return AccentPalette[index];
     }
 }

@@ -60,6 +60,7 @@ public sealed partial class MainPage : Page
     private const int WarmPreviewScrollBudgetPerTick = 1;
     private const int MaxActiveWarmPreviewLoads = 2;
     private const uint WarmPreviewLongSidePixels = 160;
+    private static readonly Windows.UI.Color ToolbarActiveColor = Windows.UI.Color.FromArgb(0xFF, 0x08, 0x6e, 0xbe);
     private readonly PointerEventHandler _imageGridPointerWheelHandler;
     private readonly KeyEventHandler _imageGridKeyDownHandler;
     private readonly IKeyboardShortcutService _shortcutService;
@@ -295,6 +296,7 @@ public sealed partial class MainPage : Page
             Content = CreateToolbarFoldIcon()
         };
         ApplyToolbarButtonChrome(_shellAutoExpandBurstToggleButton);
+        ApplyToolbarToggleButtonCheckedChrome(_shellAutoExpandBurstToggleButton);
         ToolTipService.SetToolTip(_shellAutoExpandBurstToggleButton, "方向键展开连拍堆叠");
         _shellAutoExpandBurstToggleButton.Checked += AutoExpandBurstToggleButton_CheckedChanged;
         _shellAutoExpandBurstToggleButton.Unchecked += AutoExpandBurstToggleButton_CheckedChanged;
@@ -342,6 +344,21 @@ public sealed partial class MainPage : Page
         control.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
         control.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
         control.BorderThickness = new Thickness(0);
+    }
+
+    private static void ApplyToolbarToggleButtonCheckedChrome(ToggleButton toggleButton)
+    {
+        var activeBrush = new SolidColorBrush(ToolbarActiveColor);
+        var activePointerOverBrush = new SolidColorBrush(ToolbarActiveColor);
+        var activePressedBrush = new SolidColorBrush(ToolbarActiveColor);
+        var transparentBrush = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+
+        toggleButton.Resources["ToggleButtonBackgroundChecked"] = activeBrush;
+        toggleButton.Resources["ToggleButtonBackgroundCheckedPointerOver"] = activePointerOverBrush;
+        toggleButton.Resources["ToggleButtonBackgroundCheckedPressed"] = activePressedBrush;
+        toggleButton.Resources["ToggleButtonBorderBrushChecked"] = transparentBrush;
+        toggleButton.Resources["ToggleButtonBorderBrushCheckedPointerOver"] = transparentBrush;
+        toggleButton.Resources["ToggleButtonBorderBrushCheckedPressed"] = transparentBrush;
     }
 
     private static FontIcon CreateToolbarIcon(string glyph)
@@ -612,11 +629,10 @@ public sealed partial class MainPage : Page
         
         if (isActive)
         {
-            var activeColor = Windows.UI.Color.FromArgb(0xFF, 0x00, 0x78, 0xD4);
-            FilterSplitButton.Background = new SolidColorBrush(activeColor);
+            FilterSplitButton.Background = new SolidColorBrush(ToolbarActiveColor);
             if (_shellFilterSplitButton != null)
             {
-                _shellFilterSplitButton.Background = new SolidColorBrush(activeColor);
+                _shellFilterSplitButton.Background = new SolidColorBrush(ToolbarActiveColor);
             }
         }
         else

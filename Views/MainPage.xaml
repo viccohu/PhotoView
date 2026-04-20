@@ -756,7 +756,7 @@
                             </MenuFlyout>
                         </FlyoutBase.AttachedFlyout>
                         <Border
-                            Margin="10,0,10,0"
+                            Margin="10,10,10,0"
                             CornerRadius="12"
                             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                             BorderBrush="{x:Bind BurstAccentColor, Mode=OneWay, Converter={StaticResource StringToBrushConverter}}"
@@ -764,7 +764,7 @@
                             Opacity="0.55"
                             Visibility="{x:Bind IsBurstCover, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                         <Border
-                            Margin="5,0,5,0"
+                            Margin="5,5,5,0"
                             CornerRadius="12"
                             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                             BorderBrush="{x:Bind BurstAccentColor, Mode=OneWay, Converter={StaticResource StringToBrushConverter}}"
@@ -801,22 +801,23 @@
                             Opacity="0.75"
                             Visibility="{x:Bind IsBurstMemberVisualActive, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                         <Button
-                            Margin="0,8,8,0"
-                            Padding="8,4"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Top"
-                            Background="{x:Bind BurstAccentColor, Mode=OneWay, Converter={StaticResource StringToBrushConverter}}"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            Margin="0,0,0,0"
+                            Padding="20,20"
+                            Opacity="1"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CircleElevationBorderBrush}"
                             BorderThickness="1"
                             CornerRadius="6"
                             Click="BurstToggleButton_Click"
                             Visibility="{x:Bind IsBurstCover, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <StackPanel Orientation="Horizontal" Spacing="4">
+                            <StackPanel Orientation="Horizontal" Spacing="4" Opacity=".8">
                                 <ContentControl Content="fold" ContentTemplate="{StaticResource FoldIconTemplate}"/>
                                 <TextBlock
                                     Text="{x:Bind BurstBadgeText, Mode=OneWay}"
                             FontSize="12"
-                            FontWeight="SemiBold"
+                           
                             Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
                             </StackPanel>
                         </Button>
@@ -1003,9 +1004,7 @@
                 </ItemsPanelTemplate>
             </GridView.ItemsPanel>
             <GridView.ItemContainerTransitions>
-                <TransitionCollection>
-                    <RepositionThemeTransition/>
-                </TransitionCollection>
+                <TransitionCollection/>
             </GridView.ItemContainerTransitions>
         </GridView>
 
