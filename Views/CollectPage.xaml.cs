@@ -48,6 +48,7 @@ public sealed partial class CollectPage : Page
     private bool _suppressNextThumbnailDragStart;
     private Button? _shellDeleteButton;
     private SplitButton? _shellFilterSplitButton;
+    private Microsoft.UI.Xaml.Shapes.Rectangle? _shellFilterActiveIndicator;
     private (ImageFileInfo Image, uint Rating)? _pendingRatingUpdate;
     private int _selectedThumbnailLoadVersion;
     private int _lastDirectionalNavigationDirection;
@@ -144,6 +145,7 @@ public sealed partial class CollectPage : Page
         _shellToolbarService.ClearToolbar(this);
         _shellDeleteButton = null;
         _shellFilterSplitButton = null;
+        _shellFilterActiveIndicator = null;
         _visibleThumbnailLoadTimer.Tick -= VisibleThumbnailLoadTimer_Tick;
         _ratingDebounceTimer.Tick -= RatingDebounceTimer_Tick;
         ViewModel.Images.CollectionChanged -= Images_CollectionChanged;
@@ -722,9 +724,11 @@ public sealed partial class CollectPage : Page
         _shellFilterSplitButton = new SplitButton
         {
             Padding = new Thickness(8),
-            Content = CreateToolbarIcon("\uE71C"),
             Flyout = CreateFilterFlyout()
         };
+        _shellFilterSplitButton.Content = CreateToolbarActiveIndicatorContent(
+            CreateToolbarIcon("\uE71C"),
+            out _shellFilterActiveIndicator);
         ApplyToolbarButtonChrome(_shellFilterSplitButton);
         _shellFilterSplitButton.Click += FilterSplitButton_Click;
         toolbar.Children.Add(_shellFilterSplitButton);
@@ -756,11 +760,17 @@ public sealed partial class CollectPage : Page
 
     private static void ApplyToolbarButtonChrome(Control control)
     {
+        var transparentBrush = GetThemeBrush("TransparentFillColor", Microsoft.UI.Colors.Transparent);
+        var disabledForegroundBrush = GetThemeBrush("TextFillColorDisabledBrush", Windows.UI.Color.FromArgb(0x5C, 0xFF, 0xFF, 0xFF));
+
         control.MinWidth = 40;
         control.Height = 40;
-        control.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
-        control.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        control.Background = transparentBrush;
+        control.BorderBrush = transparentBrush;
         control.BorderThickness = new Thickness(0);
+        control.Resources["ButtonBackgroundDisabled"] = transparentBrush;
+        control.Resources["ButtonBorderBrushDisabled"] = transparentBrush;
+        control.Resources["ButtonForegroundDisabled"] = disabledForegroundBrush;
     }
 
     private static FontIcon CreateToolbarIcon(string glyph)
@@ -771,6 +781,66 @@ public sealed partial class CollectPage : Page
             FontFamily = (FontFamily)Application.Current.Resources["SymbolThemeFontFamily"],
             FontSize = 16
         };
+    }
+
+    private static Brush GetToolbarActiveIndicatorBrush()
+    {
+        return GetThemeBrush("AccentFillColorDefaultBrush", Windows.UI.Color.FromArgb(0xFF, 0x00, 0x78, 0xD4));
+    }
+
+    private static Brush GetThemeBrush(string resourceKey, Windows.UI.Color fallbackColor)
+    {
+        if (Application.Current.Resources.TryGetValue(resourceKey, out var value) && value is Brush brush)
+        {
+            return brush;
+        }
+
+        return new SolidColorBrush(fallbackColor);
+    }
+
+    private static Grid CreateToolbarActiveIndicatorContent(FrameworkElement icon, out Microsoft.UI.Xaml.Shapes.Rectangle indicator)
+    {
+        var root = new Grid
+        {
+            Width = 24,
+            Height = 24,
+            IsHitTestVisible = false
+        };
+
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(3) });
+
+        icon.HorizontalAlignment = HorizontalAlignment.Center;
+        icon.VerticalAlignment = VerticalAlignment.Center;
+
+        Grid.SetRow(icon, 0);
+        root.Children.Add(icon);
+
+        indicator = new Microsoft.UI.Xaml.Shapes.Rectangle
+        {
+            Width = 25,
+            Height = 3,
+            Fill = GetToolbarActiveIndicatorBrush(),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Bottom,
+            Margin = new Thickness(0, 1, 0, 0),
+            RadiusX = 1.5,
+            RadiusY = 1.5,
+            Opacity = 0
+        };
+
+        Grid.SetRow(indicator, 1);
+        root.Children.Add(indicator);
+
+        return root;
+    }
+
+    private static void UpdateToolbarActiveIndicator(Microsoft.UI.Xaml.Shapes.Rectangle? indicator, bool isActive)
+    {
+        if (indicator != null)
+        {
+            indicator.Opacity = isActive ? 1 : 0;
+        }
     }
 
     private Flyout CreateFilterFlyout()
@@ -799,20 +869,12 @@ public sealed partial class CollectPage : Page
 
     private void UpdateFilterButtonState()
     {
-        if (ViewModel.Filter.IsFilterActive)
+        var isActive = ViewModel.Filter.IsFilterActive;
+        UpdateToolbarActiveIndicator(_shellFilterActiveIndicator, isActive);
+
+        if (_shellFilterSplitButton != null)
         {
-            var activeColor = Windows.UI.Color.FromArgb(0xFF, 0x00, 0x78, 0xD4);
-            if (_shellFilterSplitButton != null)
-            {
-                _shellFilterSplitButton.Background = new SolidColorBrush(activeColor);
-            }
-        }
-        else
-        {
-            if (_shellFilterSplitButton != null)
-            {
-                ApplyToolbarButtonChrome(_shellFilterSplitButton);
-            }
+            ApplyToolbarButtonChrome(_shellFilterSplitButton);
         }
     }
 

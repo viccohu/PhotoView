@@ -348,11 +348,17 @@ public sealed partial class MainPage : Page
 
     private static void ApplyToolbarButtonChrome(Control control)
     {
+        var transparentBrush = GetThemeBrush("TransparentFillColor", Microsoft.UI.Colors.Transparent);
+        var disabledForegroundBrush = GetThemeBrush("TextFillColorDisabledBrush", Windows.UI.Color.FromArgb(0x5C, 0xFF, 0xFF, 0xFF));
+
         control.MinWidth = 40;
         control.Height = 40;
-        control.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
-        control.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        control.Background = transparentBrush;
+        control.BorderBrush = transparentBrush;
         control.BorderThickness = new Thickness(0);
+        control.Resources["ButtonBackgroundDisabled"] = transparentBrush;
+        control.Resources["ButtonBorderBrushDisabled"] = transparentBrush;
+        control.Resources["ButtonForegroundDisabled"] = disabledForegroundBrush;
     }
 
     private static void ApplyToolbarToggleButtonCheckedChrome(ToggleButton toggleButton)
@@ -419,7 +425,7 @@ public sealed partial class MainPage : Page
 
         indicator = new Microsoft.UI.Xaml.Shapes.Rectangle
         {
-            Width = 30,
+            Width = 25,
             Height = 3,
             Fill = GetToolbarActiveIndicatorBrush(),
             HorizontalAlignment = HorizontalAlignment.Center,

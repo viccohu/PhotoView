@@ -22,7 +22,7 @@
             BackRequested="TitleBar_BackRequested"
             IsBackButtonVisible="False"
             Title="PhotoView"
-            Subtitle="1.0.0">
+            >
             
             <TitleBar.IconSource>
                 <ImageIconSource ImageSource="/Assets/WindowIcon.png" />
@@ -44,13 +44,7 @@
             PaneDisplayMode="Top"
             SelectedItem="{x:Bind ViewModel.Selected, Mode=TwoWay}">
             <NavigationView.MenuItems>
-                <!--
-                TODO: Update item titles by updating <x:Uid>.Content entries in Strings/en-us/Resources.resw.
-                https://docs.microsoft.com/windows/uwp/app-resources/localize-strings-ui-manifest#refer-to-a-string-resource-identifier-from-xaml
 
-                TODO: Update item icons by updating FontIcon.Glyph properties.
-                https://docs.microsoft.com/windows/apps/design/style/segoe-fluent-icons-font#icon-list
-                -->
                 <NavigationViewItem
                     x:Name="MainNavigationItem"
                     x:Uid="Shell_Main"
@@ -59,11 +53,7 @@
                     x:Name="PreviewNavigationItem"
                     x:Uid="Shell_Collect"
                     helpers:NavigationHelper.NavigateTo="PhotoView.ViewModels.CollectViewModel" />
-                <!--<NavigationViewItem x:Uid="Shell_FolderPage" Content="文件夹" helpers:NavigationHelper.NavigateTo="PhotoPro.ViewModels.CollectViewModel">
-                    <NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE838;"/>
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>-->
+
             </NavigationView.MenuItems>
 
             <Grid Margin="0,0,0,0">
