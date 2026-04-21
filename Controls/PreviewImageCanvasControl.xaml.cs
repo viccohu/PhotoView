@@ -87,6 +87,8 @@ public sealed partial class PreviewImageCanvasControl : UserControl
 
     public double ZoomPercent => GetCurrentZoomPercent();
 
+    public bool IsFitZoomActive => Math.Abs(GetTargetZoomPercent() - GetFitZoomPercent()) < 1d;
+
     public void SetZoomPercent(double percent)
     {
         if (_imageFileInfo == null)

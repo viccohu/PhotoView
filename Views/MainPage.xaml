@@ -22,15 +22,15 @@
 
         <DataTemplate x:Key="FoldIconTemplate">
             <Viewbox Width="14" Height="14">
-                <Canvas Width="76.47" Height="76.47">
+                <Canvas x:Name="FoldIconRoot" Width="76.47" Height="76.47" Tag="{Binding Foreground, RelativeSource={RelativeSource Mode=TemplatedParent}}">
                     <Path
-                        Fill="{ThemeResource TextFillColorPrimaryBrush}"
+                        Fill="{Binding Tag, ElementName=FoldIconRoot}"
                         Data="m64.01,23.92v27.16c0,2.31-1.87,4.17-4.17,4.17H14.92c-2.31,0-4.17-1.87-4.17-4.17v-1.29h43.63c2.31,0,4.17-1.87,4.17-4.17v-25.88h1.29c2.31,0,4.17,1.87,4.17,4.17Z"/>
                     <Path
-                        Fill="{ThemeResource TextFillColorPrimaryBrush}"
+                        Fill="{Binding Tag, ElementName=FoldIconRoot}"
                         Data="m72.75,32.66v27.16c0,2.31-1.87,4.17-4.17,4.17H23.66c-2.31,0-4.17-1.87-4.17-4.17v-1.29h43.63c2.31,0,4.17-1.87,4.17-4.17v-25.88h1.29c2.31,0,4.17,1.87,4.17,4.17Z"/>
                     <Path
-                        Fill="{ThemeResource TextFillColorPrimaryBrush}"
+                        Fill="{Binding Tag, ElementName=FoldIconRoot}"
                         Data="M6.17,11 H51.1 A4.17,4.17 0 0 1 55.27,15.17 V42.34 A4.17,4.17 0 0 1 51.1,46.51 H6.17 A4.17,4.17 0 0 1 2,42.34 V15.17 A4.17,4.17 0 0 1 6.17,11 Z"/>
                 </Canvas>
             </Viewbox>
@@ -86,6 +86,65 @@
                                     </VisualState>
                                     <VisualState x:Name="Disabled">
                                         <VisualState.Setters>
+                                            <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource TextFillColorDisabledBrush}"/>
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="BurstExpandButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="{ThemeResource ControlStrokeColorOnAccentTertiaryBrush}"/>
+            <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{ThemeResource CircleElevationBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="20,20"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <Border
+                                x:Name="RootBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{TemplateBinding CornerRadius}">
+                                <ContentPresenter
+                                    x:Name="ContentPresenter"
+                                    Padding="{TemplateBinding Padding}"
+                                    Content="{TemplateBinding Content}"
+                                    ContentTemplate="{TemplateBinding ContentTemplate}"
+                                    ContentTransitions="{TemplateBinding ContentTransitions}"
+                                    Foreground="{TemplateBinding Foreground}"
+                                    HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                    VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                            </Border>
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CommonStates">
+                                    <VisualState x:Name="Normal"/>
+                                    <VisualState x:Name="PointerOver">
+                                        <VisualState.Setters>
+                                            <Setter Target="RootBorder.Background" Value="{ThemeResource ControlStrokeColorOnAccentSecondaryBrush}"/>
+                                            <Setter Target="RootBorder.BorderBrush" Value="{ThemeResource ControlStrokeColorOnAccentSecondaryBrush}"/>
+                                            <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource ControlStrokeColorOnAccentSecondaryBrush}"/>
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                    <VisualState x:Name="Pressed">
+                                        <VisualState.Setters>
+                                            <Setter Target="RootBorder.Background" Value="{ThemeResource ControlStrokeColorOnAccentDefaultBrush}"/>
+                                            <Setter Target="RootBorder.BorderBrush" Value="{ThemeResource ControlStrokeColorOnAccentDefaultBrush}"/>
+                                            <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource ControlStrokeColorOnAccentDefaultBrush}"/>
+                                            <Setter Target="RootBorder.Opacity" Value="0.9"/>
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                    <VisualState x:Name="Disabled">
+                                        <VisualState.Setters>
+                                            <Setter Target="RootBorder.Opacity" Value="0.45"/>
                                             <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource TextFillColorDisabledBrush}"/>
                                         </VisualState.Setters>
                                     </VisualState>
@@ -807,24 +866,19 @@
                             Opacity="0.75"
                             Visibility="{x:Bind IsBurstMemberVisualActive, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                         <Button
+                            Style="{StaticResource BurstExpandButtonStyle}"
                             Margin="0,0,0,0"
-                            Padding="20,20"
                             Opacity="1"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
-                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                            BorderBrush="{ThemeResource CircleElevationBorderBrush}"
-                            BorderThickness="1"
-                            CornerRadius="6"
                             Click="BurstToggleButton_Click"
                             Visibility="{x:Bind IsBurstFoldButtonVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                             <StackPanel Orientation="Horizontal" Spacing="4" Opacity=".8">
-                                <ContentControl Content="fold" ContentTemplate="{StaticResource FoldIconTemplate}"/>
+                                <ContentControl Content="fold" ContentTemplate="{StaticResource FoldIconTemplate}" Foreground="{Binding Foreground, RelativeSource={RelativeSource Mode=TemplatedParent}}"/>
                                 <TextBlock
                                     Text="{x:Bind BurstBadgeText, Mode=OneWay}"
-                            FontSize="12"
-                           
-                            Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                                    FontSize="12"
+                                    Foreground="{Binding Foreground, RelativeSource={RelativeSource Mode=TemplatedParent}}"/>
                             </StackPanel>
                         </Button>
                         <Border
@@ -838,7 +892,7 @@
                             CornerRadius="6"
                             Visibility="{x:Bind IsBurstInlineBadgeVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                             <StackPanel Orientation="Horizontal" Spacing="4" Opacity=".8">
-                                <ContentControl Content="fold" ContentTemplate="{StaticResource FoldIconTemplate}"/>
+                                <ContentControl Content="fold" ContentTemplate="{StaticResource FoldIconTemplate}" Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
                                 <TextBlock
                                     Text="{x:Bind BurstOrdinalText, Mode=OneWay}"
                                     FontSize="12"

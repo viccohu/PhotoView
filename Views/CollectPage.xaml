@@ -301,7 +301,7 @@
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                 BorderThickness="0"
                 CornerRadius="8,0,0,8"
-                Visibility="{x:Bind ViewModel.IsInfoDrawerOpen, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                Visibility="Collapsed">
                 <controls:ImageInfoPanelControl ViewModel="{x:Bind PreviewInfoViewModel, Mode=OneWay}"/>
             </Border>
 
@@ -316,9 +316,9 @@
                 CornerRadius="0">
                 <Grid ColumnSpacing="10">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Left">
@@ -327,9 +327,12 @@
                             ToolTipService.ToolTip="折叠缩略图">
                             <FontIcon Glyph="&#xE75B;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
                         </ToggleButton>
-                        <Button Click="ToggleInfoDrawer_Click" ToolTipService.ToolTip="文件信息">
+                        <ToggleButton
+                            x:Name="InfoDrawerToggleButton"
+                            IsChecked="{x:Bind ViewModel.IsInfoDrawerOpen, Mode=TwoWay}"
+                            ToolTipService.ToolTip="文件信息">
                             <FontIcon Glyph="&#xE946;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
-                        </Button>
+                        </ToggleButton>
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
@@ -357,7 +360,7 @@
 
                     <Grid Grid.Column="2" ColumnSpacing="6" Width="280" HorizontalAlignment="Right">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="80"/>
+                            <ColumnDefinition Width="100"/>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
@@ -365,7 +368,7 @@
                         <Button
                             x:Name="ZoomValueButton"
                             Content="100%"
-                            Width="80"
+                            Width="100"
                             Click="ZoomValueButton_Click"/>
 
                         <Button

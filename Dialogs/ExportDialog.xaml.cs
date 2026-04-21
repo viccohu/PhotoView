@@ -1,5 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Media;
 using ImageMagick;
 using PhotoView.Contracts.Services;
 using PhotoView.Models;
@@ -100,6 +102,8 @@ public sealed partial class ExportDialog : ContentDialog
         ImageFolderTextBox.IsEnabled = ImageToggleButton.IsChecked == true;
         RawRatingComboBox.IsEnabled = RawToggleButton.IsChecked == true;
         RawFolderTextBox.IsEnabled = RawToggleButton.IsChecked == true;
+        UpdateToggleContentForeground(ImageToggleButton);
+        UpdateToggleContentForeground(RawToggleButton);
         
         var canExport = (ImageToggleButton.IsChecked == true || RawToggleButton.IsChecked == true) && 
                         !string.IsNullOrWhiteSpace(ExportPathTextBox.Text) &&
@@ -796,6 +800,36 @@ public sealed partial class ExportDialog : ContentDialog
             ExportPathTextBox.Text = folder.Path;
             UpdateControlStates();
         }
+    }
+
+    private void UpdateToggleContentForeground(ToggleButton? button)
+    {
+        if (button?.Content is not Panel panel)
+            return;
+
+        var foregroundBrush = GetToggleContentForegroundBrush(button.IsChecked == true);
+
+        foreach (var child in panel.Children)
+        {
+            if (child is ContentControl contentControl)
+            {
+                contentControl.Content = foregroundBrush;
+                contentControl.Foreground = foregroundBrush;
+            }
+            else if (child is TextBlock textBlock)
+            {
+                textBlock.Foreground = foregroundBrush;
+            }
+        }
+    }
+
+    private static Brush GetToggleContentForegroundBrush(bool isChecked)
+    {
+        var resourceKey = isChecked
+            ? "TextFillColorPrimaryBrush"
+            : "TextOnAccentFillColorPrimaryBrush";
+
+        return (Brush)Application.Current.Resources[resourceKey];
     }
 
     private enum ExportResizeMode

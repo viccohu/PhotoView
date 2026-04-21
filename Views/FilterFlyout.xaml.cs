@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Media;
 using PhotoView.ViewModels;
 using System;
 
@@ -13,6 +14,7 @@ public sealed partial class FilterFlyout : UserControl
     private ToggleButton? _ratingHasButton;
     private ToggleButton? _ratingNoButton;
     private bool _showBurstFilter;
+    private bool _isUpdatingRatingModeButtons;
 
     public bool ShowBurstFilter
     {
@@ -91,6 +93,8 @@ public sealed partial class FilterFlyout : UserControl
 
         ImageFilterButton.IsChecked = _filterViewModel.IsImageFilter;
         RawFilterButton.IsChecked = _filterViewModel.IsRawFilter;
+        UpdateToggleContentForeground(ImageFilterButton);
+        UpdateToggleContentForeground(RawFilterButton);
     }
 
     private void InitializeRatingModeButtons()
@@ -105,26 +109,32 @@ public sealed partial class FilterFlyout : UserControl
 
         _ratingAllButton = CreateRatingModeButton("AllIconTemplate", "全部", showText: false, _filterViewModel.RatingMode == RatingFilterMode.All);
         _ratingAllButton.Checked += RatingAllButton_Checked;
+        _ratingAllButton.Unchecked += RatingAllButton_Unchecked;
         RatingModeButtonsPanel.Children.Add(_ratingAllButton);
 
         _ratingHasButton = CreateRatingModeButton("HasRatingIconTemplate", "有评级", showText: false, _filterViewModel.RatingMode == RatingFilterMode.HasRating);
         _ratingHasButton.Checked += RatingHasButton_Checked;
+        _ratingHasButton.Unchecked += RatingHasButton_Unchecked;
         RatingModeButtonsPanel.Children.Add(_ratingHasButton);
 
         _ratingNoButton = CreateRatingModeButton("NoRatingIconTemplate", "无评级", showText: false, _filterViewModel.RatingMode == RatingFilterMode.NoRating);
         _ratingNoButton.Checked += RatingNoButton_Checked;
+        _ratingNoButton.Unchecked += RatingNoButton_Unchecked;
         RatingModeButtonsPanel.Children.Add(_ratingNoButton);
     }
 
     private ToggleButton CreateRatingModeButton(string iconTemplateKey, string text, bool showText, bool isChecked)
     {
-        return new ToggleButton
+        var button = new ToggleButton
         {
             Content = CreateFilterChipContent(iconTemplateKey, text, showText),
             Style = (Style)Resources["FilterChipToggleButtonStyle"],
             MinWidth = 40,
             IsChecked = isChecked
         };
+
+        UpdateToggleContentForeground(button);
+        return button;
     }
 
     private void UpdateRatingModeButtonsState()
@@ -132,12 +142,30 @@ public sealed partial class FilterFlyout : UserControl
         if (_filterViewModel == null)
             return;
 
-        if (_ratingAllButton != null)
-            _ratingAllButton.IsChecked = _filterViewModel.RatingMode == RatingFilterMode.All;
-        if (_ratingHasButton != null)
-            _ratingHasButton.IsChecked = _filterViewModel.RatingMode == RatingFilterMode.HasRating;
-        if (_ratingNoButton != null)
-            _ratingNoButton.IsChecked = _filterViewModel.RatingMode == RatingFilterMode.NoRating;
+        _isUpdatingRatingModeButtons = true;
+
+        try
+        {
+            if (_ratingAllButton != null)
+            {
+                _ratingAllButton.IsChecked = _filterViewModel.RatingMode == RatingFilterMode.All;
+                UpdateToggleContentForeground(_ratingAllButton);
+            }
+            if (_ratingHasButton != null)
+            {
+                _ratingHasButton.IsChecked = _filterViewModel.RatingMode == RatingFilterMode.HasRating;
+                UpdateToggleContentForeground(_ratingHasButton);
+            }
+            if (_ratingNoButton != null)
+            {
+                _ratingNoButton.IsChecked = _filterViewModel.RatingMode == RatingFilterMode.NoRating;
+                UpdateToggleContentForeground(_ratingNoButton);
+            }
+        }
+        finally
+        {
+            _isUpdatingRatingModeButtons = false;
+        }
 
         UpdateRatingControlsState();
     }
@@ -198,7 +226,7 @@ public sealed partial class FilterFlyout : UserControl
 
     private void RatingAllButton_Checked(object sender, RoutedEventArgs e)
     {
-        if (_filterViewModel == null)
+        if (_filterViewModel == null || _isUpdatingRatingModeButtons)
             return;
 
         if (_ratingHasButton != null)
@@ -207,11 +235,14 @@ public sealed partial class FilterFlyout : UserControl
             _ratingNoButton.IsChecked = false;
 
         _filterViewModel.RatingMode = RatingFilterMode.All;
+        UpdateToggleContentForeground(_ratingAllButton);
+        UpdateToggleContentForeground(_ratingHasButton);
+        UpdateToggleContentForeground(_ratingNoButton);
     }
 
     private void RatingHasButton_Checked(object sender, RoutedEventArgs e)
     {
-        if (_filterViewModel == null)
+        if (_filterViewModel == null || _isUpdatingRatingModeButtons)
             return;
 
         if (_ratingAllButton != null)
@@ -225,11 +256,14 @@ public sealed partial class FilterFlyout : UserControl
 
         RatingConditionComboBox.SelectedIndex = 0;
         RatingStarsControl.Value = 1;
+        UpdateToggleContentForeground(_ratingAllButton);
+        UpdateToggleContentForeground(_ratingHasButton);
+        UpdateToggleContentForeground(_ratingNoButton);
     }
 
     private void RatingNoButton_Checked(object sender, RoutedEventArgs e)
     {
-        if (_filterViewModel == null)
+        if (_filterViewModel == null || _isUpdatingRatingModeButtons)
             return;
 
         if (_ratingAllButton != null)
@@ -238,6 +272,79 @@ public sealed partial class FilterFlyout : UserControl
             _ratingHasButton.IsChecked = false;
 
         _filterViewModel.RatingMode = RatingFilterMode.NoRating;
+        UpdateToggleContentForeground(_ratingAllButton);
+        UpdateToggleContentForeground(_ratingHasButton);
+        UpdateToggleContentForeground(_ratingNoButton);
+    }
+
+    private void RatingAllButton_Unchecked(object sender, RoutedEventArgs e)
+    {
+        if (_filterViewModel == null || _isUpdatingRatingModeButtons)
+            return;
+
+        if (_filterViewModel.RatingMode == RatingFilterMode.All && _ratingAllButton != null)
+        {
+            _isUpdatingRatingModeButtons = true;
+            try
+            {
+                _ratingAllButton.IsChecked = true;
+                UpdateToggleContentForeground(_ratingAllButton);
+            }
+            finally
+            {
+                _isUpdatingRatingModeButtons = false;
+            }
+        }
+    }
+
+    private void RatingHasButton_Unchecked(object sender, RoutedEventArgs e)
+    {
+        if (_filterViewModel == null || _isUpdatingRatingModeButtons)
+            return;
+
+        if (_filterViewModel.RatingMode == RatingFilterMode.HasRating)
+        {
+            SwitchRatingModeToAll();
+        }
+    }
+
+    private void RatingNoButton_Unchecked(object sender, RoutedEventArgs e)
+    {
+        if (_filterViewModel == null || _isUpdatingRatingModeButtons)
+            return;
+
+        if (_filterViewModel.RatingMode == RatingFilterMode.NoRating)
+        {
+            SwitchRatingModeToAll();
+        }
+    }
+
+    private void SwitchRatingModeToAll()
+    {
+        if (_filterViewModel == null)
+            return;
+
+        _isUpdatingRatingModeButtons = true;
+
+        try
+        {
+            if (_ratingAllButton != null)
+                _ratingAllButton.IsChecked = true;
+            if (_ratingHasButton != null)
+                _ratingHasButton.IsChecked = false;
+            if (_ratingNoButton != null)
+                _ratingNoButton.IsChecked = false;
+        }
+        finally
+        {
+            _isUpdatingRatingModeButtons = false;
+        }
+
+        _filterViewModel.RatingMode = RatingFilterMode.All;
+        UpdateToggleContentForeground(_ratingAllButton);
+        UpdateToggleContentForeground(_ratingHasButton);
+        UpdateToggleContentForeground(_ratingNoButton);
+        UpdateRatingControlsState();
     }
 
     private void RatingConditionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -287,6 +394,7 @@ public sealed partial class FilterFlyout : UserControl
             return;
 
         PendingDeleteFilterButton.IsChecked = _filterViewModel.IsPendingDeleteFilter;
+        UpdateToggleContentForeground(PendingDeleteFilterButton);
     }
 
     private void PendingDeleteFilterButton_Checked(object sender, RoutedEventArgs e)
@@ -321,6 +429,7 @@ public sealed partial class FilterFlyout : UserControl
             return;
 
         BurstFilterButton.IsChecked = _filterViewModel.IsBurstFilter;
+        UpdateToggleContentForeground(BurstFilterButton);
     }
 
     private void BurstFilterButton_Checked(object sender, RoutedEventArgs e)
@@ -362,5 +471,35 @@ public sealed partial class FilterFlyout : UserControl
         }
 
         return panel;
+    }
+
+    private void UpdateToggleContentForeground(ToggleButton? button)
+    {
+        if (button?.Content is not Panel panel)
+            return;
+
+        var foregroundBrush = GetToggleContentForegroundBrush(button.IsChecked == true);
+
+        foreach (var child in panel.Children)
+        {
+            if (child is ContentControl contentControl)
+            {
+                contentControl.Content = foregroundBrush;
+                contentControl.Foreground = foregroundBrush;
+            }
+            else if (child is TextBlock textBlock)
+            {
+                textBlock.Foreground = foregroundBrush;
+            }
+        }
+    }
+
+    private static Brush GetToggleContentForegroundBrush(bool isChecked)
+    {
+        var resourceKey = isChecked
+            ? "TextFillColorPrimaryBrush"
+            : "TextOnAccentFillColorPrimaryBrush";
+
+        return (Brush)Application.Current.Resources[resourceKey];
     }
 }

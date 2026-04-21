@@ -24,6 +24,8 @@ public sealed partial class CollectPage : Page
 {
     private const double LoadDrawerExpandedWidth = 292;
     private const double LoadDrawerCollapsedWidth = 25;
+    private const double InfoDrawerExpandedWidth = 340;
+    private const double InfoDrawerCollapsedWidth = 0;
     private const int VisibleThumbnailStartBudgetPerTick = 16;
     private const int VisibleThumbnailPrefetchItemCount = 12;
     private const int DirectionalNavigationRepeatIntervalMs = 180;
@@ -41,6 +43,7 @@ public sealed partial class CollectPage : Page
     private PointerEventHandler? _thumbnailWheelHandler;
     private KeyEventHandler? _thumbnailPreviewKeyDownHandler;
     private Storyboard? _loadDrawerStoryboard;
+    private Storyboard? _infoDrawerStoryboard;
     private bool _isUnloaded;
     private bool _isDisposed;
     private bool _isUpdatingZoomSlider;
@@ -76,6 +79,8 @@ public sealed partial class CollectPage : Page
         NavigationCacheMode = NavigationCacheMode.Disabled;
         InitializeComponent();
         DataContext = ViewModel;
+        UpdateInfoDrawerState(animate: false);
+        UpdateZoomValueButtonContent(100d);
         _visibleThumbnailLoadTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromMilliseconds(50)
@@ -591,6 +596,10 @@ public sealed partial class CollectPage : Page
         {
             UpdateShellToolbarState();
         }
+        else if (e.PropertyName == nameof(CollectViewModel.IsInfoDrawerOpen))
+        {
+            UpdateInfoDrawerState();
+        }
     }
 
     private void LoadDrawerToggleButton_Click(object sender, RoutedEventArgs e)
@@ -738,6 +747,96 @@ public sealed partial class CollectPage : Page
     {
         LoadDrawerHeader.Visibility = visibility;
         LoadDrawerTree.Visibility = visibility;
+    }
+
+    private void UpdateInfoDrawerState(bool animate = true)
+    {
+        var isExpanded = ViewModel.IsInfoDrawerOpen;
+        var targetWidth = isExpanded ? InfoDrawerExpandedWidth : InfoDrawerCollapsedWidth;
+
+        if (isExpanded)
+        {
+            SetInfoDrawerContentVisibility(Visibility.Visible);
+        }
+
+        if (!animate)
+        {
+            StopInfoDrawerAnimation();
+            PreviewInfoDrawer.Width = targetWidth;
+            PreviewInfoDrawer.Visibility = isExpanded ? Visibility.Visible : Visibility.Collapsed;
+            return;
+        }
+
+        AnimateInfoDrawer(targetWidth, isExpanded);
+    }
+
+    private void AnimateInfoDrawer(double targetWidth, bool isExpanding)
+    {
+        StopInfoDrawerAnimation();
+
+        var currentWidth = PreviewInfoDrawer.ActualWidth > 0
+            ? PreviewInfoDrawer.ActualWidth
+            : PreviewInfoDrawer.Width;
+        if (double.IsNaN(currentWidth) || currentWidth < 0)
+        {
+            currentWidth = isExpanding ? InfoDrawerCollapsedWidth : InfoDrawerExpandedWidth;
+        }
+
+        if (Math.Abs(currentWidth - targetWidth) < 0.5)
+        {
+            PreviewInfoDrawer.Width = targetWidth;
+            PreviewInfoDrawer.Visibility = isExpanding ? Visibility.Visible : Visibility.Collapsed;
+            return;
+        }
+
+        PreviewInfoDrawer.Visibility = Visibility.Visible;
+
+        var animation = new DoubleAnimation
+        {
+            From = currentWidth,
+            To = targetWidth,
+            Duration = new Duration(TimeSpan.FromMilliseconds(180)),
+            EnableDependentAnimation = true,
+            EasingFunction = new QuadraticEase
+            {
+                EasingMode = EasingMode.EaseOut
+            }
+        };
+
+        Storyboard.SetTarget(animation, PreviewInfoDrawer);
+        Storyboard.SetTargetProperty(animation, "Width");
+
+        var storyboard = new Storyboard();
+        storyboard.Children.Add(animation);
+        storyboard.Completed += (_, _) =>
+        {
+            if (!ReferenceEquals(_infoDrawerStoryboard, storyboard))
+                return;
+
+            PreviewInfoDrawer.Width = targetWidth;
+            if (!ViewModel.IsInfoDrawerOpen)
+            {
+                SetInfoDrawerContentVisibility(Visibility.Collapsed);
+                PreviewInfoDrawer.Visibility = Visibility.Collapsed;
+            }
+
+            _infoDrawerStoryboard = null;
+        };
+
+        _infoDrawerStoryboard = storyboard;
+        storyboard.Begin();
+    }
+
+    private void StopInfoDrawerAnimation()
+    {
+        var storyboard = _infoDrawerStoryboard;
+        _infoDrawerStoryboard = null;
+        storyboard?.Stop();
+    }
+
+    private void SetInfoDrawerContentVisibility(Visibility visibility)
+    {
+        PreviewInfoDrawer.Visibility = visibility;
     }
 
     private async void RegisterShellToolbar()
@@ -1117,7 +1216,7 @@ public sealed partial class CollectPage : Page
     {
         _isUpdatingZoomSlider = true;
         ZoomSlider.Value = Math.Clamp(percent, ZoomSlider.Minimum, ZoomSlider.Maximum);
-        ZoomValueButton.Content = $"{percent:F0}%";
+        UpdateZoomValueButtonContent(percent);
         _isUpdatingZoomSlider = false;
     }
 
@@ -1127,7 +1226,7 @@ public sealed partial class CollectPage : Page
             return;
 
         PreviewCanvas.SetZoomPercent(e.NewValue);
-        ZoomValueButton.Content = $"{e.NewValue:F0}%";
+        UpdateZoomValueButtonContent(e.NewValue);
     }
 
     private void ZoomValueButton_Click(object sender, RoutedEventArgs e)
@@ -1149,7 +1248,55 @@ public sealed partial class CollectPage : Page
         var targetPercent = Math.Clamp(ZoomSlider.Value + deltaPercent, ZoomSlider.Minimum, ZoomSlider.Maximum);
         PreviewCanvas.SetZoomPercent(targetPercent);
         ZoomSlider.Value = targetPercent;
-        ZoomValueButton.Content = $"{targetPercent:F0}%";
+        UpdateZoomValueButtonContent(targetPercent);
+    }
+
+    private void UpdateZoomValueButtonContent(double percent)
+    {
+        var iconLayer = new Grid
+        {
+            Width = 20,
+            Height = 20
+        };
+
+        iconLayer.Children.Add(new FontIcon
+        {
+            Glyph = "\uE9A6",
+            FontFamily = (FontFamily)Application.Current.Resources["SymbolThemeFontFamily"],
+            FontSize = 20,
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Center
+        });
+
+        if (PreviewCanvas.IsFitZoomActive)
+        {
+            iconLayer.Children.Add(new FontIcon
+            {
+                Glyph = "\uE915",
+                FontFamily = (FontFamily)Application.Current.Resources["SymbolThemeFontFamily"],
+                FontSize = 12,
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 0, 0, 0)
+            });
+        }
+
+        ZoomValueButton.Content = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Center,
+            Children =
+            {
+                iconLayer,
+                new TextBlock
+                {
+                    Text = $"{percent:F0}%",
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            }
+        };
     }
 
     private void RotatePreview_Click(object sender, RoutedEventArgs e)
