@@ -887,7 +887,14 @@ public sealed partial class CollectPage : Page
     {
         var flyout = new Flyout
         {
-            Placement = FlyoutPlacementMode.Bottom
+            Placement = FlyoutPlacementMode.BottomEdgeAlignedRight
+        };
+        flyout.FlyoutPresenterStyle = new Style(typeof(FlyoutPresenter))
+        {
+            Setters =
+            {
+                new Setter(Control.PaddingProperty, new Thickness(16))
+            }
         };
         flyout.Opening += (_, _) =>
         {

@@ -4,77 +4,198 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:converters="using:PhotoView.Converters"
+    xmlns:shapes="using:Microsoft.UI.Xaml.Shapes"
     mc:Ignorable="d">
 
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" MinWidth="180"/>
-            <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="Auto" MinWidth="240"/>
-        </Grid.ColumnDefinitions>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+    <UserControl.Resources>
+        <Style x:Key="FilterChipToggleButtonStyle" TargetType="ToggleButton">
+            <Setter Property="MinHeight" Value="40"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
 
-        <StackPanel Grid.Column="0" Margin="0,0,12,0" Spacing="8">
-            <TextBlock Text="类型" Style="{ThemeResource BodyTextBlockStyle}"/>
-            <StackPanel x:Name="FileTypeButtonsPanel" Spacing="4">
+        <DataTemplate x:Key="PictureFileIconTemplate">
+            <Viewbox Width="20" Height="20">
+                <Canvas Width="25" Height="25">
+                    <shapes:Path Fill="{ThemeResource TextFillColorPrimaryBrush}" Data="m6.28,14.65s-.01.06-.03.09c-.02.03-.06.05-.11.07-.05.02-.12.03-.2.04s-.19.01-.32.01-.23,0-.32-.01-.15-.02-.2-.04c-.05-.02-.09-.04-.11-.07-.02-.03-.03-.06-.03-.09v-6.1s.01-.06.03-.09c.02-.03.06-.05.11-.06.05-.02.12-.03.2-.04s.19-.01.32-.01.24,0,.32.01.15.02.2.04c.05.02.09.04.11.06.02.03.03.06.03.09v6.1Z"/>
+                    <shapes:Path Fill="{ThemeResource TextFillColorPrimaryBrush}" Data="m14.76,14.66s-.01.06-.03.09-.05.05-.1.06c-.05.02-.11.03-.19.04-.08,0-.18.01-.31.01s-.23,0-.31-.01c-.08,0-.15-.02-.19-.04-.05-.02-.08-.04-.1-.06s-.03-.05-.03-.09v-2.64c0-.15-.01-.29-.04-.41s-.07-.23-.13-.32c-.06-.09-.13-.16-.22-.2-.09-.05-.2-.07-.32-.07-.15,0-.3.06-.46.17-.15.12-.32.29-.5.51v2.96s-.01.06-.03.09-.05.05-.1.06c-.05.02-.11.03-.19.04-.08,0-.18.01-.3.01s-.23,0-.31-.01c-.08,0-.14-.02-.19-.04-.05-.02-.08-.04-.1-.06s-.03-.05-.03-.09v-2.64c0-.15-.01-.29-.04-.41-.03-.12-.07-.23-.13-.32-.06-.09-.13-.16-.22-.2-.09-.05-.2-.07-.32-.07-.15,0-.31.06-.46.17-.15.12-.32.29-.5.51v2.96s-.01.06-.03.09c-.02.02-.05.05-.1.06-.05.02-.11.03-.19.04-.08,0-.18.01-.31.01s-.23,0-.31-.01c-.08,0-.14-.02-.19-.04-.05-.02-.08-.04-.1-.06-.02-.02-.03-.05-.03-.09v-4.45s0-.06.03-.09c.02-.02.05-.05.09-.06.04-.02.1-.03.17-.04s.15-.01.26-.01.2,0,.27.01c.07,0,.12.02.16.04.04.02.07.04.08.06.02.02.03.05.03.09v.51c.25-.27.5-.47.74-.6.25-.13.5-.2.77-.2.18,0,.35.02.5.06.15.04.28.09.39.16.12.07.22.16.3.26.08.1.15.21.21.33.13-.14.27-.27.39-.37.13-.1.26-.19.38-.25.13-.06.25-.11.38-.14s.25-.05.38-.05c.3,0,.55.05.75.15.2.1.37.23.5.41.13.17.22.37.27.6s.08.47.08.73v2.85Z"/>
+                    <shapes:Path Fill="{ThemeResource TextFillColorPrimaryBrush}" Data="m20.05,10.52c0,.16-.02.28-.06.35s-.08.12-.14.12h-.53c.07.08.13.17.16.27.03.1.05.21.05.32,0,.26-.04.49-.13.69-.09.2-.21.37-.37.51-.16.14-.36.24-.59.31-.23.07-.49.11-.77.11-.14,0-.28-.02-.41-.05-.13-.04-.23-.08-.3-.12-.04.04-.08.09-.11.15-.03.06-.05.13-.05.2,0,.1.04.18.13.24.09.06.21.1.36.1l1.09.04c.25,0,.48.05.68.11s.37.15.5.26.24.25.31.4.11.33.11.53c0,.22-.05.43-.15.62s-.24.36-.44.51-.44.26-.73.34c-.29.08-.64.13-1.03.13s-.71-.03-.98-.09c-.27-.06-.49-.14-.66-.25-.17-.11-.3-.23-.38-.38-.08-.15-.12-.31-.12-.49,0-.11.01-.22.04-.31.03-.1.07-.2.13-.29s.12-.18.2-.26c.08-.08.17-.16.28-.24-.14-.08-.26-.18-.33-.31-.08-.13-.12-.28-.12-.43,0-.2.05-.38.14-.54.09-.16.21-.31.35-.44-.12-.12-.21-.26-.28-.42-.07-.16-.11-.37-.11-.61,0-.26.05-.49.14-.7s.22-.38.38-.52c.16-.14.36-.25.59-.32s.48-.11.75-.11c.14,0,.28,0,.4.02.13.02.25.04.36.07h1.42c.06,0,.1.04.14.11s.05.2.05.37Zm-1.33,4.61c0-.15-.06-.26-.18-.34-.12-.08-.29-.12-.5-.13l-.9-.02c-.09.06-.16.12-.21.18-.05.06-.09.11-.13.17-.03.05-.05.11-.06.16s-.02.1-.02.15c0,.17.08.29.25.38s.41.13.72.13c.19,0,.35-.02.48-.06.13-.04.24-.09.32-.15.08-.06.14-.13.17-.21s.05-.16.05-.25Zm-.3-3.56c0-.24-.07-.43-.2-.56-.13-.13-.32-.2-.57-.2-.12,0-.23.02-.33.06s-.17.1-.23.17c-.06.07-.11.16-.14.25-.03.1-.05.19-.05.3,0,.23.07.41.2.54.13.13.32.2.56.2.13,0,.24-.02.33-.06.09-.04.17-.09.23-.16.06-.07.11-.15.14-.24.03-.09.05-.19.05-.29Z"/>
+                    <shapes:Path Fill="{ThemeResource TextFillColorPrimaryBrush}" Data="m19.37,1.03H2.91C1.55,1.03.44,2.13.44,3.49v18.02c0,1.35,1.11,2.46,2.47,2.46h19.17c1.36,0,2.47-1.1,2.47-2.46V6.19l-5.19-5.16Zm2.72,21.41H2.91c-.52,0-.93-.42-.93-.93V3.49c0-.51.42-.93.93-.93h15.23v2.64c0,1.22.99,2.2,2.21,2.2h2.66v14.11c0,.51-.42.93-.93.93Z"/>
+                </Canvas>
+            </Viewbox>
+        </DataTemplate>
+
+        <DataTemplate x:Key="RawFileIconTemplate">
+            <Viewbox Width="20" Height="20">
+                <Canvas Width="25" Height="25">
+                    <shapes:Path Fill="{ThemeResource TextFillColorPrimaryBrush}" Data="m8.53,15.5s0,.07-.02.09-.05.05-.1.06c-.05.02-.12.03-.22.03-.1,0-.23,0-.4,0-.14,0-.25,0-.34,0-.08,0-.15-.02-.2-.04-.05-.02-.08-.04-.1-.07s-.04-.06-.05-.1l-.58-1.44c-.07-.16-.14-.31-.21-.43s-.14-.23-.22-.32-.18-.15-.28-.19c-.11-.04-.23-.06-.37-.06h-.41v2.46s-.01.06-.03.09c-.02.03-.06.05-.11.07-.05.02-.12.03-.2.04s-.19.01-.32.01-.23,0-.32-.01-.15-.02-.2-.04c-.05-.02-.09-.04-.11-.07-.02-.03-.03-.06-.03-.09v-5.87c0-.15.04-.25.11-.32.08-.06.17-.1.28-.1h1.68c.17,0,.31,0,.42,0,.11,0,.21.01.3.02.26.04.5.1.71.19.21.09.39.21.53.35.15.15.26.32.33.51s.12.43.12.68c0,.22-.03.41-.08.59-.06.18-.14.34-.24.48-.11.14-.24.26-.4.36-.16.1-.34.19-.54.25.1.05.19.1.27.17.09.07.17.15.24.24.08.1.15.2.21.33s.13.26.2.41l.55,1.27c.05.13.08.22.1.28.02.06.03.1.03.14Zm-1.7-4.39c0-.21-.05-.39-.15-.54-.1-.15-.26-.25-.48-.31-.07-.02-.14-.03-.23-.04s-.2-.01-.35-.01h-.59v1.83h.67c.19,0,.35-.02.49-.07.14-.04.26-.11.35-.19.09-.08.16-.18.21-.29.05-.11.07-.24.07-.38Z"/>
+                    <shapes:Path Fill="{ThemeResource TextFillColorPrimaryBrush}" Data="m13.25,15.52s-.02.08-.05.11c-.03.03-.09.05-.16.06-.07.01-.18.02-.32.02-.15,0-.26,0-.33-.02-.07-.01-.12-.03-.15-.06-.03-.03-.04-.06-.04-.11v-.35c-.18.2-.39.35-.63.46-.24.11-.5.16-.79.16-.24,0-.46-.03-.66-.09s-.37-.15-.52-.27c-.15-.12-.26-.27-.34-.45-.08-.18-.12-.39-.12-.63,0-.26.05-.48.15-.68.1-.19.26-.35.46-.47.2-.13.46-.22.76-.28.3-.06.65-.09,1.05-.09h.44v-.27c0-.14-.01-.26-.04-.37-.03-.1-.08-.19-.14-.26-.07-.07-.15-.12-.26-.15-.11-.03-.24-.05-.4-.05-.21,0-.4.02-.57.07s-.31.1-.44.15-.23.11-.32.16-.16.07-.21.07c-.04,0-.07-.01-.1-.03-.03-.02-.05-.06-.07-.1-.02-.04-.03-.1-.04-.16-.01-.06-.02-.13-.02-.21,0-.1,0-.18.03-.24.02-.06.05-.11.1-.16.05-.05.13-.1.25-.16.12-.06.25-.11.41-.16.16-.05.33-.09.52-.12.19-.03.38-.05.58-.05.35,0,.65.03.9.1.25.07.46.17.62.31s.28.32.35.55c.07.22.11.49.11.79v3Zm-1.24-1.91h-.48c-.2,0-.38.01-.52.04-.14.03-.26.07-.35.13-.09.06-.16.13-.2.22-.04.08-.06.18-.06.29,0,.19.06.33.18.44.12.11.28.16.5.16.18,0,.34-.04.49-.13.15-.09.3-.22.46-.4v-.76Z"/>
+                    <shapes:Path Fill="{ThemeResource TextFillColorPrimaryBrush}" Data="m21.29,11.04s0,.08-.02.14c-.01.05-.03.13-.06.23l-1.2,4.03c-.02.06-.04.1-.07.14-.03.03-.07.06-.12.08-.06.02-.13.03-.24.04-.1,0-.24,0-.4,0s-.3,0-.4-.01c-.1,0-.19-.02-.24-.04s-.1-.05-.13-.08-.05-.08-.06-.13l-.75-2.71v-.04s-.02.04-.02.04l-.69,2.71c-.01.06-.03.1-.06.14-.03.03-.07.06-.13.08-.06.02-.14.03-.25.04-.1,0-.24,0-.4,0s-.3,0-.4-.01c-.1,0-.18-.02-.24-.04s-.1-.05-.13-.08c-.03-.03-.05-.08-.06-.13l-1.19-4.03c-.03-.1-.05-.17-.06-.23s-.01-.1-.01-.14c0-.03,0-.06.03-.09.02-.02.05-.04.1-.06s.11-.03.2-.03c.08,0,.19,0,.31,0,.13,0,.24,0,.33,0,.08,0,.15.02.2.04.05.02.08.04.1.07.02.03.03.06.04.1l.89,3.27v.06s.02-.06.02-.06l.83-3.27s.03-.07.05-.1c.02-.03.05-.05.1-.07.04-.02.1-.03.18-.04.08,0,.18,0,.3,0s.22,0,.3.01.14.02.18.03.08.03.1.06c.02.02.03.05.04.09l.9,3.3.02.05v-.06s.87-3.27.87-3.27c0-.04.02-.07.04-.1.02-.03.05-.05.1-.07.05-.02.11-.03.19-.04.08,0,.18,0,.31,0s.23,0,.3,0c.08,0,.14.02.19.03.05.01.08.03.09.06.02.02.03.05.03.09Z"/>
+                    <shapes:Path Fill="{ThemeResource TextFillColorPrimaryBrush}" Data="m19.37,1.03H2.91C1.55,1.03.44,2.13.44,3.49v18.02c0,1.35,1.11,2.46,2.47,2.46h19.17c1.36,0,2.47-1.1,2.47-2.46V6.19l-5.19-5.16Zm2.72,21.41H2.91c-.52,0-.93-.42-.93-.93V3.49c0-.51.42-.93.93-.93h15.23v2.64c0,1.22.99,2.2,2.21,2.2h2.66v14.11c0,.51-.42.93-.93.93Z"/>
+                </Canvas>
+            </Viewbox>
+        </DataTemplate>
+
+        <DataTemplate x:Key="DeleteFileIconTemplate">
+            <Viewbox Width="20" Height="20">
+                <Canvas Width="25" Height="25">
+                    <shapes:Path Fill="{ThemeResource TextFillColorPrimaryBrush}" Data="m13.95,12.5l2.32-2.3c.4-.4.4-1.04,0-1.44s-1.05-.4-1.45,0l-2.32,2.3-2.32-2.3c-.4-.4-1.05-.4-1.45,0s-.4,1.04,0,1.44l2.32,2.3-2.32,2.3c-.4.4-.4,1.04,0,1.44.2.2.46.3.73.3s.53-.1.73-.3l2.32-2.3,2.32,2.3c.2.2.46.3.73.3s.53-.1.73-.3c.4-.4.4-1.04,0-1.44l-2.32-2.3Z"/>
+                    <shapes:Path Fill="{ThemeResource TextFillColorPrimaryBrush}" Data="m19.37,1.03H2.91C1.55,1.03.44,2.13.44,3.49v18.02c0,1.35,1.11,2.46,2.47,2.46h19.17c1.36,0,2.47-1.1,2.47-2.46V6.19l-5.19-5.16Zm2.72,21.41H2.91c-.52,0-.93-.42-.93-.93V3.49c0-.51.42-.93.93-.93h15.23v2.64c0,1.22.99,2.2,2.21,2.2h2.66v14.11c0,.51-.42.93-.93.93Z"/>
+                </Canvas>
+            </Viewbox>
+        </DataTemplate>
+
+        <DataTemplate x:Key="BurstFileIconTemplate">
+            <Viewbox Width="20" Height="20">
+                <Canvas Width="25" Height="25">
+                    <shapes:Path Fill="{ThemeResource TextFillColorPrimaryBrush}" Data="m16.09,10.68v3.64c0,.31-.25.56-.56.56h-6.06c-.31,0-.56-.25-.56-.56v-.17h5.88c.31,0,.56-.25.56-.56v-3.47h.17c.31,0,.56.25.56.56Z"/>
+                    <shapes:Path Fill="{ThemeResource TextFillColorPrimaryBrush}" Data="m18.3,12.87v3.64c0,.31-.25.56-.56.56h-6.06c-.31,0-.56-.25-.56-.56v-.17h5.88c.31,0,.56-.25.56-.56v-3.47h.17c.31,0,.56.25.56.56Z"/>
+                    <shapes:Path Fill="{ThemeResource TextFillColorPrimaryBrush}" Data="m7.27,7.93h6.06c.31,0,.56.25.56.56v3.63c0,.31-.25.56-.56.56h-6.06c-.31,0-.56-.25-.56-.56v-3.63c0-.31.25-.56.56-.56Z"/>
+                    <shapes:Path Fill="{ThemeResource TextFillColorPrimaryBrush}" Data="m19.37,1.03H2.91C1.55,1.03.44,2.13.44,3.49v18.02c0,1.35,1.11,2.46,2.47,2.46h19.17c1.36,0,2.47-1.1,2.47-2.46V6.19l-5.19-5.16Zm2.72,21.41H2.91c-.52,0-.93-.42-.93-.93V3.49c0-.51.42-.93.93-.93h15.23v2.64c0,1.22.99,2.2,2.21,2.2h2.66v14.11c0,.51-.42.93-.93.93Z"/>
+                </Canvas>
+            </Viewbox>
+        </DataTemplate>
+
+        <DataTemplate x:Key="AllIconTemplate">
+            <Viewbox Width="40" Height="40">
+                <Canvas Width="100" Height="100" >
+                    <shapes:Path Fill="{ThemeResource TextFillColorPrimaryBrush}" Data="m36.89,64.93c.17.51.28.92.32,1.22.04.3-.01.53-.17.68-.16.15-.44.24-.84.28-.4.04-.95.05-1.65.05s-1.3-.01-1.71-.03c-.41-.02-.72-.06-.93-.13-.21-.06-.36-.15-.45-.27-.09-.11-.16-.26-.21-.45l-1.87-5.58h-10.42l-1.76,5.43c-.06.2-.13.37-.23.5-.09.14-.24.24-.45.32-.21.08-.5.13-.88.16-.38.03-.88.04-1.49.04-.66,0-1.17-.02-1.54-.06-.37-.04-.63-.15-.77-.31-.14-.16-.19-.4-.15-.7.04-.3.15-.7.32-1.2l8.56-24.62c.09-.24.19-.44.3-.59.11-.15.3-.26.55-.34.25-.08.6-.13,1.04-.15.44-.02,1.03-.03,1.76-.03.84,0,1.52.01,2.02.03s.89.07,1.17.15c.28.08.48.2.6.35.12.16.23.37.31.64l8.58,24.6Zm-12.74-20.35h-.02l-3.92,11.8h7.87l-3.92-11.8Z"/>
+                    <shapes:Path Fill="{ThemeResource TextFillColorPrimaryBrush}" Data="m61.29,64.67c0,.43-.02.79-.05,1.08-.04.29-.09.54-.16.73-.07.19-.16.33-.27.42-.11.09-.23.13-.38.13h-12.72c-.47,0-.87-.14-1.19-.42s-.48-.73-.48-1.36v-25.2c0-.14.05-.27.14-.39.09-.11.25-.21.46-.28.21-.07.5-.13.87-.17.36-.04.82-.06,1.36-.06s1.02.02,1.37.06c.36.04.64.1.86.17.21.07.37.16.46.28.09.11.14.24.14.39v22.33h8.73c.14,0,.27.04.38.12.11.08.2.21.27.39.07.18.12.42.16.71.04.29.05.65.05,1.08Z"/>
+                    <shapes:Path Fill="{ThemeResource TextFillColorPrimaryBrush}" Data="m85.14,64.67c0,.43-.02.79-.05,1.08-.04.29-.09.54-.16.73-.07.19-.16.33-.27.42-.11.09-.23.13-.38.13h-12.72c-.47,0-.87-.14-1.19-.42s-.48-.73-.48-1.36v-25.2c0-.14.05-.27.14-.39.09-.11.25-.21.46-.28.21-.07.5-.13.87-.17.36-.04.82-.06,1.36-.06s1.02.02,1.37.06c.36.04.64.1.86.17.21.07.37.16.46.28.09.11.14.24.14.39v22.33h8.73c.14,0,.27.04.38.12.11.08.2.21.27.39.07.18.12.42.16.71.04.29.05.65.05,1.08Z"/>
+                    <shapes:Path Fill="{ThemeResource TextFillColorPrimaryBrush}" Data="m86.41,78.3H13.18c-5.45,0-9.89-4.44-9.89-9.89v-29.22c0-5.45,4.44-9.89,9.89-9.89h73.22c5.45,0,9.89,4.44,9.89,9.89v29.22c0,5.45-4.44,9.89-9.89,9.89ZM13.18,33.3c-3.25,0-5.89,2.64-5.89,5.89v29.22c0,3.25,2.64,5.89,5.89,5.89h73.22c3.25,0,5.89-2.64,5.89-5.89v-29.22c0-3.25-2.64-5.89-5.89-5.89H13.18Z"/>
+                </Canvas>
+            </Viewbox>
+        </DataTemplate>
+
+        <DataTemplate x:Key="HasRatingIconTemplate">
+            <Viewbox Width="40" Height="40">
+                <Canvas Width="100" Height="100">
+                    <shapes:Path Fill="{ThemeResource TextFillColorPrimaryBrush}" Data="m87.41,78.3H14.18c-5.45,0-9.89-4.44-9.89-9.89v-29.22c0-5.45,4.44-9.89,9.89-9.89h73.22c5.45,0,9.89,4.44,9.89,9.89v29.22c0,5.45-4.44,9.89-9.89,9.89ZM14.18,33.3c-3.25,0-5.89,2.64-5.89,5.89v29.22c0,3.25,2.64,5.89,5.89,5.89h73.22c3.25,0,5.89-2.64,5.89-5.89v-29.22c0-3.25-2.64-5.89-5.89-5.89H14.18Z"/>
+                    <shapes:Path Fill="{ThemeResource TextFillColorPrimaryBrush}" Data="m51.78,40.88l3.53,7.15c.16.32.47.55.83.6l7.89,1.15c.9.13,1.26,1.24.61,1.87l-5.71,5.57c-.26.25-.38.61-.32.97l1.35,7.86c.15.9-.79,1.58-1.59,1.16l-7.06-3.71c-.32-.17-.7-.17-1.02,0l-7.06,3.71c-.8.42-1.74-.26-1.59-1.16l1.35-7.86c.06-.36-.06-.72-.32-.97l-5.71-5.57c-.65-.63-.29-1.74.61-1.87l7.89-1.15c.36-.05.67-.28.83-.6l3.53-7.15c.4-.81,1.56-.81,1.97,0Z"/>
+                </Canvas>
+            </Viewbox>
+        </DataTemplate>
+
+        <DataTemplate x:Key="NoRatingIconTemplate">
+            <Viewbox Width="40" Height="40">
+                <Canvas Width="100" Height="100">
+                    <shapes:Path Fill="{ThemeResource TextFillColorPrimaryBrush}" Data="m87.41,78.3H14.18c-5.45,0-9.89-4.44-9.89-9.89v-29.22c0-5.45,4.44-9.89,9.89-9.89h73.22c5.45,0,9.89,4.44,9.89,9.89v29.22c0,5.45-4.44,9.89-9.89,9.89ZM14.18,33.3c-3.25,0-5.89,2.64-5.89,5.89v29.22c0,3.25,2.64,5.89,5.89,5.89h73.22c3.25,0,5.89-2.64,5.89-5.89v-29.22c0-3.25-2.64-5.89-5.89-5.89H14.18Z"/>
+                    <shapes:Path Fill="{ThemeResource TextFillColorPrimaryBrush}" Data="m50.8,47.93l.92,1.87c.74,1.5,2.18,2.55,3.84,2.79l2.07.3-1.5,1.46c-1.2,1.17-1.75,2.86-1.47,4.51l.35,2.06-1.85-.97c-.73-.38-1.55-.59-2.37-.59s-1.64.2-2.37.59l-1.85.97.35-2.06c.28-1.65-.26-3.34-1.47-4.51l-1.5-1.46,2.07-.3c1.66-.24,3.09-1.28,3.84-2.79l.92-1.87m0-7.66c-.39,0-.78.2-.98.61l-3.53,7.15c-.16.32-.47.55-.83.6l-7.89,1.15c-.9.13-1.26,1.24-.61,1.87l5.71,5.57c.26.25.38.61.32.97l-1.35,7.86c-.12.71.44,1.28,1.08,1.28.17,0,.34-.04.51-.13l7.06-3.71c.16-.08.33-.13.51-.13s.35.04.51.13l7.06,3.71c.17.09.34.13.51.13.64,0,1.2-.58,1.08-1.28l-1.35-7.86c-.06-.36.06-.72.32-.97l5.71-5.57c.65-.63.29-1.74-.61-1.87l-7.89-1.15c-.36-.05-.67-.28-.83-.6l-3.53-7.15c-.2-.41-.59-.61-.98-.61h0Z"/>
+                </Canvas>
+            </Viewbox>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid >
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0" Margin="10,0,16,0" Spacing="8" HorizontalAlignment="Stretch">
+            <TextBlock Text="类型" Style="{ThemeResource BodyTextBlockStyle}" Margin="10,0"/>
+
+            <StackPanel HorizontalAlignment="Stretch">
                 <ToggleButton
                     x:Name="ImageFilterButton"
-                    Content="照片（JPG、PNG）"
+                    Style="{StaticResource FilterChipToggleButtonStyle}"
                     Checked="ImageFilterButton_Checked"
-                    Unchecked="ImageFilterButton_Unchecked"/>
+                    Unchecked="ImageFilterButton_Unchecked">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <ContentControl ContentTemplate="{StaticResource PictureFileIconTemplate}"/>
+                        <TextBlock Text="照片" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </ToggleButton>
+
                 <ToggleButton
                     x:Name="RawFilterButton"
-                    Content="数字底片（RAW）"
+                    Style="{StaticResource FilterChipToggleButtonStyle}"
                     FontSize="14"
                     Checked="RawFilterButton_Checked"
-                    Unchecked="RawFilterButton_Unchecked"/>
+                    Unchecked="RawFilterButton_Unchecked">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <ContentControl ContentTemplate="{StaticResource RawFileIconTemplate}"/>
+                        <TextBlock Text="数字底片" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </ToggleButton>
+
+                <Border
+                    Margin="10,0,10,0"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="0,0,0,1"/>
+
+                <ToggleButton
+                    x:Name="PendingDeleteFilterButton"
+                    Style="{StaticResource FilterChipToggleButtonStyle}"
+                    Checked="PendingDeleteFilterButton_Checked"
+                    Unchecked="PendingDeleteFilterButton_Unchecked">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <ContentControl ContentTemplate="{StaticResource DeleteFileIconTemplate}"/>
+                        <TextBlock Text="预删除" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </ToggleButton>
+
+                <Border
+                    Margin="10,0,10,0"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="0,0,0,1"/>
+
+                <ToggleButton
+                    x:Name="BurstFilterButton"
+                    Style="{StaticResource FilterChipToggleButtonStyle}"
+                    Checked="BurstFilterButton_Checked"
+                    Unchecked="BurstFilterButton_Unchecked"
+                    Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <ContentControl ContentTemplate="{StaticResource BurstFileIconTemplate}"/>
+                        <TextBlock Text="连拍" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </ToggleButton>
             </StackPanel>
-            <ToggleButton
-                x:Name="PendingDeleteFilterButton"
-                Content="预删除"
-                Margin="0,8,0,0"
-                Checked="PendingDeleteFilterButton_Checked"
-                Unchecked="PendingDeleteFilterButton_Unchecked"/>
-            <ToggleButton
-                x:Name="BurstFilterButton"
-                Content="连拍"
-                Margin="0,8,0,0"
-                Checked="BurstFilterButton_Checked"
-                Unchecked="BurstFilterButton_Unchecked"
-                Visibility="Collapsed"/>
         </StackPanel>
 
         <Border Grid.Column="1" Width="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" Margin="0,4"/>
 
-        <StackPanel Grid.Column="2" Margin="12,0,0,0" Spacing="12">
+        <StackPanel Grid.Column="2" Margin="16,0,20,0" Spacing="12" HorizontalAlignment="Left">
             <TextBlock Text="评级" Style="{ThemeResource BodyTextBlockStyle}"/>
 
             <StackPanel Spacing="4">
                 <TextBlock Text="模式" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
-                <StackPanel x:Name="RatingModeButtonsPanel" Orientation="Horizontal" Spacing="4"/>
+                <StackPanel x:Name="RatingModeButtonsPanel" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Stretch"/>
             </StackPanel>
-
+            <Border
+                Margin="0,6,0,0"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="0,0,0,1"/>
             <StackPanel Spacing="8">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <StackPanel Spacing="4" Width="100">
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Spacing="4">
                         <TextBlock Text="条件" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
-                        <ComboBox x:Name="RatingConditionComboBox">
+                        <ComboBox x:Name="RatingConditionComboBox" >
                             <ComboBoxItem Tag="GreaterOrEqual" Content="&gt;="/>
                             <ComboBoxItem Tag="Equals" Content="="/>
                             <ComboBoxItem Tag="LessOrEqual" Content="&lt;="/>
                         </ComboBox>
                     </StackPanel>
-                    <StackPanel Spacing="4">
+                          
+                    <StackPanel Grid.Column="1" Spacing="4" HorizontalAlignment="Left">
                         <TextBlock Text="星级" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
                         <RatingControl
                             x:Name="RatingStarsControl"
                             IsClearEnabled="True"
                             MaxRating="5"/>
                     </StackPanel>
-                </StackPanel>
+                </Grid>
             </StackPanel>
         </StackPanel>
     </Grid>

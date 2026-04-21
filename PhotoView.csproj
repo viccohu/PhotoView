@@ -25,14 +25,21 @@
     <GenerateAssemblyVersionAttribute>false</GenerateAssemblyVersionAttribute>
   </PropertyGroup>
   <ItemGroup>
+    <Content Remove="Assets\ALL.svg" />
     <Content Remove="Assets\BadgeLogo.scale-100.png" />
     <Content Remove="Assets\BadgeLogo.scale-125.png" />
     <Content Remove="Assets\BadgeLogo.scale-150.png" />
     <Content Remove="Assets\BadgeLogo.scale-200.png" />
     <Content Remove="Assets\BadgeLogo.scale-400.png" />
+    <Content Remove="Assets\burst_file.svg" />
+    <Content Remove="Assets\delete_file.svg" />
     <Content Remove="Assets\flip-vertical.svg" />
     <Content Remove="Assets\flip.svg" />
+    <Content Remove="Assets\hsa star.svg" />
     <Content Remove="Assets\lgo-08.png" />
+    <Content Remove="Assets\no_start.svg" />
+    <Content Remove="Assets\pictrue_file.svg" />
+    <Content Remove="Assets\RAW_file.svg" />
     <Content Remove="Assets\sub-folder.svg" />
     <Content Remove="Assets\table-closed.svg" />
     <Content Remove="Assets\table-open.svg" />

@@ -426,7 +426,7 @@
                         <FontIcon Glyph="&#xE71C;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontWeight="Normal" FontSize="16"/>
                     </SplitButton.Content>
                     <SplitButton.Flyout>
-                        <Flyout Placement="Bottom">
+                        <Flyout Placement="BottomEdgeAlignedRight">
                             <Flyout.FlyoutPresenterStyle>
                                 <Style TargetType="FlyoutPresenter">
                                     <Setter Property="Padding" Value="16"/>

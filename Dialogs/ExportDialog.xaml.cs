@@ -16,9 +16,9 @@ namespace PhotoView.Dialogs;
 
 public sealed partial class ExportDialog : ContentDialog
 {
-    private const int DefaultResizeLongSide = 2000;
+    private const int DefaultResizeLongSide = 1920;
     private const int DefaultResizePercent = 50;
-    private const int DefaultJpegQuality = 90;
+    private const int DefaultJpegQuality = 100;
 
     private readonly ISettingsService _settingsService;
     private readonly List<ImageFileInfo> _images;
@@ -442,14 +442,14 @@ public sealed partial class ExportDialog : ContentDialog
         var usePercent = IsPercentResizeModeSelected();
         ResizeLongSideTextBox.Visibility = usePercent ? Visibility.Collapsed : Visibility.Visible;
         ResizePercentTextBox.Visibility = usePercent ? Visibility.Visible : Visibility.Collapsed;
-        ResizeInputHeaderTextBlock.Text = usePercent ? "缩放输入框（百分比）" : "缩放输入框（像素）";
+        ResizeInputHeaderTextBlock.Text = usePercent ? "长边尺寸（百分比）" : "长边尺寸（像素）";
 
         var outputFormat = GetSelectedOutputFormat();
         var qualityEnabled = enabled && outputFormat == ExportOutputFormat.Jpg;
         ResizeQualitySlider.IsEnabled = qualityEnabled;
         ResizeQualityTextBlock.Opacity = qualityEnabled ? 1d : 0.55d;
         ResizeQualityTextBlock.Text = outputFormat == ExportOutputFormat.Jpg
-            ? $"质量：{(int)Math.Round(ResizeQualitySlider.Value)}%（仅 JPG）"
+            ? $"质量：{(int)Math.Round(ResizeQualitySlider.Value)}%"
             : "质量：仅 JPG 生效";
 
         if (!enabled)

@@ -103,29 +103,28 @@ public sealed partial class FilterFlyout : UserControl
         if (_filterViewModel == null)
             return;
 
-        _ratingAllButton = new ToggleButton
-        {
-            Content = "全部",
-            IsChecked = _filterViewModel.RatingMode == RatingFilterMode.All
-        };
+        _ratingAllButton = CreateRatingModeButton("AllIconTemplate", "全部", showText: false, _filterViewModel.RatingMode == RatingFilterMode.All);
         _ratingAllButton.Checked += RatingAllButton_Checked;
         RatingModeButtonsPanel.Children.Add(_ratingAllButton);
 
-        _ratingHasButton = new ToggleButton
-        {
-            Content = "有评级",
-            IsChecked = _filterViewModel.RatingMode == RatingFilterMode.HasRating
-        };
+        _ratingHasButton = CreateRatingModeButton("HasRatingIconTemplate", "有评级", showText: false, _filterViewModel.RatingMode == RatingFilterMode.HasRating);
         _ratingHasButton.Checked += RatingHasButton_Checked;
         RatingModeButtonsPanel.Children.Add(_ratingHasButton);
 
-        _ratingNoButton = new ToggleButton
-        {
-            Content = "无评级",
-            IsChecked = _filterViewModel.RatingMode == RatingFilterMode.NoRating
-        };
+        _ratingNoButton = CreateRatingModeButton("NoRatingIconTemplate", "无评级", showText: false, _filterViewModel.RatingMode == RatingFilterMode.NoRating);
         _ratingNoButton.Checked += RatingNoButton_Checked;
         RatingModeButtonsPanel.Children.Add(_ratingNoButton);
+    }
+
+    private ToggleButton CreateRatingModeButton(string iconTemplateKey, string text, bool showText, bool isChecked)
+    {
+        return new ToggleButton
+        {
+            Content = CreateFilterChipContent(iconTemplateKey, text, showText),
+            Style = (Style)Resources["FilterChipToggleButtonStyle"],
+            MinWidth = 40,
+            IsChecked = isChecked
+        };
     }
 
     private void UpdateRatingModeButtonsState()
@@ -338,5 +337,30 @@ public sealed partial class FilterFlyout : UserControl
             return;
 
         _filterViewModel.IsBurstFilter = false;
+    }
+
+    private StackPanel CreateFilterChipContent(string iconTemplateKey, string text, bool showText)
+    {
+        var panel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8
+        };
+
+        panel.Children.Add(new ContentControl
+        {
+            ContentTemplate = (DataTemplate)Resources[iconTemplateKey]
+        });
+
+        if (showText)
+        {
+            panel.Children.Add(new TextBlock
+            {
+                Text = text,
+                VerticalAlignment = VerticalAlignment.Center
+            });
+        }
+
+        return panel;
     }
 }
