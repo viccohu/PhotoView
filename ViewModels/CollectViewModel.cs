@@ -854,12 +854,17 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
 
     private bool MatchFilter(ImageFileInfo image)
     {
-        return MatchFileType(image) && MatchRating(image) && MatchPendingDelete(image);
+        return MatchFileType(image) && MatchRating(image) && MatchPendingDelete(image) && MatchBurst(image);
     }
 
     private bool MatchPendingDelete(ImageFileInfo image)
     {
         return !Filter.IsPendingDeleteFilter || image.IsPendingDelete;
+    }
+
+    private bool MatchBurst(ImageFileInfo image)
+    {
+        return !Filter.IsBurstFilter || image.BurstGroup?.Images.Count > 1;
     }
 
     private bool MatchFileType(ImageFileInfo image)

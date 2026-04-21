@@ -7,21 +7,34 @@
     mc:Ignorable="d"
     PrimaryButtonText="确认删除"
     SecondaryButtonText="取消"
-    DefaultButton="Secondary">
+    DefaultButton="Secondary"
+    CornerRadius="12">
 
     <StackPanel Spacing="16">
         <TextBlock
             x:Name="ContentText"
             TextWrapping="Wrap"
             FontSize="14"/>
-        
+
         <TextBlock
+            x:Name="SelectionHintText"
             Text="选择要删除的文件类型："
             FontSize="12"
             Opacity="0.7"/>
-        
+
+        <Border
+            x:Name="BurstWarningHost"
+            Padding="10,8"
+            CornerRadius="8"
+            Visibility="Collapsed">
+            <TextBlock
+                x:Name="BurstWarningText"
+                TextWrapping="Wrap"
+                FontSize="12"/>
+        </Border>
+
         <StackPanel x:Name="ToggleButtonsPanel" Orientation="Horizontal" Spacing="8"/>
-        
+
         <StackPanel x:Name="ProgressPanel" Spacing="8" Visibility="Collapsed">
             <ProgressBar
                 x:Name="DeleteProgressBar"
@@ -29,7 +42,7 @@
                 Minimum="0"
                 Maximum="100"
                 Value="0"/>
-            
+
             <TextBlock
                 x:Name="ProgressText"
                 FontSize="12"

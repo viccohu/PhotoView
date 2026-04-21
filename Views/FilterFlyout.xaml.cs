@@ -12,6 +12,17 @@ public sealed partial class FilterFlyout : UserControl
     private ToggleButton? _ratingAllButton;
     private ToggleButton? _ratingHasButton;
     private ToggleButton? _ratingNoButton;
+    private bool _showBurstFilter;
+
+    public bool ShowBurstFilter
+    {
+        get => _showBurstFilter;
+        set
+        {
+            _showBurstFilter = value;
+            UpdateBurstFilterVisibility();
+        }
+    }
 
     public FilterViewModel? FilterViewModel
     {
@@ -22,9 +33,9 @@ public sealed partial class FilterFlyout : UserControl
             {
                 _filterViewModel.PropertyChanged -= OnFilterViewModelPropertyChanged;
             }
-            
+
             _filterViewModel = value;
-            
+
             if (_filterViewModel != null)
             {
                 _filterViewModel.PropertyChanged += OnFilterViewModelPropertyChanged;
@@ -32,15 +43,17 @@ public sealed partial class FilterFlyout : UserControl
                 InitializeRatingModeButtons();
                 InitializeRatingControls();
                 UpdatePendingDeleteFilterButton();
+                UpdateBurstFilterButton();
             }
         }
     }
 
     public FilterFlyout()
     {
-        this.InitializeComponent();
+        InitializeComponent();
         RatingConditionComboBox.SelectionChanged += RatingConditionComboBox_SelectionChanged;
         RatingStarsControl.ValueChanged += RatingStarsControl_ValueChanged;
+        UpdateBurstFilterVisibility();
     }
 
     private void OnFilterViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -58,11 +71,17 @@ public sealed partial class FilterFlyout : UserControl
         {
             UpdatePendingDeleteFilterButton();
         }
+        else if (e.PropertyName == nameof(FilterViewModel.IsBurstFilter))
+        {
+            UpdateBurstFilterButton();
+        }
     }
 
     private void InitializeFileTypeButtons()
     {
         UpdateFileTypeButtonsState();
+        UpdateBurstFilterVisibility();
+        UpdateBurstFilterButton();
     }
 
     private void UpdateFileTypeButtonsState()
@@ -84,7 +103,6 @@ public sealed partial class FilterFlyout : UserControl
         if (_filterViewModel == null)
             return;
 
-        // 添加"全部"按钮
         _ratingAllButton = new ToggleButton
         {
             Content = "全部",
@@ -93,7 +111,6 @@ public sealed partial class FilterFlyout : UserControl
         _ratingAllButton.Checked += RatingAllButton_Checked;
         RatingModeButtonsPanel.Children.Add(_ratingAllButton);
 
-        // 添加"有评级"按钮
         _ratingHasButton = new ToggleButton
         {
             Content = "有评级",
@@ -102,7 +119,6 @@ public sealed partial class FilterFlyout : UserControl
         _ratingHasButton.Checked += RatingHasButton_Checked;
         RatingModeButtonsPanel.Children.Add(_ratingHasButton);
 
-        // 添加"无评级"按钮
         _ratingNoButton = new ToggleButton
         {
             Content = "无评级",
@@ -132,7 +148,6 @@ public sealed partial class FilterFlyout : UserControl
         if (_filterViewModel == null)
             return;
 
-        // 设置评级条件
         switch (_filterViewModel.RatingCondition)
         {
             case RatingCondition.GreaterOrEqual:
@@ -146,9 +161,7 @@ public sealed partial class FilterFlyout : UserControl
                 break;
         }
 
-        // 设置星级
         RatingStarsControl.Value = _filterViewModel.RatingStars > 0 ? _filterViewModel.RatingStars : -1;
-
         UpdateRatingControlsState();
     }
 
@@ -156,6 +169,7 @@ public sealed partial class FilterFlyout : UserControl
     {
         if (_filterViewModel == null)
             return;
+
         _filterViewModel.IsImageFilter = true;
     }
 
@@ -163,6 +177,7 @@ public sealed partial class FilterFlyout : UserControl
     {
         if (_filterViewModel == null)
             return;
+
         _filterViewModel.IsImageFilter = false;
     }
 
@@ -170,6 +185,7 @@ public sealed partial class FilterFlyout : UserControl
     {
         if (_filterViewModel == null)
             return;
+
         _filterViewModel.IsRawFilter = true;
     }
 
@@ -177,6 +193,7 @@ public sealed partial class FilterFlyout : UserControl
     {
         if (_filterViewModel == null)
             return;
+
         _filterViewModel.IsRawFilter = false;
     }
 
@@ -204,12 +221,9 @@ public sealed partial class FilterFlyout : UserControl
             _ratingNoButton.IsChecked = false;
 
         _filterViewModel.RatingMode = RatingFilterMode.HasRating;
-        
-        // 自动重置为 ≥1 星
         _filterViewModel.RatingCondition = RatingCondition.GreaterOrEqual;
         _filterViewModel.RatingStars = 1;
-        
-        // 更新 UI
+
         RatingConditionComboBox.SelectedIndex = 0;
         RatingStarsControl.Value = 1;
     }
@@ -263,7 +277,7 @@ public sealed partial class FilterFlyout : UserControl
         if (_filterViewModel == null)
             return;
 
-        bool isEnabled = _filterViewModel.RatingMode == RatingFilterMode.HasRating;
+        var isEnabled = _filterViewModel.RatingMode == RatingFilterMode.HasRating;
         RatingConditionComboBox.IsEnabled = isEnabled;
         RatingStarsControl.IsEnabled = isEnabled;
     }
@@ -290,5 +304,39 @@ public sealed partial class FilterFlyout : UserControl
             return;
 
         _filterViewModel.IsPendingDeleteFilter = false;
+    }
+
+    private void UpdateBurstFilterVisibility()
+    {
+        if (BurstFilterButton == null)
+            return;
+
+        BurstFilterButton.Visibility = _showBurstFilter
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    private void UpdateBurstFilterButton()
+    {
+        if (_filterViewModel == null)
+            return;
+
+        BurstFilterButton.IsChecked = _filterViewModel.IsBurstFilter;
+    }
+
+    private void BurstFilterButton_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_filterViewModel == null)
+            return;
+
+        _filterViewModel.IsBurstFilter = true;
+    }
+
+    private void BurstFilterButton_Unchecked(object sender, RoutedEventArgs e)
+    {
+        if (_filterViewModel == null)
+            return;
+
+        _filterViewModel.IsBurstFilter = false;
     }
 }

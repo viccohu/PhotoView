@@ -40,6 +40,9 @@ public partial class FilterViewModel : ObservableObject
     [ObservableProperty]
     private bool _isPendingDeleteFilter;
 
+    [ObservableProperty]
+    private bool _isBurstFilter;
+
     public event EventHandler? FilterChanged;
 
     public bool IsFilterActive
@@ -47,7 +50,7 @@ public partial class FilterViewModel : ObservableObject
         get
         {
             return IsImageFilter || IsRawFilter ||
-                   RatingMode != RatingFilterMode.All || IsPendingDeleteFilter;
+                   RatingMode != RatingFilterMode.All || IsPendingDeleteFilter || IsBurstFilter;
         }
     }
 
@@ -95,6 +98,11 @@ public partial class FilterViewModel : ObservableObject
         OnFilterChanged();
     }
 
+    partial void OnIsBurstFilterChanged(bool value)
+    {
+        OnFilterChanged();
+    }
+
     public void Reset()
     {
         IsImageFilter = false;
@@ -103,6 +111,7 @@ public partial class FilterViewModel : ObservableObject
         RatingCondition = RatingCondition.GreaterOrEqual;
         RatingStars = 1;
         IsPendingDeleteFilter = false;
+        IsBurstFilter = false;
     }
 
     private void OnFilterChanged()

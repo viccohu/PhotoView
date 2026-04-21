@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using PhotoView.Contracts.Services;
 using PhotoView.Dialogs;
+using PhotoView.Helpers;
 using PhotoView.Models;
 using PhotoView.Services;
 using PhotoView.ViewModels;
@@ -894,7 +895,8 @@ public sealed partial class CollectPage : Page
             {
                 flyout.Content = new FilterFlyout
                 {
-                    FilterViewModel = ViewModel.Filter
+                    FilterViewModel = ViewModel.Filter,
+                    ShowBurstFilter = false
                 };
             }
         };
@@ -1207,6 +1209,28 @@ public sealed partial class CollectPage : Page
         {
             XamlRoot = XamlRoot
         };
+
+        dialog.ConfirmDeleteAsync = async currentDialog =>
+        {
+            var filesToDelete = GetFilesToDelete(pendingImages, currentDialog.SelectedExtensions);
+            if (filesToDelete.Count == 0)
+            {
+                currentDialog.SetComplete();
+                return;
+            }
+
+            var imagePathMap = DeleteWorkflowHelper.BuildPrimaryImagePathMap(pendingImages);
+            var deleteResult = await DeleteWorkflowHelper.DeleteFilesAsync(
+                filesToDelete,
+                imagePathMap,
+                currentDialog,
+                App.GetService<IThumbnailService>(),
+                message => System.Diagnostics.Debug.WriteLine($"[CollectPage] delete failed {message}"));
+
+            ViewModel.RemoveDeletedImages(deleteResult.DeletedImages);
+            QueueVisibleThumbnailLoad("delete");
+        };
+
         var result = await dialog.ShowAsync();
         if (result != ContentDialogResult.Primary)
             return;
@@ -1214,6 +1238,18 @@ public sealed partial class CollectPage : Page
         var filesToDelete = GetFilesToDelete(pendingImages, dialog.SelectedExtensions);
         if (filesToDelete.Count == 0)
             return;
+
+        var imagePathMap = DeleteWorkflowHelper.BuildPrimaryImagePathMap(pendingImages);
+        var deleteResult = await DeleteWorkflowHelper.DeleteFilesAsync(
+            filesToDelete,
+            imagePathMap,
+            dialog,
+            App.GetService<IThumbnailService>(),
+            message => System.Diagnostics.Debug.WriteLine($"[CollectPage] delete failed {message}"));
+
+        ViewModel.RemoveDeletedImages(deleteResult.DeletedImages);
+        QueueVisibleThumbnailLoad("delete");
+        return;
 
         dialog.StartProgress();
         var deletedImages = new List<ImageFileInfo>();
@@ -1249,6 +1285,8 @@ public sealed partial class CollectPage : Page
 
     private static List<StorageFile> GetFilesToDelete(List<ImageFileInfo> pendingImages, List<string> selectedExtensions)
     {
+        return DeleteWorkflowHelper.GetFilesToDelete(pendingImages, selectedExtensions);
+
         var files = new List<StorageFile>();
         foreach (var image in pendingImages)
         {

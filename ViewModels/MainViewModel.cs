@@ -89,6 +89,8 @@ public partial class MainViewModel : ObservableRecipient
     private FolderNode? _externalDeviceNode;
     private bool _isRatingPreloadRunning;
     private int _ratingPreloadVersion;
+    private int _selectedCount;
+    private int _totalPhotoCount;
     public FilterViewModel Filter { get; }
 
     public event EventHandler? ImagesChanged;
@@ -121,6 +123,18 @@ public partial class MainViewModel : ObservableRecipient
     {
         get => _pendingDeleteCount;
         private set => SetProperty(ref _pendingDeleteCount, value);
+    }
+
+    public int SelectedCount
+    {
+        get => _selectedCount;
+        private set => SetProperty(ref _selectedCount, value);
+    }
+
+    public int TotalPhotoCount
+    {
+        get => _totalPhotoCount;
+        private set => SetProperty(ref _totalPhotoCount, value);
     }
 
     public double ThumbnailHeight => ThumbnailSize switch
@@ -242,6 +256,8 @@ public partial class MainViewModel : ObservableRecipient
             BreadcrumbPath.Add(_externalDeviceNode);
             CancelCurrentImageWork();
             _allImages.Clear();
+            UpdateTotalPhotoCount();
+            SelectedCount = 0;
             Images.Clear();
             ImagesChanged?.Invoke(this, EventArgs.Empty);
         }
@@ -317,6 +333,8 @@ public partial class MainViewModel : ObservableRecipient
         CancelCurrentImageWork();
         ClearBurstGroups();
         _allImages.Clear();
+        UpdateTotalPhotoCount();
+        SelectedCount = 0;
         Images.Clear();
         ImagesChanged?.Invoke(this, EventArgs.Empty);
         await Task.Yield();
@@ -413,6 +431,7 @@ public partial class MainViewModel : ObservableRecipient
 
             _allImages.Clear();
             _allImages.AddRange(Images);
+            UpdateTotalPhotoCount();
             await HydrateDateTakenForBurstCandidatesAsync(cancellationToken);
             RebuildBurstGroups();
             ApplyFilter();
@@ -566,6 +585,7 @@ public partial class MainViewModel : ObservableRecipient
 
         if (addedAny)
         {
+            UpdateTotalPhotoCount();
             ImagesChanged?.Invoke(this, EventArgs.Empty);
             QueueRatingPreloadForCurrentImages(cancellationToken);
         }
@@ -1159,6 +1179,8 @@ public partial class MainViewModel : ObservableRecipient
         CancelCurrentImageWork();
         ClearBurstGroups();
         _allImages.Clear();
+        UpdateTotalPhotoCount();
+        SelectedCount = 0;
         Images.Clear();
         ImagesChanged?.Invoke(this, EventArgs.Empty);
         await Task.Yield();
@@ -1254,6 +1276,7 @@ public partial class MainViewModel : ObservableRecipient
 
             _allImages.Clear();
             _allImages.AddRange(Images);
+            UpdateTotalPhotoCount();
             await HydrateDateTakenForBurstCandidatesAsync(cancellationToken);
             RebuildBurstGroups();
             ApplyFilter();
@@ -1280,8 +1303,7 @@ public partial class MainViewModel : ObservableRecipient
         if (image == null)
             return;
 
-        image.IsPendingDelete = !image.IsPendingDelete;
-        UpdatePendingDeleteCount();
+        TogglePendingDeleteForSelected(new[] { image });
     }
 
     public void TogglePendingDeleteForSelected(IEnumerable<ImageFileInfo> selectedImages)
@@ -1289,7 +1311,7 @@ public partial class MainViewModel : ObservableRecipient
         if (selectedImages == null)
             return;
 
-        var images = selectedImages.ToList();
+        var images = ExpandSelectionImages(selectedImages);
         if (images.Count == 0)
             return;
 
@@ -1311,19 +1333,51 @@ public partial class MainViewModel : ObservableRecipient
         PendingDeleteCount = 0;
     }
 
+    public void UpdateSelectedCount(int selectedCount)
+    {
+        SelectedCount = Math.Max(0, selectedCount);
+    }
+
     public List<ImageFileInfo> GetPendingDeleteImages()
     {
-        return Images.Where(i => i.IsPendingDelete).ToList();
+        return _allImages.Where(i => i.IsPendingDelete).ToList();
+    }
+
+    public int GetPendingDeleteBurstGroupCount()
+    {
+        return _burstGroups.Count(group => group.Images.Any(member => member.IsPendingDelete));
+    }
+
+    public List<ImageFileInfo> ExpandSelectionImages(IEnumerable<ImageFileInfo> images)
+    {
+        if (images == null)
+            return new List<ImageFileInfo>();
+
+        var selectedSet = new HashSet<ImageFileInfo>();
+        foreach (var image in images.Where(image => image != null))
+        {
+            foreach (var member in GetSelectionImages(image))
+            {
+                selectedSet.Add(member);
+            }
+        }
+
+        return _allImages.Where(selectedSet.Contains).ToList();
     }
 
     public void RemoveImagesFromLibrary(IEnumerable<ImageFileInfo> images)
     {
-        foreach (var image in images.ToList())
+        var imagesToRemove = images
+            .Distinct()
+            .ToList();
+
+        foreach (var image in imagesToRemove)
         {
             _allImages.Remove(image);
             Images.Remove(image);
         }
 
+        UpdateTotalPhotoCount();
         RebuildBurstGroups();
         ApplyFilter();
     }
@@ -1342,13 +1396,54 @@ public partial class MainViewModel : ObservableRecipient
             Images[visibleIndex] = newImage;
         }
 
+        UpdateTotalPhotoCount();
+        RebuildBurstGroups();
+        ApplyFilter();
+    }
+
+    public void ApplyLibraryChanges(IEnumerable<ImageFileInfo> imagesToRemove, IEnumerable<KeyValuePair<ImageFileInfo, ImageFileInfo>> replacements)
+    {
+        var removalSet = imagesToRemove
+            .Distinct()
+            .ToHashSet();
+
+        foreach (var image in removalSet)
+        {
+            _allImages.Remove(image);
+            Images.Remove(image);
+        }
+
+        foreach (var replacement in replacements)
+        {
+            var oldImage = replacement.Key;
+            var newImage = replacement.Value;
+
+            var sourceIndex = _allImages.IndexOf(oldImage);
+            if (sourceIndex >= 0)
+            {
+                _allImages[sourceIndex] = newImage;
+            }
+
+            var visibleIndex = Images.IndexOf(oldImage);
+            if (visibleIndex >= 0)
+            {
+                Images[visibleIndex] = newImage;
+            }
+        }
+
+        UpdateTotalPhotoCount();
         RebuildBurstGroups();
         ApplyFilter();
     }
 
     private void UpdatePendingDeleteCount()
     {
-        PendingDeleteCount = Images.Count(i => i.IsPendingDelete);
+        PendingDeleteCount = _allImages.Count(i => i.IsPendingDelete);
+    }
+
+    private void UpdateTotalPhotoCount()
+    {
+        TotalPhotoCount = _allImages.Sum(image => image.Group?.Images.Count ?? 1);
     }
 
     public static bool IsRawFile(string extension)
@@ -1594,6 +1689,18 @@ public partial class MainViewModel : ObservableRecipient
         return burstGroup.Images.Any(member => member.IsPendingDelete);
     }
 
+    private IEnumerable<ImageFileInfo> GetSelectionImages(ImageFileInfo image)
+    {
+        if (image.BurstGroup is { Images.Count: > 1 } burstGroup &&
+            _settingsService.CollapseBurstGroups &&
+            image.IsCollapsedBurstCover)
+        {
+            return burstGroup.Images;
+        }
+
+        return new[] { image };
+    }
+
     private List<ImageFileInfo> GetVisibleBurstMembers(BurstPhotoGroup burstGroup)
     {
         return burstGroup.Images
@@ -1758,23 +1865,48 @@ public partial class MainViewModel : ObservableRecipient
             if (!processedBurstGroups.Add(burstGroup))
                 continue;
 
-            var visibleMembers = burstGroup.Images
+            var matchedMembers = burstGroup.Images
                 .Where(MatchFilter)
                 .OrderBy(member => _allImages.IndexOf(member))
                 .ToList();
 
-            if (visibleMembers.Count == 0)
+            if (matchedMembers.Count == 0)
                 continue;
 
-            var displayPrimary = burstGroup.GetCoverImage(visibleMembers);
+            var allVisibleMembers = burstGroup.Images
+                .OrderBy(member => _allImages.IndexOf(member))
+                .ToList();
+            var isFullGroupMatched = matchedMembers.Count == allVisibleMembers.Count;
+
+            if (matchedMembers.Count == 1)
+            {
+                var singleMember = matchedMembers[0];
+                singleMember.SetBurstDisplayCover(false);
+                singleMember.SetBurstChildVisible(true);
+                Images.Add(singleMember);
+                continue;
+            }
+
+            if (!isFullGroupMatched)
+            {
+                foreach (var member in matchedMembers)
+                {
+                    member.SetBurstDisplayCover(false);
+                    member.SetBurstChildVisible(true);
+                    Images.Add(member);
+                }
+                continue;
+            }
+
+            var displayPrimary = burstGroup.GetCoverImage(matchedMembers);
 
             Images.Add(displayPrimary);
             displayPrimary.SetBurstChildVisible(false);
             displayPrimary.SetBurstDisplayCover(!burstGroup.IsExpanded);
 
-            if (!burstGroup.IsExpanded || visibleMembers.Count <= 1)
+            if (!burstGroup.IsExpanded)
             {
-                foreach (var hiddenMember in visibleMembers.Where(member => !ReferenceEquals(member, displayPrimary)))
+                foreach (var hiddenMember in matchedMembers.Where(member => !ReferenceEquals(member, displayPrimary)))
                 {
                     hiddenMember.SetBurstChildVisible(false);
                     hiddenMember.SetBurstDisplayCover(false);
@@ -1783,7 +1915,7 @@ public partial class MainViewModel : ObservableRecipient
             }
 
             displayPrimary.SetBurstDisplayCover(false);
-            foreach (var member in visibleMembers)
+            foreach (var member in matchedMembers)
             {
                 if (ReferenceEquals(member, displayPrimary))
                     continue;
@@ -1992,6 +2124,7 @@ public partial class MainViewModel : ObservableRecipient
             }
         }
 
+        UpdateTotalPhotoCount();
         RebuildBurstGroups();
         ApplyFilter();
         QueueRatingPreloadForCurrentImages(cancellationToken);
@@ -1999,7 +2132,7 @@ public partial class MainViewModel : ObservableRecipient
 
     private bool MatchFilter(ImageFileInfo image)
     {
-        return MatchFileType(image) && MatchRating(image) && MatchPendingDelete(image);
+        return MatchFileType(image) && MatchRating(image) && MatchPendingDelete(image) && MatchBurst(image);
     }
 
     private bool MatchPendingDelete(ImageFileInfo image)
@@ -2007,6 +2140,14 @@ public partial class MainViewModel : ObservableRecipient
         if (!Filter.IsPendingDeleteFilter)
             return true;
         return image.IsPendingDelete;
+    }
+
+    private bool MatchBurst(ImageFileInfo image)
+    {
+        if (!Filter.IsBurstFilter)
+            return true;
+
+        return image.BurstGroup?.Images.Count > 1;
     }
 
     private bool MatchFileType(ImageFileInfo image)

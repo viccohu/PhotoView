@@ -493,7 +493,8 @@ public sealed partial class MainPage : Page
             {
                 flyout.Content = new FilterFlyout
                 {
-                    FilterViewModel = ViewModel.Filter
+                    FilterViewModel = ViewModel.Filter,
+                    ShowBurstFilter = true
                 };
             }
         };
@@ -2213,44 +2214,44 @@ public sealed partial class MainPage : Page
             ImageGridView.SelectedItem = dragImage;
         });
 
-        return new[] { dragImage };
+        return ViewModel.ExpandSelectionImages(new[] { dragImage });
     }
 
     private IEnumerable<ImageFileInfo> GetOrderedSelectedImagesForDrag()
     {
-        var selected = ImageGridView.SelectedItems
-            .OfType<ImageFileInfo>()
-            .ToHashSet();
-
-        if (selected.Count == 0)
+        var selectedImages = ViewModel.ExpandSelectionImages(
+            ImageGridView.SelectedItems.OfType<ImageFileInfo>());
+        if (selectedImages.Count == 0)
             return Array.Empty<ImageFileInfo>();
 
-        return ViewModel.Images.Where(selected.Contains).ToList();
+        return selectedImages;
     }
 
     private void SyncSelectedStateFromGridView(Microsoft.UI.Xaml.Controls.SelectionChangedEventArgs e)
     {
-        foreach (var removedItem in e.RemovedItems)
+        var semanticSelectedImages = ViewModel.ExpandSelectionImages(
+            ImageGridView.SelectedItems.OfType<ImageFileInfo>());
+        var semanticSelectedSet = semanticSelectedImages.ToHashSet();
+
+        foreach (var removedItem in _selectedImageState
+                     .Where(image => !semanticSelectedSet.Contains(image))
+                     .ToList())
         {
-            if (removedItem is ImageFileInfo imageInfo && _selectedImageState.Remove(imageInfo))
+            if (_selectedImageState.Remove(removedItem))
             {
-                imageInfo.IsSelected = false;
+                removedItem.IsSelected = false;
             }
         }
 
-        foreach (var addedItem in e.AddedItems)
+        foreach (var addedItem in semanticSelectedImages)
         {
-            if (addedItem is ImageFileInfo imageInfo && _selectedImageState.Add(imageInfo))
+            if (_selectedImageState.Add(addedItem))
             {
-                imageInfo.IsSelected = true;
-                // System.Diagnostics.Debug.WriteLine($"[Selected] {imageInfo.ImageName}, Rating: {imageInfo.Rating}, Source: {imageInfo.RatingSource}, Dimensions: {imageInfo.Width}x{imageInfo.Height}, DisplaySize: {imageInfo.DisplayWidth:F0}x{imageInfo.DisplayHeight:F0}");
+                addedItem.IsSelected = true;
             }
         }
 
-        if (ImageGridView.SelectedItems.Count == 0 && _selectedImageState.Count > 0)
-        {
-            ClearSelectedImageState();
-        }
+        ViewModel.UpdateSelectedCount(_selectedImageState.Count);
     }
 
     private void ClearSelectedImageState()
@@ -2261,6 +2262,7 @@ public sealed partial class MainPage : Page
         }
 
         _selectedImageState.Clear();
+        ViewModel.UpdateSelectedCount(0);
     }
 
     private void ClearGridViewSelection()
@@ -2976,9 +2978,32 @@ public sealed partial class MainPage : Page
         if (allExtensions.Count == 0)
             return;
 
-        var dialog = new DeleteConfirmDialog(allExtensions.ToList(), pendingImages.Count)
+        var dialog = new DeleteConfirmDialog(
+            allExtensions.ToList(),
+            pendingImages.Count,
+            ViewModel.GetPendingDeleteBurstGroupCount())
         {
             XamlRoot = XamlRoot
+        };
+
+        dialog.ConfirmDeleteAsync = async currentDialog =>
+        {
+            var filesToDelete = GetFilesToDelete(pendingImages, currentDialog.SelectedExtensions);
+            if (filesToDelete.Count == 0)
+            {
+                currentDialog.SetComplete();
+                return;
+            }
+
+            var imagePathMap = DeleteWorkflowHelper.BuildPrimaryImagePathMap(pendingImages);
+            var deleteResult = await DeleteWorkflowHelper.DeleteFilesAsync(
+                filesToDelete,
+                imagePathMap,
+                currentDialog,
+                App.GetService<IThumbnailService>(),
+                message => System.Diagnostics.Debug.WriteLine($"删除文件失败: {message}"));
+
+            RemoveDeletedImagesFromList(deleteResult.DeletedImages);
         };
 
         var result = await dialog.ShowAsync();
@@ -2999,7 +3024,16 @@ public sealed partial class MainPage : Page
                 return;
             }
 
-            dialog.StartProgress();
+            var imagePathMap = DeleteWorkflowHelper.BuildPrimaryImagePathMap(pendingImages);
+            var deleteResult = await DeleteWorkflowHelper.DeleteFilesAsync(
+                filesToDelete,
+                imagePathMap,
+                dialog,
+                App.GetService<IThumbnailService>(),
+                message => System.Diagnostics.Debug.WriteLine($"鍒犻櫎鏂囦欢澶辫触: {message}"));
+
+            RemoveDeletedImagesFromList(deleteResult.DeletedImages);
+
             
             var deletedImages = new List<ImageFileInfo>();
             var thumbnailService = App.GetService<IThumbnailService>();
@@ -3042,6 +3076,8 @@ public sealed partial class MainPage : Page
 
     private List<StorageFile> GetFilesToDelete(List<ImageFileInfo> pendingImages, List<string> selectedExtensions)
     {
+        return DeleteWorkflowHelper.GetFilesToDelete(pendingImages, selectedExtensions);
+
         var files = new List<StorageFile>();
 
         foreach (var image in pendingImages)
@@ -3125,6 +3161,77 @@ public sealed partial class MainPage : Page
 
         var firstVisibleIndex = GetFirstVisibleItemIndex();
         var selectedItem = ImageGridView.SelectedItem as ImageFileInfo;
+
+        var batchedGroupsToProcess = new Dictionary<ImageGroup, List<ImageFileInfo>>();
+        var batchedImagesToRemove = new List<ImageFileInfo>();
+        var batchedReplacements = new List<KeyValuePair<ImageFileInfo, ImageFileInfo>>();
+
+        foreach (var deletedImage in deletedImages)
+        {
+            if (deletedImage.Group != null)
+            {
+                if (!batchedGroupsToProcess.ContainsKey(deletedImage.Group))
+                {
+                    batchedGroupsToProcess[deletedImage.Group] = new List<ImageFileInfo>();
+                }
+
+                batchedGroupsToProcess[deletedImage.Group].Add(deletedImage);
+            }
+            else
+            {
+                batchedImagesToRemove.Add(deletedImage);
+            }
+        }
+
+        foreach (var group in batchedGroupsToProcess.Keys)
+        {
+            var deletedInGroup = batchedGroupsToProcess[group];
+            var oldPrimary = group.PrimaryImage;
+            var remainingImages = group.Images.Where(img => !deletedInGroup.Contains(img)).ToList();
+
+            if (remainingImages.Count > 0)
+            {
+                var newGroup = new ImageGroup(group.GroupName, remainingImages);
+                var newPrimary = newGroup.PrimaryImage;
+                newPrimary.Rating = oldPrimary.Rating;
+                newPrimary.RatingSource = oldPrimary.RatingSource;
+                newPrimary.IsRatingLoading = false;
+                newPrimary.IsPendingDelete = false;
+                newPrimary.RefreshGroupProperties();
+                batchedReplacements.Add(new KeyValuePair<ImageFileInfo, ImageFileInfo>(oldPrimary, newPrimary));
+            }
+            else
+            {
+                batchedImagesToRemove.Add(oldPrimary);
+            }
+        }
+
+        ViewModel.ApplyLibraryChanges(batchedImagesToRemove, batchedReplacements);
+        ViewModel.ClearAllPendingDelete();
+
+        DispatcherQueue.TryEnqueue(async () =>
+        {
+            if (ViewModel.Images.Count > 0)
+            {
+                var indexToScroll = Math.Min(firstVisibleIndex, ViewModel.Images.Count - 1);
+                if (indexToScroll >= 0)
+                {
+                    await ScrollItemIntoViewAsync(ViewModel.Images[indexToScroll], "delete-restore", ScrollIntoViewAlignment.Default);
+                }
+
+                if (selectedItem != null && deletedImages.Contains(selectedItem))
+                {
+                    var newSelectedIndex = Math.Min(firstVisibleIndex, ViewModel.Images.Count - 1);
+                    if (newSelectedIndex >= 0)
+                    {
+                        ExecuteProgrammaticSelectionChange(() => ImageGridView.SelectedItem = ViewModel.Images[newSelectedIndex]);
+                    }
+                }
+            }
+
+            QueueVisibleThumbnailLoad("delete-restore");
+        });
+        return;
 
         var groupsToProcess = new Dictionary<ImageGroup, List<ImageFileInfo>>();
         var singleImagesToRemove = new List<ImageFileInfo>();

@@ -289,8 +289,11 @@
                             Style="{ThemeResource CaptionTextBlockStyle}"
                             Opacity="0.75"
                             VerticalAlignment="Center">
-                            <Run Text="{x:Bind ViewModel.Images.Count, Mode=OneWay}"/>
-                            <Run Text=" photos"/>
+                            <Run Text="选中 "/>
+                            <Run Text="{x:Bind ViewModel.SelectedCount, Mode=OneWay}"/>
+                            <Run Text=" 张/总计 "/>
+                            <Run Text="{x:Bind ViewModel.TotalPhotoCount, Mode=OneWay}"/>
+                            <Run Text=" 张"/>
                         </TextBlock>
                     </Border>
                     <Border
@@ -354,8 +357,11 @@
                         Margin="10,0,0,0"
                         CornerRadius="4">
                         <TextBlock Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7">
-                            <Run Text="{x:Bind ViewModel.Images.Count, Mode=OneWay}"/>
-                            <Run Text=" photos"/>
+                            <Run Text="选中 "/>
+                            <Run Text="{x:Bind ViewModel.SelectedCount, Mode=OneWay}"/>
+                            <Run Text=" 张/总计 "/>
+                            <Run Text="{x:Bind ViewModel.TotalPhotoCount, Mode=OneWay}"/>
+                            <Run Text=" 张"/>
                         </TextBlock>
                     </Border>
                     <Border
@@ -426,7 +432,7 @@
                                     <Setter Property="Padding" Value="16"/>
                                 </Style>
                             </Flyout.FlyoutPresenterStyle>
-                            <local:FilterFlyout x:Name="FilterFlyoutControl"/>
+                            <local:FilterFlyout x:Name="FilterFlyoutControl" ShowBurstFilter="True"/>
                         </Flyout>
                     </SplitButton.Flyout>
                 </SplitButton>

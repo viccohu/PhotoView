@@ -17,50 +17,61 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- 文件类型筛选 -->
         <StackPanel Grid.Column="0" Margin="0,0,12,0" Spacing="8">
-            <TextBlock Text="文件类型" Style="{ThemeResource BodyTextBlockStyle}"/>
+            <TextBlock Text="类型" Style="{ThemeResource BodyTextBlockStyle}"/>
             <StackPanel x:Name="FileTypeButtonsPanel" Spacing="4">
-                <ToggleButton x:Name="ImageFilterButton" Content="照片（JPG、PNG）" Checked="ImageFilterButton_Checked" Unchecked="ImageFilterButton_Unchecked"/>
-                <ToggleButton x:Name="RawFilterButton" Content="数字底片（RAW）" FontSize="14" Checked="RawFilterButton_Checked" Unchecked="RawFilterButton_Unchecked"/>
+                <ToggleButton
+                    x:Name="ImageFilterButton"
+                    Content="照片（JPG、PNG）"
+                    Checked="ImageFilterButton_Checked"
+                    Unchecked="ImageFilterButton_Unchecked"/>
+                <ToggleButton
+                    x:Name="RawFilterButton"
+                    Content="数字底片（RAW）"
+                    FontSize="14"
+                    Checked="RawFilterButton_Checked"
+                    Unchecked="RawFilterButton_Unchecked"/>
             </StackPanel>
-            <ToggleButton 
+            <ToggleButton
                 x:Name="PendingDeleteFilterButton"
-                Content="删除预选"
+                Content="预删除"
                 Margin="0,8,0,0"
                 Checked="PendingDeleteFilterButton_Checked"
                 Unchecked="PendingDeleteFilterButton_Unchecked"/>
+            <ToggleButton
+                x:Name="BurstFilterButton"
+                Content="连拍"
+                Margin="0,8,0,0"
+                Checked="BurstFilterButton_Checked"
+                Unchecked="BurstFilterButton_Unchecked"
+                Visibility="Collapsed"/>
         </StackPanel>
 
-        <!-- 分隔线 -->
         <Border Grid.Column="1" Width="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" Margin="0,4"/>
 
-        <!-- 评级筛选 -->
         <StackPanel Grid.Column="2" Margin="12,0,0,0" Spacing="12">
-            <TextBlock Text="评级筛选" Style="{ThemeResource BodyTextBlockStyle}"/>
+            <TextBlock Text="评级" Style="{ThemeResource BodyTextBlockStyle}"/>
 
-            <!-- 评级模式 - ToggleButton -->
             <StackPanel Spacing="4">
                 <TextBlock Text="模式" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
                 <StackPanel x:Name="RatingModeButtonsPanel" Orientation="Horizontal" Spacing="4"/>
             </StackPanel>
 
-            <!-- 评级条件 -->
             <StackPanel Spacing="8">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <StackPanel Spacing="4" Width="100">
                         <TextBlock Text="条件" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
                         <ComboBox x:Name="RatingConditionComboBox">
-                            <ComboBoxItem Tag="GreaterOrEqual" Content="≥"/>
+                            <ComboBoxItem Tag="GreaterOrEqual" Content="&gt;="/>
                             <ComboBoxItem Tag="Equals" Content="="/>
-                            <ComboBoxItem Tag="LessOrEqual" Content="≤"/>
+                            <ComboBoxItem Tag="LessOrEqual" Content="&lt;="/>
                         </ComboBox>
                     </StackPanel>
                     <StackPanel Spacing="4">
                         <TextBlock Text="星级" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
-                        <RatingControl 
-                            x:Name="RatingStarsControl" 
-                            IsClearEnabled="True" 
+                        <RatingControl
+                            x:Name="RatingStarsControl"
+                            IsClearEnabled="True"
                             MaxRating="5"/>
                     </StackPanel>
                 </StackPanel>
