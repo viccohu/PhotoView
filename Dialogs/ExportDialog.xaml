@@ -194,7 +194,8 @@
                                 Minimum="10"
                                 Maximum="100"
                                 Value="90"
-                                MaxWidth="200"
+                                Width="200"
+      
                                 StepFrequency="10"
                                 HorizontalAlignment="Left"/>
                         </Grid>
