@@ -23,129 +23,179 @@
         </Style>
     </ContentDialog.CloseButtonStyle>
 
-    <StackPanel Width="550" MaxWidth="780" Spacing="18">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <StackPanel Width="720" MaxWidth="840" Spacing="14">
 
-        <StackPanel Spacing="16">
-            <TextBlock Text="选择要导出的文件类型和筛选条件" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+            <StackPanel Spacing="14">
+                <TextBlock
+                    Text="选择要导出的文件类型和筛选条件"
+                    Style="{ThemeResource CaptionTextBlockStyle}"
+                    Opacity="0.7"
+                    TextWrapping="Wrap"/>
 
-            <StackPanel Orientation="Horizontal" Spacing="12">
-                <ToggleButton x:Name="ImageToggleButton" Width="140" Content="照片（JPG）"/>
-                <ComboBox x:Name="ImageRatingComboBox" Width="100" PlaceholderText="星级" IsEnabled="False">
-                    <ComboBoxItem Content="≥ 1 星" Tag="1"/>
-                    <ComboBoxItem Content="≥ 2 星" Tag="2"/>
-                    <ComboBoxItem Content="≥ 3 星" Tag="3"/>
-                    <ComboBoxItem Content="≥ 4 星" Tag="4"/>
-                    <ComboBoxItem Content="≥ 5 星" Tag="5"/>
-                </ComboBox>
-                <TextBox x:Name="ImageFolderTextBox" Width="140" PlaceholderText="文件夹名称" IsEnabled="False"/>
-            </StackPanel>
+                <Grid ColumnSpacing="10" RowSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="190"/>
+                        <ColumnDefinition Width="112"/>
+                        <ColumnDefinition Width="140"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-            <StackPanel Orientation="Horizontal" Spacing="12">
-                <ToggleButton x:Name="RawToggleButton" Width="140" Content="数字底片（RAW）"/>
-                <ComboBox x:Name="RawRatingComboBox" Width="100" PlaceholderText="星级" IsEnabled="False">
-                    <ComboBoxItem Content="≥ 1 星" Tag="1"/>
-                    <ComboBoxItem Content="≥ 2 星" Tag="2"/>
-                    <ComboBoxItem Content="≥ 3 星" Tag="3"/>
-                    <ComboBoxItem Content="≥ 4 星" Tag="4"/>
-                    <ComboBoxItem Content="≥ 5 星" Tag="5"/>
-                </ComboBox>
-                <TextBox x:Name="RawFolderTextBox" Width="140" PlaceholderText="文件夹名称" IsEnabled="False"/>
-            </StackPanel>
+                    <ToggleButton x:Name="ImageToggleButton" Content="照片（JPG）" HorizontalAlignment="Stretch"/>
+                    <ComboBox x:Name="ImageRatingComboBox" Grid.Column="1" PlaceholderText="星级" IsEnabled="False" HorizontalAlignment="Stretch">
+                        <ComboBoxItem Content="≥ 1 星" Tag="1"/>
+                        <ComboBoxItem Content="≥ 2 星" Tag="2"/>
+                        <ComboBoxItem Content="≥ 3 星" Tag="3"/>
+                        <ComboBoxItem Content="≥ 4 星" Tag="4"/>
+                        <ComboBoxItem Content="≥ 5 星" Tag="5"/>
+                    </ComboBox>
+                    <TextBox x:Name="ImageFolderTextBox" Grid.Column="2" PlaceholderText="文件夹名称" IsEnabled="False"/>
 
-            <StackPanel Orientation="Horizontal" Spacing="12">
-                <TextBox x:Name="ExportPathTextBox" PlaceholderText="导出地址" Width="690"/>
-                <Button x:Name="SelectFolderButton" Width="78" Content="📁"/>
-            </StackPanel>
+                    <ToggleButton x:Name="RawToggleButton" Grid.Row="1" Content="数字底片（RAW）" HorizontalAlignment="Stretch"/>
+                    <ComboBox x:Name="RawRatingComboBox" Grid.Row="1" Grid.Column="1" PlaceholderText="星级" IsEnabled="False" HorizontalAlignment="Stretch">
+                        <ComboBoxItem Content="≥ 1 星" Tag="1"/>
+                        <ComboBoxItem Content="≥ 2 星" Tag="2"/>
+                        <ComboBoxItem Content="≥ 3 星" Tag="3"/>
+                        <ComboBoxItem Content="≥ 4 星" Tag="4"/>
+                        <ComboBoxItem Content="≥ 5 星" Tag="5"/>
+                    </ComboBox>
+                    <TextBox x:Name="RawFolderTextBox" Grid.Row="1" Grid.Column="2" PlaceholderText="RAW" IsEnabled="False"/>
+                </Grid>
 
-            <ProgressBar x:Name="ExportProgressBar" Minimum="0" Maximum="100" Value="0" Visibility="Collapsed"/>
-
-            <TextBlock x:Name="StatusTextBlock" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7" Text=" "/>
-        </StackPanel>
-
-        <Border
-            Padding="24,12"
-            CornerRadius="12"
-            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-            BorderThickness="1">
-            <StackPanel Spacing="0">
-                <Grid>
+                <Grid ColumnSpacing="12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-    
-                        <TextBlock Text="重设大小" FontSize="18" FontWeight="SemiLight"/>
-                       
 
-                    <ToggleSwitch
-                        x:Name="ResizeEnabledSwitch"
-                        Grid.Column="1"
-                        MinWidth="0"
-                        OffContent=""
-                        OnContent=""/>
+                    <TextBox x:Name="ExportPathTextBox" MinWidth="0" PlaceholderText="导出地址"/>
+                    <Button x:Name="SelectFolderButton" Grid.Column="1" MinWidth="92" Content="浏览"/>
                 </Grid>
 
-                <StackPanel x:Name="ResizeOptionsPanel" Spacing="16" Visibility="Collapsed">
-                    <Grid ColumnSpacing="18">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="2*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
+                <ProgressBar x:Name="ExportProgressBar" Minimum="0" Maximum="100" Value="0" Visibility="Collapsed"/>
 
-                        <StackPanel Spacing="10">
-                            <StackPanel Orientation="Horizontal" Spacing="20">
-                                <RadioButton x:Name="ResizePixelRadioButton" Content="像素" GroupName="ResizeMode" IsChecked="True"/>
-                                <RadioButton x:Name="ResizePercentRadioButton" Content="百分比" GroupName="ResizeMode"/>
-                            </StackPanel>
-
-                            <TextBox x:Name="ResizeLongSideTextBox" Header="最长边 (px)" Text="2000" InputScope="Number"/>
-                            <TextBox x:Name="ResizePercentTextBox" Header="百分比 (%)" Text="50" InputScope="Number" Visibility="Collapsed"/>
-                        </StackPanel>
-
-                        <ComboBox x:Name="ResizeFormatComboBox" Grid.Column="1" Header="文件类型" SelectedIndex="0">
-                            <ComboBoxItem Content="JPG" Tag="JPG"/>
-                            <ComboBoxItem Content="PNG" Tag="PNG"/>
-                            <ComboBoxItem Content="TIF" Tag="TIF"/>
-                        </ComboBox>
-
-                        <ComboBox x:Name="ResizeFilterComboBox" Grid.Column="2" Header="缩放算法" SelectedIndex="0">
-                            <ComboBoxItem Content="高质量" Tag="HighQuality"/>
-                            <ComboBoxItem Content="均衡" Tag="Balanced"/>
-                            <ComboBoxItem Content="快速" Tag="Fast"/>
-                            <ComboBoxItem Content="锐利" Tag="Sharp"/>
-                        </ComboBox>
-                    </Grid>
-
-                    <StackPanel Spacing="8">
-                        <TextBlock x:Name="ResizeQualityTextBlock" Text="质量：90%（仅 JPG）"/>
-                        <Slider x:Name="ResizeQualitySlider" Minimum="1" Maximum="100" Value="90" StepFrequency="1"/>
-                    </StackPanel>
-
-                    <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,4"/>
-
-                    <Grid ColumnSpacing="12" RowSpacing="8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-
-                        <TextBlock Text="当前：" FontWeight="SemiBold"/>
-                        <TextBlock x:Name="ResizePreviewCurrentTextBlock" Grid.Column="1" Text="无可预览照片"/>
-
-                        <TextBlock Grid.Row="1" Text="新建：" FontWeight="SemiBold"/>
-                        <TextBlock x:Name="ResizePreviewNewTextBlock" Grid.Row="1" Grid.Column="1" Text="启用后显示"/>
-
-                        <TextBlock x:Name="ResizeHintTextBlock" Grid.Row="2" Grid.ColumnSpan="2" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7" TextWrapping="Wrap"/>
-                    </Grid>
-                </StackPanel>
+                <TextBlock
+                    x:Name="StatusTextBlock"
+                    Style="{ThemeResource CaptionTextBlockStyle}"
+                    Opacity="0.7"
+                    Text=" "
+                    TextWrapping="Wrap"/>
             </StackPanel>
-        </Border>
-    </StackPanel>
+
+            <Border
+                Padding="26,10"
+                CornerRadius="12"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1">
+                <StackPanel Spacing="0">
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Text="重设大小" FontSize="18" FontWeight="SemiLight" VerticalAlignment="Center"/>
+
+                        <ToggleSwitch
+                            x:Name="ResizeEnabledSwitch"
+                            Grid.Column="1"
+                            MinWidth="0"
+                            OffContent=""
+                            OnContent=""/>
+                    </Grid>
+                    <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+
+
+                    <StackPanel x:Name="ResizeOptionsPanel" Spacing="14" Visibility="Collapsed" Margin="0,12,0,0">
+                        <Grid ColumnSpacing="12" RowSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="112"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="108"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="124"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            
+                            <TextBlock Text="缩放选项" VerticalAlignment="Center"/>
+                            <ComboBox x:Name="ResizeModeComboBox" Grid.Column="1" SelectedIndex="0" HorizontalAlignment="Stretch">
+                                <ComboBoxItem Content="像素" Tag="Pixel"/>
+                                <ComboBoxItem Content="百分比" Tag="Percent"/>
+                            </ComboBox>
+
+                            <TextBlock x:Name="ResizeInputHeaderTextBlock" Grid.Column="2" Text="缩放输入框（像素）" VerticalAlignment="Center"/>
+                            <Grid Grid.Column="3">
+                                <TextBox x:Name="ResizeLongSideTextBox" Text="1920" InputScope="Number"/>
+                                <TextBox x:Name="ResizePercentTextBox" Text="100" InputScope="Number" Visibility="Collapsed"/>
+                            </Grid>
+
+                            <TextBlock Grid.Column="4" Text="缩放算法" VerticalAlignment="Center"/>
+                            <ComboBox x:Name="ResizeFilterComboBox" Grid.Column="5" SelectedIndex="0" HorizontalAlignment="Stretch">
+                                <ComboBoxItem Content="高质量" Tag="HighQuality"/>
+                                <ComboBoxItem Content="均衡" Tag="Balanced"/>
+                                <ComboBoxItem Content="快速" Tag="Fast"/>
+                                <ComboBoxItem Content="锐利" Tag="Sharp"/>
+                            </ComboBox>
+
+                            <TextBlock Grid.Row="1" Text="文件格式" VerticalAlignment="Center"/>
+                            <ComboBox x:Name="ResizeFormatComboBox" Grid.Row="1" Grid.Column="1" SelectedIndex="0" HorizontalAlignment="Stretch">
+                                <ComboBoxItem Content="JPG" Tag="JPG"/>
+                                <ComboBoxItem Content="PNG" Tag="PNG"/>
+                                <ComboBoxItem Content="TIF" Tag="TIF"/>
+                            </ComboBox>
+
+                            <TextBlock x:Name="ResizeQualityTextBlock" Grid.Row="1" Grid.Column="2" Text="质量：90%（仅 JPG）" VerticalAlignment="Center"/>
+                            <Slider
+                                x:Name="ResizeQualitySlider"
+                                Grid.Row="1"
+                                Grid.Column="3"
+                                Grid.ColumnSpan="3"
+                                Minimum="10"
+                                Maximum="100"
+                                Value="90"
+                                StepFrequency="10"
+                                HorizontalAlignment="Stretch"/>
+                        </Grid>
+
+                        <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+
+                        <Grid ColumnSpacing="8" RowSpacing="6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Text="当前：" FontWeight="SemiBold" VerticalAlignment="Top" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                            <TextBlock x:Name="ResizePreviewCurrentTextBlock" Grid.Column="1" Text="无可预览照片" TextWrapping="Wrap" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+
+                            <TextBlock Grid.Row="1" Text="新建：" FontWeight="SemiBold" VerticalAlignment="Top" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                            <TextBlock x:Name="ResizePreviewNewTextBlock" Grid.Row="1" Grid.Column="1" Text="启用后显示" TextWrapping="Wrap" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+
+                            <TextBlock
+                                x:Name="ResizeHintTextBlock"
+                                Grid.Row="2"
+                                Grid.ColumnSpan="2"
+                                Style="{ThemeResource CaptionTextBlockStyle}"
+                                Opacity="0.7"
+                                Visibility="Collapsed"
+                                TextWrapping="Wrap"/>
+                        </Grid>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
 </ContentDialog>

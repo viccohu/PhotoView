@@ -51,8 +51,7 @@ public sealed partial class ExportDialog : ContentDialog
         RawRatingComboBox.SelectionChanged += ExportOptionSelectionChanged;
 
         ResizeEnabledSwitch.Toggled += ResizeOptionChanged;
-        ResizePixelRadioButton.Checked += ResizeOptionChanged;
-        ResizePercentRadioButton.Checked += ResizeOptionChanged;
+        ResizeModeComboBox.SelectionChanged += ResizeOptionSelectionChanged;
         ResizeLongSideTextBox.TextChanged += ResizeOptionTextChanged;
         ResizePercentTextBox.TextChanged += ResizeOptionTextChanged;
         ResizeFormatComboBox.SelectionChanged += ResizeOptionSelectionChanged;
@@ -426,7 +425,7 @@ public sealed partial class ExportDialog : ContentDialog
     private void ResetResizeOptions()
     {
         ResizeEnabledSwitch.IsOn = false;
-        ResizePixelRadioButton.IsChecked = true;
+        ResizeModeComboBox.SelectedIndex = 0;
         ResizeLongSideTextBox.Text = DefaultResizeLongSide.ToString();
         ResizePercentTextBox.Text = DefaultResizePercent.ToString();
         ResizeFormatComboBox.SelectedIndex = 0;
@@ -440,9 +439,10 @@ public sealed partial class ExportDialog : ContentDialog
         ResizeOptionsPanel.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         SetResizeInputControlsEnabled(enabled);
 
-        var usePercent = ResizePercentRadioButton.IsChecked == true;
+        var usePercent = IsPercentResizeModeSelected();
         ResizeLongSideTextBox.Visibility = usePercent ? Visibility.Collapsed : Visibility.Visible;
         ResizePercentTextBox.Visibility = usePercent ? Visibility.Visible : Visibility.Collapsed;
+        ResizeInputHeaderTextBlock.Text = usePercent ? "缩放输入框（百分比）" : "缩放输入框（像素）";
 
         var outputFormat = GetSelectedOutputFormat();
         var qualityEnabled = enabled && outputFormat == ExportOutputFormat.Jpg;
@@ -470,8 +470,7 @@ public sealed partial class ExportDialog : ContentDialog
 
     private void SetResizeInputControlsEnabled(bool enabled)
     {
-        ResizePixelRadioButton.IsEnabled = enabled;
-        ResizePercentRadioButton.IsEnabled = enabled;
+        ResizeModeComboBox.IsEnabled = enabled;
         ResizeLongSideTextBox.IsEnabled = enabled;
         ResizePercentTextBox.IsEnabled = enabled;
         ResizeFormatComboBox.IsEnabled = enabled;
@@ -486,7 +485,7 @@ public sealed partial class ExportDialog : ContentDialog
         if (!ResizeEnabledSwitch.IsOn)
             return true;
 
-        var mode = ResizePercentRadioButton.IsChecked == true
+        var mode = IsPercentResizeModeSelected()
             ? ExportResizeMode.Percent
             : ExportResizeMode.LongSide;
 
@@ -518,6 +517,12 @@ public sealed partial class ExportDialog : ContentDialog
             (int)Math.Round(ResizeQualitySlider.Value),
             GetSelectedFilterType());
         return true;
+    }
+
+    private bool IsPercentResizeModeSelected()
+    {
+        var tag = (ResizeModeComboBox.SelectedItem as ComboBoxItem)?.Tag as string;
+        return string.Equals(tag, "Percent", StringComparison.Ordinal);
     }
 
     private ExportOutputFormat GetSelectedOutputFormat()
@@ -765,6 +770,13 @@ public sealed partial class ExportDialog : ContentDialog
 
     private void ResizeQualitySlider_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
     {
+        var snappedValue = Math.Clamp((int)Math.Round(e.NewValue / 10d) * 10, 10, 100);
+        if (Math.Abs(ResizeQualitySlider.Value - snappedValue) > double.Epsilon)
+        {
+            ResizeQualitySlider.Value = snappedValue;
+            return;
+        }
+
         UpdateResizeControlStates();
         QueuePreviewUpdate();
     }
