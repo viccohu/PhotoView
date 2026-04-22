@@ -35,6 +35,7 @@ public sealed partial class MainPage : Page
     private readonly IThumbnailService _thumbnailService;
     private readonly MainPageThumbnailCoordinator _thumbnailCoordinator;
     private readonly HashSet<ImageFileInfo> _selectedImageState = new();
+    private readonly Dictionary<ImageFileInfo, int> _imageIndexMap = new();
     private const double GridViewItemMargin = 4d;
     private const double GridViewItemGap = GridViewItemMargin * 2d;
     private const double NavigationDrawerExpandedWidth = 265d;
@@ -148,6 +149,7 @@ public sealed partial class MainPage : Page
         AttachImageGridScrollViewer();
         AttachImageGridPointerWheel();
         UpdateImageGridTileSize();
+        RebuildImageIndexMap();
         QueueVisibleThumbnailLoad("page-loaded");
         UpdateFilterButtonState();
         UpdateNavigationDrawerState(animate: false);
@@ -481,7 +483,9 @@ public sealed partial class MainPage : Page
         if (ViewModel.Images.Count == 0)
             return null;
 
-        var currentIndex = ViewModel.Images.IndexOf(currentImage);
+        if (!TryGetImageIndex(currentImage, out var currentIndex))
+            currentIndex = ViewModel.Images.IndexOf(currentImage);
+
         if (currentIndex < 0)
             return null;
 
@@ -1101,6 +1105,8 @@ public sealed partial class MainPage : Page
 
         DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
         {
+            RebuildImageIndexMap();
+
             if (ViewModel.Images.Count == 0)
             {
                 // System.Diagnostics.Debug.WriteLine("[MainPage] ImagesChanged -> clearing transient grid state for empty collection");
@@ -1769,7 +1775,7 @@ public sealed partial class MainPage : Page
             if (_thumbnailCoordinator.RealizedImageItems.Count > 0)
             {
                 return _thumbnailCoordinator.RealizedImageItems
-                    .Select(image => ViewModel.Images.IndexOf(image))
+                    .Select(image => TryGetImageIndex(image, out var index) ? index : -1)
                     .Where(index => index >= 0)
                     .DefaultIfEmpty(0)
                     .Min();
@@ -1781,6 +1787,28 @@ public sealed partial class MainPage : Page
         {
             return 0;
         }
+    }
+
+    private void RebuildImageIndexMap()
+    {
+        _imageIndexMap.Clear();
+
+        for (var i = 0; i < ViewModel.Images.Count; i++)
+        {
+            if (ViewModel.Images[i] is ImageFileInfo imageInfo)
+            {
+                _imageIndexMap[imageInfo] = i;
+            }
+        }
+    }
+
+    private bool TryGetImageIndex(ImageFileInfo imageInfo, out int index)
+    {
+        if (imageInfo != null && _imageIndexMap.TryGetValue(imageInfo, out index))
+            return true;
+
+        index = -1;
+        return false;
     }
 
     private static ScrollViewer? FindScrollViewer(DependencyObject parent)

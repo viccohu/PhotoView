@@ -80,11 +80,9 @@ public sealed partial class CollectPage
         if (_isUnloaded)
             return;
 
-        ThumbnailQueueHelper.DrainPendingItems(
-            _thumbnailCoordinator.PendingVisibleThumbnailLoads,
+        _thumbnailCoordinator.DrainVisibleThumbnailLoads(
             ViewModel.Images,
             VisibleThumbnailStartBudgetPerTick,
-            imageInfo => _thumbnailCoordinator.RealizedImageItems.Contains(imageInfo),
             imageInfo => _ = imageInfo.EnsureThumbnailAsync(ViewModel.ThumbnailSize));
 
         RestartVisibleThumbnailTimerIfNeeded();

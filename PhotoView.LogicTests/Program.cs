@@ -10,6 +10,7 @@ internal static class Program
             ImageFormatRegistryChecks.Run();
             PreviewSourceChecks.Run();
             PreviewWorkspaceServiceChecks.Run();
+            ThumbnailRangeHelperChecks.Run();
             Console.WriteLine("All logic checks passed.");
             return 0;
         }

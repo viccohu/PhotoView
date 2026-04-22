@@ -44,6 +44,19 @@ internal sealed class CollectPageThumbnailCoordinator : ThumbnailCoordinatorBase
             fallbackTake);
     }
 
+    public void DrainVisibleThumbnailLoads(
+        IList<ImageFileInfo> orderedImages,
+        int startBudget,
+        Action<ImageFileInfo> startLoad)
+    {
+        ThumbnailQueueHelper.DrainPendingItems(
+            PendingVisibleThumbnailLoads,
+            orderedImages,
+            startBudget,
+            imageInfo => RealizedImageItems.Contains(imageInfo),
+            startLoad);
+    }
+
     public override void MarkItemRecycled(ImageFileInfo imageInfo)
     {
         PendingVisibleThumbnailLoads.Remove(imageInfo);

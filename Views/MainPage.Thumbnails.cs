@@ -31,36 +31,20 @@ public sealed partial class MainPage
         }
 
         var size = ViewModel.ThumbnailSize;
-        ThumbnailQueueHelper.DrainPendingItems(
-            _thumbnailCoordinator.PendingFastPreviewLoads,
+        _thumbnailCoordinator.DrainFastPreviewLoads(
             ViewModel.Images,
             FastPreviewStartBudgetPerTick,
-            imageInfo => !imageInfo.HasFastPreview,
             imageInfo => _ = imageInfo.EnsureFastPreviewAsync(size));
 
-        var targetCandidates = ThumbnailQueueHelper.GetOrderedExistingItems(
-            _thumbnailCoordinator.PendingTargetThumbnailLoads,
-            ViewModel.Images);
-        _thumbnailCoordinator.PendingTargetThumbnailLoads.Clear();
-
-        if (!_isUserScrollInProgress)
-        {
-            _thumbnailCoordinator.RequeueTargetThumbnailCandidates(targetCandidates);
-
-            ThumbnailQueueHelper.DrainPendingItems(
-                _thumbnailCoordinator.PendingTargetThumbnailLoads,
-                ViewModel.Images,
-                TargetThumbnailStartBudgetPerTick,
-                imageInfo => IsItemContainerRealized(imageInfo) && IsItemInCurrentTargetRange(imageInfo),
-                imageInfo => _ = LoadTargetThumbnailAsync(
-                    imageInfo,
-                    size,
-                    Volatile.Read(ref _thumbnailCoordinator.ThumbnailQueueVersion)));
-        }
-        else
-        {
-            _thumbnailCoordinator.RequeueTargetThumbnailCandidates(targetCandidates);
-        }
+        _thumbnailCoordinator.ProcessTargetThumbnailLoads(
+            ViewModel.Images,
+            TargetThumbnailStartBudgetPerTick,
+            !_isUserScrollInProgress,
+            imageInfo => IsItemContainerRealized(imageInfo) && IsItemInCurrentTargetRange(imageInfo),
+            imageInfo => _ = LoadTargetThumbnailAsync(
+                imageInfo,
+                size,
+                Volatile.Read(ref _thumbnailCoordinator.ThumbnailQueueVersion)));
 
         StartWarmPreviewLoads(_isUserScrollInProgress ? WarmPreviewScrollBudgetPerTick : WarmPreviewIdleBudgetPerTick);
 
@@ -80,11 +64,8 @@ public sealed partial class MainPage
         if (!IsItemContainerRealized(imageInfo) || !IsItemInCurrentVisibleRange(imageInfo))
             return;
 
-        if (!_thumbnailCoordinator.ImmediateVisibleThumbnailLoads.Add(imageInfo))
+        if (!_thumbnailCoordinator.TryStartImmediateVisibleFastPreview(imageInfo, FastPreviewStartBudgetPerTick))
             return;
-
-        _thumbnailCoordinator.PendingFastPreviewLoads.Remove(imageInfo);
-        _thumbnailCoordinator.ImmediateVisibleThumbnailStartCount++;
         _ = imageInfo.EnsureFastPreviewAsync(ViewModel.ThumbnailSize);
     }
 
@@ -115,7 +96,7 @@ public sealed partial class MainPage
                 queueVersion == Volatile.Read(ref _thumbnailCoordinator.ThumbnailQueueVersion) &&
                 IsItemInCurrentTargetRange(imageInfo))
             {
-                if (_thumbnailCoordinator.TargetThumbnailRetainedItems.Add(imageInfo))
+                if (_thumbnailCoordinator.TryRetainTargetThumbnail(imageInfo))
                 {
                     DebugTargetThumbnail($"retain item={imageInfo.ImageName} count={_thumbnailCoordinator.TargetThumbnailRetainedItems.Count}");
                 }
@@ -144,7 +125,9 @@ public sealed partial class MainPage
             return true;
         }
 
-        var index = ViewModel.Images.IndexOf(imageInfo);
+        if (!TryGetImageIndex(imageInfo, out var index))
+            return false;
+
         return index >= _imageItemsWrapGrid.FirstVisibleIndex &&
                index <= _imageItemsWrapGrid.LastVisibleIndex;
     }
@@ -366,8 +349,7 @@ public sealed partial class MainPage
         if (!TryGetVisibleIndexRange(out var firstVisibleIndex, out var lastVisibleIndex))
             return IsItemContainerRealized(imageInfo);
 
-        var index = ViewModel.Images.IndexOf(imageInfo);
-        if (index < 0)
+        if (!TryGetImageIndex(imageInfo, out var index))
             return false;
 
         if (!ThumbnailQueueHelper.TryGetPrefetchWindow(

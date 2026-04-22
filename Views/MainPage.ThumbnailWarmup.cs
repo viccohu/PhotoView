@@ -32,7 +32,7 @@ public sealed partial class MainPage
             }
         }
 
-        if (!prioritize || _thumbnailCoordinator.PendingWarmPreviewLoads.Count == 0)
+        if (!prioritize || !_thumbnailCoordinator.HasPendingWarmPreviewLoads())
         {
             for (var i = 0; i < itemCount; i++)
             {
@@ -46,33 +46,12 @@ public sealed partial class MainPage
 
     private void QueueBackgroundPreviewWarmup(ImageFileInfo imageInfo, bool prioritize)
     {
-        if (imageInfo.HasFastPreview)
-            return;
-
-        if (_thumbnailCoordinator.QueuedWarmPreviewLoads.Contains(imageInfo))
-        {
-            if (prioritize && _thumbnailCoordinator.PendingWarmPreviewLoads.Remove(imageInfo))
-            {
-                _thumbnailCoordinator.PendingWarmPreviewLoads.Insert(0, imageInfo);
-            }
-
-            return;
-        }
-
-        _thumbnailCoordinator.QueuedWarmPreviewLoads.Add(imageInfo);
-        if (prioritize)
-        {
-            _thumbnailCoordinator.PendingWarmPreviewLoads.Insert(0, imageInfo);
-        }
-        else
-        {
-            _thumbnailCoordinator.PendingWarmPreviewLoads.Add(imageInfo);
-        }
+        _thumbnailCoordinator.QueueWarmPreviewIfNeeded(imageInfo, prioritize);
     }
 
     private void TrimTargetThumbnails(int firstIndex, int lastIndex)
     {
-        if (_thumbnailCoordinator.TargetThumbnailRetainedItems.Count == 0)
+        if (!_thumbnailCoordinator.HasRetainedTargetThumbnails())
             return;
 
         var retainFirstIndex = firstIndex;
@@ -88,32 +67,33 @@ public sealed partial class MainPage
             centerIndex = (visibleFirstIndex + visibleLastIndex) / 2d;
         }
 
-        foreach (var imageInfo in _thumbnailCoordinator.TargetThumbnailRetainedItems.ToArray())
+        foreach (var imageInfo in _thumbnailCoordinator.GetRetainedTargetThumbnailSnapshot())
         {
-            var index = ViewModel.Images.IndexOf(imageInfo);
-            if (index < 0)
+            if (!TryGetImageIndex(imageInfo, out var index))
             {
-                _thumbnailCoordinator.TargetThumbnailRetainedItems.Remove(imageInfo);
-                DebugTargetThumbnail($"drop missing item={imageInfo.ImageName} count={_thumbnailCoordinator.TargetThumbnailRetainedItems.Count}");
+                if (_thumbnailCoordinator.DropRetainedTargetThumbnail(imageInfo))
+                {
+                    DebugTargetThumbnail($"drop missing item={imageInfo.ImageName} count={_thumbnailCoordinator.RetainedTargetThumbnailCount()}");
+                }
             }
         }
 
-        if (_thumbnailCoordinator.TargetThumbnailRetainedItems.Count <= MaxTargetThumbnailRetainedItems)
+        if (_thumbnailCoordinator.RetainedTargetThumbnailCount() <= MaxTargetThumbnailRetainedItems)
             return;
 
-        var overflowCandidates = _thumbnailCoordinator.TargetThumbnailRetainedItems
-            .Select(imageInfo => new
+        var overflowCandidates = _thumbnailCoordinator.GetRetainedTargetThumbnailSnapshot()
+            .Where(imageInfo => TryGetImageIndex(imageInfo, out _))
+            .Select(imageInfo =>
             {
-                ImageInfo = imageInfo,
-                Index = ViewModel.Images.IndexOf(imageInfo)
+                TryGetImageIndex(imageInfo, out var index);
+                return new { ImageInfo = imageInfo, Index = index };
             })
-            .Where(candidate => candidate.Index >= 0)
             .OrderByDescending(candidate => Math.Abs(candidate.Index - centerIndex))
             .ToArray();
 
         foreach (var candidate in overflowCandidates)
         {
-            if (_thumbnailCoordinator.TargetThumbnailRetainedItems.Count <= MaxTargetThumbnailRetainedItems)
+            if (_thumbnailCoordinator.RetainedTargetThumbnailCount() <= MaxTargetThumbnailRetainedItems)
                 break;
 
             if (candidate.Index >= retainFirstIndex && candidate.Index <= retainLastIndex)
@@ -125,31 +105,32 @@ public sealed partial class MainPage
 
     private void DowngradeRetainedTargetThumbnail(ImageFileInfo imageInfo, int index, string reason)
     {
-        imageInfo.DowngradeToFastPreview();
-        _thumbnailCoordinator.TargetThumbnailRetainedItems.Remove(imageInfo);
-        DebugTargetThumbnail($"downgrade reason={reason} item={imageInfo.ImageName} index={index} count={_thumbnailCoordinator.TargetThumbnailRetainedItems.Count}");
+        if (_thumbnailCoordinator.TryDowngradeRetainedTargetThumbnail(imageInfo))
+        {
+            DebugTargetThumbnail($"downgrade reason={reason} item={imageInfo.ImageName} index={index} count={_thumbnailCoordinator.RetainedTargetThumbnailCount()}");
+        }
     }
 
     private void StartWarmPreviewLoads(int budget)
     {
         var startedCount = 0;
         while (startedCount < budget &&
-               _thumbnailCoordinator.ActiveWarmPreviewLoads < MaxActiveWarmPreviewLoads &&
-               _thumbnailCoordinator.PendingWarmPreviewLoads.Count > 0)
+               _thumbnailCoordinator.TryTakeNextWarmPreviewLoad(MaxActiveWarmPreviewLoads, out var imageInfo))
         {
-            var imageInfo = _thumbnailCoordinator.PendingWarmPreviewLoads[0];
-            _thumbnailCoordinator.PendingWarmPreviewLoads.RemoveAt(0);
-            _thumbnailCoordinator.QueuedWarmPreviewLoads.Remove(imageInfo);
-
-            if (imageInfo.HasFastPreview || ViewModel.Images.IndexOf(imageInfo) < 0)
+            if (imageInfo.HasFastPreview || !TryGetImageIndex(imageInfo, out _))
+            {
+                _thumbnailCoordinator.CompleteWarmPreviewLoad();
                 continue;
+            }
 
             var queueVersion = Volatile.Read(ref _thumbnailCoordinator.ThumbnailQueueVersion);
             var cancellationToken = _thumbnailCoordinator.WarmPreviewCts.Token;
             if (cancellationToken.IsCancellationRequested)
+            {
+                _thumbnailCoordinator.CompleteWarmPreviewLoad();
                 break;
+            }
 
-            Interlocked.Increment(ref _thumbnailCoordinator.ActiveWarmPreviewLoads);
             _ = WarmFastPreviewAsync(imageInfo, queueVersion, cancellationToken);
             startedCount++;
         }
@@ -176,7 +157,7 @@ public sealed partial class MainPage
         }
         finally
         {
-            Interlocked.Decrement(ref _thumbnailCoordinator.ActiveWarmPreviewLoads);
+            _thumbnailCoordinator.CompleteWarmPreviewLoad();
             if (!_isUnloaded &&
                 !AppLifetime.IsShuttingDown &&
                 !cancellationToken.IsCancellationRequested &&
