@@ -180,16 +180,7 @@ public sealed partial class MainPage
 
     private ImageFileInfo[] GetPendingItemsByIndex(HashSet<ImageFileInfo> pendingItems)
     {
-        return pendingItems
-            .Select(imageInfo => new
-            {
-                ImageInfo = imageInfo,
-                Index = ViewModel.Images.IndexOf(imageInfo)
-            })
-            .Where(candidate => candidate.Index >= 0)
-            .OrderBy(candidate => candidate.Index)
-            .Select(candidate => candidate.ImageInfo)
-            .ToArray();
+        return ThumbnailQueueHelper.GetOrderedExistingItems(pendingItems, ViewModel.Images);
     }
 
     private bool HasPendingThumbnailWork()
@@ -334,24 +325,21 @@ public sealed partial class MainPage
             var fastPreviewPadding = Math.Max(visibleCount * FastPreviewPrefetchScreenCount, FastPreviewStartBudgetPerTick);
             var fastPreviewFirstIndex = Math.Max(0, firstVisibleIndex - fastPreviewPadding);
             var fastPreviewLastIndex = Math.Min(ImageGridView.Items.Count - 1, lastVisibleIndex + fastPreviewPadding);
-
-            for (int i = fastPreviewFirstIndex; i <= fastPreviewLastIndex; i++)
-            {
-                if (ImageGridView.Items[i] is ImageFileInfo imageInfo && !imageInfo.HasFastPreview)
-                {
-                    _pendingFastPreviewLoads.Add(imageInfo);
-                }
-            }
+            ThumbnailQueueHelper.AddItemsInRange(
+                ImageGridView.Items,
+                fastPreviewFirstIndex,
+                fastPreviewLastIndex,
+                _pendingFastPreviewLoads,
+                imageInfo => !imageInfo.HasFastPreview);
 
             var targetFirstIndex = Math.Max(0, firstVisibleIndex - TargetThumbnailPrefetchItemCount);
             var targetLastIndex = Math.Min(ImageGridView.Items.Count - 1, lastVisibleIndex + TargetThumbnailPrefetchItemCount);
-            for (int i = targetFirstIndex; i <= targetLastIndex; i++)
-            {
-                if (ImageGridView.Items[i] is ImageFileInfo imageInfo && !imageInfo.HasTargetThumbnail)
-                {
-                    _pendingTargetThumbnailLoads.Add(imageInfo);
-                }
-            }
+            ThumbnailQueueHelper.AddItemsInRange(
+                ImageGridView.Items,
+                targetFirstIndex,
+                targetLastIndex,
+                _pendingTargetThumbnailLoads,
+                imageInfo => !imageInfo.HasTargetThumbnail);
             TrimTargetThumbnails(targetFirstIndex, targetLastIndex);
 
             QueueBackgroundPreviewWarmup(firstVisibleIndex, lastVisibleIndex, prioritize: true);
@@ -359,16 +347,10 @@ public sealed partial class MainPage
         else
         {
             var realizedFallbackLimit = FastPreviewStartBudgetPerTick + TargetThumbnailPrefetchItemCount;
-            foreach (var imageInfo in _realizedImageItems
-                .Select(imageInfo => new
-                {
-                    ImageInfo = imageInfo,
-                    Index = ViewModel.Images.IndexOf(imageInfo)
-                })
-                .Where(candidate => candidate.Index >= 0)
-                .OrderBy(candidate => candidate.Index)
-                .Take(realizedFallbackLimit)
-                .Select(candidate => candidate.ImageInfo))
+            foreach (var imageInfo in ThumbnailQueueHelper.GetRealizedFallbackItems(
+                _realizedImageItems,
+                ViewModel.Images,
+                realizedFallbackLimit))
             {
                 if (!imageInfo.HasFastPreview)
                 {

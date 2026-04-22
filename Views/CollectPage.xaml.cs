@@ -454,16 +454,9 @@ public sealed partial class CollectPage : Page
         if (_isUnloaded)
             return;
 
-        var candidates = _pendingVisibleThumbnailLoads
-            .Select(imageInfo => new
-            {
-                ImageInfo = imageInfo,
-                Index = ViewModel.Images.IndexOf(imageInfo)
-            })
-            .Where(candidate => candidate.Index >= 0)
-            .OrderBy(candidate => candidate.Index)
-            .Select(candidate => candidate.ImageInfo)
-            .ToArray();
+        var candidates = ThumbnailQueueHelper.GetOrderedExistingItems(
+            _pendingVisibleThumbnailLoads,
+            ViewModel.Images);
         _pendingVisibleThumbnailLoads.Clear();
 
         var started = 0;
@@ -501,23 +494,18 @@ public sealed partial class CollectPage : Page
         {
             var firstIndex = Math.Max(0, _thumbnailItemsPanel.FirstVisibleIndex - VisibleThumbnailPrefetchItemCount);
             var lastIndex = Math.Min(PreviewThumbnailGridView.Items.Count - 1, _thumbnailItemsPanel.LastVisibleIndex + VisibleThumbnailPrefetchItemCount);
-
-            for (var index = firstIndex; index <= lastIndex; index++)
-            {
-                if (PreviewThumbnailGridView.Items[index] is ImageFileInfo imageInfo)
-                {
-                    _pendingVisibleThumbnailLoads.Add(imageInfo);
-                }
-            }
+            ThumbnailQueueHelper.AddItemsInRange(
+                PreviewThumbnailGridView.Items,
+                firstIndex,
+                lastIndex,
+                _pendingVisibleThumbnailLoads);
         }
         else
         {
-            foreach (var imageInfo in _realizedImageItems
-                         .Select(imageInfo => new { ImageInfo = imageInfo, Index = ViewModel.Images.IndexOf(imageInfo) })
-                         .Where(candidate => candidate.Index >= 0)
-                         .OrderBy(candidate => candidate.Index)
-                         .Take(VisibleThumbnailStartBudgetPerTick + VisibleThumbnailPrefetchItemCount)
-                         .Select(candidate => candidate.ImageInfo))
+            foreach (var imageInfo in ThumbnailQueueHelper.GetRealizedFallbackItems(
+                         _realizedImageItems,
+                         ViewModel.Images,
+                         VisibleThumbnailStartBudgetPerTick + VisibleThumbnailPrefetchItemCount))
             {
                 _pendingVisibleThumbnailLoads.Add(imageInfo);
             }
