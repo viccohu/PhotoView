@@ -393,6 +393,14 @@ public sealed partial class CollectPage : Page
         {
             UpdateShellToolbarState();
         }
+        else if (e.PropertyName == nameof(CollectViewModel.ThumbnailSize))
+        {
+            QueueVisibleThumbnailLoad("thumbnail-size-changed");
+            if (ViewModel.SelectedImage != null)
+            {
+                StartSelectedThumbnailLoad(ViewModel.SelectedImage);
+            }
+        }
         else if (e.PropertyName == nameof(CollectViewModel.IsInfoDrawerOpen))
         {
             UpdateInfoDrawerState();

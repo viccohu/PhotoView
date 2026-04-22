@@ -19,22 +19,24 @@ namespace PhotoView.Services;
 
 public class ThumbnailService : IThumbnailService
 {
-    private const int MaxCachedThumbnails = 2000;
     private const uint MaxCachedThumbnailLongSidePixels = 4096;
-    private const long MaxCachedThumbnailPixels = 160_000_000;
     private const uint FastPreviewFallbackLongSidePixels = 160;
+    private const uint LargeCacheLongSideThresholdPixels = 1024;
 
     private readonly ISettingsService _settingsService;
     private readonly object _thumbnailCacheLock = new();
     private readonly Dictionary<ThumbnailCacheKey, LinkedListNode<ThumbnailCacheEntry>> _thumbnailCache = new();
     private readonly LinkedList<ThumbnailCacheEntry> _thumbnailCacheLru = new();
     private long _cachedThumbnailPixels;
+    private int _cachedLargeThumbnailCount;
     private SemaphoreSlim _decodeGate;
+    private CacheBudget _cacheBudget;
 
     public ThumbnailService(ISettingsService settingsService)
     {
         _settingsService = settingsService;
         _settingsService.PerformanceModeChanged += OnPerformanceModeChanged;
+        _cacheBudget = BuildCacheBudget();
         var concurrencyCount = GetConcurrencyCount();
         _decodeGate = new SemaphoreSlim(concurrencyCount, concurrencyCount);
     }
@@ -50,6 +52,8 @@ public class ThumbnailService : IThumbnailService
     {
         var newCount = GetConcurrencyCount();
         _decodeGate = new SemaphoreSlim(newCount, newCount);
+        _cacheBudget = BuildCacheBudget();
+        TrimCacheIfNeeded();
     }
 
     public async Task<DecodeResult?> GetFastPreviewAsync(
@@ -341,6 +345,7 @@ public class ThumbnailService : IThumbnailService
             _thumbnailCache.Clear();
             _thumbnailCacheLru.Clear();
             _cachedThumbnailPixels = 0;
+            _cachedLargeThumbnailCount = 0;
         }
     }
 
@@ -429,24 +434,23 @@ public class ThumbnailService : IThumbnailService
             RemoveCacheEntry(key);
 
             var pixelCount = EstimatePixelCount(key, result);
-            var entry = new ThumbnailCacheEntry(key, result.Width, result.Height, pixelCount, result.ImageSource);
+            var entry = new ThumbnailCacheEntry(
+                key,
+                result.Width,
+                result.Height,
+                pixelCount,
+                IsLargeCacheEntry(key, result),
+                result.ImageSource);
             var node = new LinkedListNode<ThumbnailCacheEntry>(entry);
             _thumbnailCacheLru.AddLast(node);
             _thumbnailCache[key] = node;
             _cachedThumbnailPixels += pixelCount;
-
-            while (_thumbnailCache.Count > MaxCachedThumbnails ||
-                   _cachedThumbnailPixels > MaxCachedThumbnailPixels)
+            if (entry.IsLarge)
             {
-                var oldest = _thumbnailCacheLru.First;
-                if (oldest == null)
-                    break;
-
-                // System.Diagnostics.Debug.WriteLine($"[ThumbnailService] Cache evict: {oldest.Value.Key.Path}, size={oldest.Value.Key.LongSidePixels}");
-                _thumbnailCache.Remove(oldest.Value.Key);
-                _cachedThumbnailPixels = Math.Max(0, _cachedThumbnailPixels - oldest.Value.PixelCount);
-                _thumbnailCacheLru.RemoveFirst();
+                _cachedLargeThumbnailCount++;
             }
+
+            TrimCacheIfNeeded_NoLock();
         }
     }
 
@@ -458,6 +462,10 @@ public class ThumbnailService : IThumbnailService
         _thumbnailCacheLru.Remove(node);
         _thumbnailCache.Remove(key);
         _cachedThumbnailPixels = Math.Max(0, _cachedThumbnailPixels - node.Value.PixelCount);
+        if (node.Value.IsLarge)
+        {
+            _cachedLargeThumbnailCount = Math.Max(0, _cachedLargeThumbnailCount - 1);
+        }
     }
 
     private static long EstimatePixelCount(ThumbnailCacheKey key, DecodeResult result)
@@ -465,6 +473,100 @@ public class ThumbnailService : IThumbnailService
         var width = result.Width > 0 ? result.Width : key.LongSidePixels;
         var height = result.Height > 0 ? result.Height : key.LongSidePixels;
         return Math.Max(1L, (long)width * height);
+    }
+
+    private static bool IsLargeCacheEntry(ThumbnailCacheKey key, DecodeResult result)
+    {
+        var longSide = Math.Max(
+            key.LongSidePixels,
+            Math.Max(result.Width, result.Height));
+        return longSide >= LargeCacheLongSideThresholdPixels;
+    }
+
+    private CacheBudget BuildCacheBudget()
+    {
+        var availableBytes = GetApproximateAvailableMemoryBytes();
+        var availableGiB = availableBytes / (1024d * 1024d * 1024d);
+        var isSmart = _settingsService.PerformanceMode == PerformanceMode.Smart;
+
+        var budget = availableGiB switch
+        {
+            <= 4d => new CacheBudget(
+                isSmart ? 768 : 512,
+                isSmart ? 48_000_000L : 32_000_000L,
+                isSmart ? 28 : 16),
+            <= 8d => new CacheBudget(
+                isSmart ? 1400 : 900,
+                isSmart ? 96_000_000L : 64_000_000L,
+                isSmart ? 48 : 28),
+            _ => new CacheBudget(
+                isSmart ? 1800 : 1200,
+                isSmart ? 128_000_000L : 80_000_000L,
+                isSmart ? 64 : 36)
+        };
+
+        var pressureRatio = GetMemoryPressureRatio(availableBytes);
+        if (pressureRatio >= 0.70d)
+        {
+            return budget.Scale(0.5d);
+        }
+
+        if (pressureRatio >= 0.55d)
+        {
+            return budget.Scale(0.75d);
+        }
+
+        return budget;
+    }
+
+    private static long GetApproximateAvailableMemoryBytes()
+    {
+        var gcInfo = GC.GetGCMemoryInfo();
+        if (gcInfo.TotalAvailableMemoryBytes > 0)
+        {
+            return gcInfo.TotalAvailableMemoryBytes;
+        }
+
+        return 8L * 1024 * 1024 * 1024;
+    }
+
+    private static double GetMemoryPressureRatio(long availableBytes)
+    {
+        if (availableBytes <= 0)
+            return 0d;
+
+        var managedBytes = GC.GetTotalMemory(forceFullCollection: false);
+        return managedBytes / (double)availableBytes;
+    }
+
+    private void TrimCacheIfNeeded()
+    {
+        lock (_thumbnailCacheLock)
+        {
+            TrimCacheIfNeeded_NoLock();
+        }
+    }
+
+    private void TrimCacheIfNeeded_NoLock()
+    {
+        _cacheBudget = BuildCacheBudget();
+
+        while (_thumbnailCache.Count > _cacheBudget.MaxEntries ||
+               _cachedThumbnailPixels > _cacheBudget.MaxPixels ||
+               _cachedLargeThumbnailCount > _cacheBudget.MaxLargeEntries)
+        {
+            var oldest = _thumbnailCacheLru.First;
+            if (oldest == null)
+                break;
+
+            _thumbnailCache.Remove(oldest.Value.Key);
+            _cachedThumbnailPixels = Math.Max(0, _cachedThumbnailPixels - oldest.Value.PixelCount);
+            if (oldest.Value.IsLarge)
+            {
+                _cachedLargeThumbnailCount = Math.Max(0, _cachedLargeThumbnailCount - 1);
+            }
+            _thumbnailCacheLru.RemoveFirst();
+        }
     }
 
     private readonly record struct ThumbnailCacheKey(
@@ -480,7 +582,22 @@ public class ThumbnailService : IThumbnailService
         uint Width,
         uint Height,
         long PixelCount,
+        bool IsLarge,
         ImageSource ImageSource);
+
+    private readonly record struct CacheBudget(
+        int MaxEntries,
+        long MaxPixels,
+        int MaxLargeEntries)
+    {
+        public CacheBudget Scale(double factor)
+        {
+            return new CacheBudget(
+                Math.Max(128, (int)Math.Round(MaxEntries * factor)),
+                Math.Max(16_000_000L, (long)Math.Round(MaxPixels * factor)),
+                Math.Max(8, (int)Math.Round(MaxLargeEntries * factor)));
+        }
+    }
 
     private static bool IsRawFile(string extension)
     {

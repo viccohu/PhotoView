@@ -346,6 +346,40 @@ public partial class ImageFileInfo
         }
     }
 
+    public void InvalidateThumbnailForSizeChange()
+    {
+        lock (_thumbnailLoadLock)
+        {
+            _fastPreviewLoadCts?.Cancel();
+            _targetThumbnailLoadCts?.Cancel();
+            _fastPreviewLoadVersion++;
+            _targetThumbnailLoadVersion++;
+            _loadedTargetThumbnailSize = null;
+            _requestedFastPreviewSize = null;
+            _requestedTargetThumbnailSize = null;
+            IsThumbnailLoading = false;
+            IsThumbnailFailed = false;
+
+            var previousStage = _thumbnailStage;
+            if (Thumbnail != null)
+            {
+                _fastPreviewThumbnail ??= Thumbnail;
+                _thumbnailStage = ThumbnailLoadStage.FastPreview;
+            }
+            else
+            {
+                _fastPreviewThumbnail = null;
+                _thumbnailStage = ThumbnailLoadStage.None;
+            }
+
+            if (previousStage != _thumbnailStage)
+            {
+                OnPropertyChanged(nameof(HasFastPreview));
+                OnPropertyChanged(nameof(HasTargetThumbnail));
+            }
+        }
+    }
+
     public void DowngradeToFastPreview()
     {
         lock (_thumbnailLoadLock)

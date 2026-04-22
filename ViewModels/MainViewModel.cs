@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using PhotoView.Contracts.Services;
 using PhotoView.Helpers;
 using PhotoView.Models;
@@ -181,7 +181,7 @@ public partial class MainViewModel : ObservableRecipient
         foreach (var image in _allImages)
         {
             image.UpdateDisplaySize(value);
-            image.ClearThumbnail();
+            image.InvalidateThumbnailForSizeChange();
         }
         ThumbnailSizeChanged?.Invoke(this, EventArgs.Empty);
     }
@@ -387,9 +387,10 @@ public partial class MainViewModel : ObservableRecipient
         {
             ClearStatus();
             var fileTypeFilter = ImageExtensions.ToList();
+            var indexerOption = GetPreferredIndexerOption(folderNode);
             var queryOptions = new QueryOptions(CommonFileQuery.OrderByName, fileTypeFilter)
             {
-                IndexerOption = IndexerOption.DoNotUseIndexer,
+                IndexerOption = indexerOption,
                 FolderDepth = FolderDepth.Shallow
             };
 
@@ -602,6 +603,35 @@ public partial class MainViewModel : ObservableRecipient
         return fullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
     }
 
+    private static IndexerOption GetPreferredIndexerOption(FolderNode? folderNode)
+    {
+        return ShouldPreferIndexer(folderNode?.FullPath)
+            ? IndexerOption.UseIndexerWhenAvailable
+            : IndexerOption.DoNotUseIndexer;
+    }
+
+    private static bool ShouldPreferIndexer(string? folderPath)
+    {
+        if (string.IsNullOrWhiteSpace(folderPath))
+            return false;
+
+        try
+        {
+            if (folderPath.StartsWith(@"\\", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            var root = Path.GetPathRoot(folderPath);
+            if (string.IsNullOrWhiteSpace(root))
+                return false;
+
+            var driveInfo = new DriveInfo(root);
+            return driveInfo.DriveType == DriveType.Fixed;
+        }
+        catch
+        {
+            return false;
+        }
+    }
     private void AddPlaceholderGroups(
         IReadOnlyDictionary<string, List<StorageFile>> newGroupMap,
         CancellationToken cancellationToken)
@@ -1265,9 +1295,10 @@ public partial class MainViewModel : ObservableRecipient
         try
         {
             var fileTypeFilter = ImageExtensions.ToList();
+            var indexerOption = GetPreferredIndexerOption(folderNode);
             var queryOptions = new QueryOptions(CommonFileQuery.OrderByName, fileTypeFilter)
             {
-                IndexerOption = IndexerOption.DoNotUseIndexer,
+                IndexerOption = indexerOption,
                 FolderDepth = FolderDepth.Shallow
             };
 

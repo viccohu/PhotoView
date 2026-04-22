@@ -114,7 +114,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         foreach (var image in Images)
         {
             image.UpdateDisplaySize(value);
-            image.ClearThumbnail();
+            image.InvalidateThumbnailForSizeChange();
         }
     }
 
