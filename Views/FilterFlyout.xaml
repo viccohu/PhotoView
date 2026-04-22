@@ -8,6 +8,9 @@
     mc:Ignorable="d">
 
     <UserControl.Resources>
+        <SolidColorBrush x:Key="FilterChipUncheckedForegroundBrush" Color="{ThemeResource TextFillColorPrimary}"/>
+        <SolidColorBrush x:Key="FilterChipCheckedForegroundBrush" Color="{ThemeResource TextOnAccentFillColorPrimary}"/>
+
         <Style x:Key="FilterChipToggleButtonStyle" TargetType="ToggleButton">
             <Setter Property="MinHeight" Value="40"/>
             <Setter Property="Padding" Value="10,0"/>

@@ -55,7 +55,13 @@ public sealed partial class FilterFlyout : UserControl
         InitializeComponent();
         RatingConditionComboBox.SelectionChanged += RatingConditionComboBox_SelectionChanged;
         RatingStarsControl.ValueChanged += RatingStarsControl_ValueChanged;
+        ActualThemeChanged += FilterFlyout_ActualThemeChanged;
         UpdateBurstFilterVisibility();
+    }
+
+    private void FilterFlyout_ActualThemeChanged(FrameworkElement sender, object args)
+    {
+        RefreshToggleContentForegrounds();
     }
 
     private void OnFilterViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -95,6 +101,17 @@ public sealed partial class FilterFlyout : UserControl
         RawFilterButton.IsChecked = _filterViewModel.IsRawFilter;
         UpdateToggleContentForeground(ImageFilterButton);
         UpdateToggleContentForeground(RawFilterButton);
+    }
+
+    private void RefreshToggleContentForegrounds()
+    {
+        UpdateToggleContentForeground(ImageFilterButton);
+        UpdateToggleContentForeground(RawFilterButton);
+        UpdateToggleContentForeground(PendingDeleteFilterButton);
+        UpdateToggleContentForeground(BurstFilterButton);
+        UpdateToggleContentForeground(_ratingAllButton);
+        UpdateToggleContentForeground(_ratingHasButton);
+        UpdateToggleContentForeground(_ratingNoButton);
     }
 
     private void InitializeRatingModeButtons()
@@ -494,12 +511,12 @@ public sealed partial class FilterFlyout : UserControl
         }
     }
 
-    private static Brush GetToggleContentForegroundBrush(bool isChecked)
+    private Brush GetToggleContentForegroundBrush(bool isChecked)
     {
         var resourceKey = isChecked
-            ? "TextOnAccentFillColorPrimaryBrush"
-            : "TextFillColorPrimaryBrush";
+            ? "FilterChipCheckedForegroundBrush"
+            : "FilterChipUncheckedForegroundBrush";
 
-        return (Brush)Application.Current.Resources[resourceKey];
+        return (Brush)Resources[resourceKey];
     }
 }

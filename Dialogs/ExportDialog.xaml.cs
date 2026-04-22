@@ -41,6 +41,7 @@ public sealed partial class ExportDialog : ContentDialog
         LoadSettings();
         Opened += ExportDialog_Opened;
         Closing += ExportDialog_Closing;
+        ActualThemeChanged += ExportDialog_ActualThemeChanged;
         PrimaryButtonClick += ExportDialog_PrimaryButtonClick;
         
         ImageToggleButton.Checked += ImageToggleButton_Checked;
@@ -68,6 +69,11 @@ public sealed partial class ExportDialog : ContentDialog
 
         ResetResizeOptions();
         UpdateResizeControlStates();
+    }
+
+    private void ExportDialog_ActualThemeChanged(FrameworkElement sender, object args)
+    {
+        RefreshToggleContentForegrounds();
     }
 
     private void LoadSettings()
@@ -109,6 +115,13 @@ public sealed partial class ExportDialog : ContentDialog
                         !string.IsNullOrWhiteSpace(ExportPathTextBox.Text) &&
                         TryGetResizeOptions(out _, out _);
         IsPrimaryButtonEnabled = canExport && !_isExporting;
+        UpdateExpectedExportSummary();
+    }
+
+    private void RefreshToggleContentForegrounds()
+    {
+        UpdateToggleContentForeground(ImageToggleButton);
+        UpdateToggleContentForeground(RawToggleButton);
     }
 
     private void SaveSettings()
@@ -425,6 +438,36 @@ public sealed partial class ExportDialog : ContentDialog
         {
             return Path.Combine(basePath, folderName, fileName);
         }
+    }
+
+    private void UpdateExpectedExportSummary()
+    {
+        var summary = GetExpectedExportSummary();
+        ExportCountSummaryTextBlock.Text = $"{summary.TotalCount} 个文件";
+        ExportImageCountTextBlock.Text = $"JPG {summary.ImageCount}";
+        ExportRawCountTextBlock.Text = $"RAW {summary.RawCount}";
+
+        var hasExportableFiles = summary.TotalCount > 0;
+        ExportCountSummaryTextBlock.Opacity = hasExportableFiles ? 1d : 0.6d;
+        ExportImageCountTextBlock.Opacity = summary.ImageCount > 0 ? 1d : 0.55d;
+        ExportRawCountTextBlock.Opacity = summary.RawCount > 0 ? 1d : 0.55d;
+    }
+
+    private ExportCountSummary GetExpectedExportSummary()
+    {
+        if (!TryGetResizeOptions(out var resizeOptions, out _))
+        {
+            resizeOptions = null;
+        }
+
+        var previewBasePath = string.IsNullOrWhiteSpace(ExportPathTextBox.Text)
+            ? "preview"
+            : ExportPathTextBox.Text.Trim();
+
+        var exportJobs = BuildExportJobs(previewBasePath, resizeOptions);
+        var imageCount = exportJobs.Count(job => job.Kind == ExportJobKind.ResizeAndEncode || IsImageExtension(Path.GetExtension(job.File.Path).ToLowerInvariant()));
+        var rawCount = exportJobs.Count - imageCount;
+        return new ExportCountSummary(exportJobs.Count, imageCount, rawCount);
     }
 
     private void ResetResizeOptions()
@@ -825,13 +868,13 @@ public sealed partial class ExportDialog : ContentDialog
         }
     }
 
-    private static Brush GetToggleContentForegroundBrush(bool isChecked)
+    private Brush GetToggleContentForegroundBrush(bool isChecked)
     {
         var resourceKey = isChecked
-            ? "TextOnAccentFillColorPrimaryBrush"
-            : "TextFillColorPrimaryBrush";
+            ? "ExportToggleCheckedForegroundBrush"
+            : "ExportToggleUncheckedForegroundBrush";
 
-        return (Brush)Application.Current.Resources[resourceKey];
+        return (Brush)Resources[resourceKey];
     }
 
     private enum ExportResizeMode
@@ -876,4 +919,9 @@ public sealed partial class ExportDialog : ContentDialog
         string TargetPath,
         ExportJobKind Kind,
         ExportResizeOptions? ResizeOptions);
+
+    private sealed record ExportCountSummary(
+        int TotalCount,
+        int ImageCount,
+        int RawCount);
 }
