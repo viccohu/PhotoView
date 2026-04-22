@@ -11,6 +11,18 @@ using Windows.Storage.Search;
 
 namespace PhotoView.ViewModels;
 
+public enum DualPageMode
+{
+    Compare,
+    Continuous
+}
+
+public enum PreviewPageSlot
+{
+    Left,
+    Right
+}
+
 public partial class CollectViewModel : ObservableRecipient, IDisposable
 {
     public readonly record struct LoadPreviewResult(
@@ -114,6 +126,21 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
 
     [ObservableProperty]
     private bool _isInfoDrawerOpen;
+
+    [ObservableProperty]
+    private bool _isDualPageMode;
+
+    [ObservableProperty]
+    private DualPageMode _dualPageMode = DualPageMode.Compare;
+
+    [ObservableProperty]
+    private PreviewPageSlot _focusedPageSlot = PreviewPageSlot.Left;
+
+    [ObservableProperty]
+    private ImageFileInfo? _leftPageImage;
+
+    [ObservableProperty]
+    private ImageFileInfo? _rightPageImage;
 
     public int PendingDeleteCount
     {

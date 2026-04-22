@@ -34,6 +34,11 @@
                 </Canvas>
             </Viewbox>
         </DataTemplate>
+
+        <Style x:Key="DualModeToggleStyle" TargetType="ToggleButton">
+            <Setter Property="MinWidth" Value="54"/>
+            <Setter Property="Padding" Value="12,4"/>
+        </Style>
     </Page.Resources>
 
     <Grid>
@@ -292,18 +297,57 @@
                 <RowDefinition Height="0"/>
             </Grid.RowDefinitions>
 
-            <Border
+            <Grid
                 Grid.Row="0"
                 Grid.Column="0"
-                
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                BorderThickness="1"
-                Margin="0,0,6,0"
-                CornerRadius="8,8,0,0">
-                <controls:PreviewImageCanvasControl
-                    x:Name="PreviewCanvas"
-                    CurrentImage="{x:Bind ViewModel.SelectedImage, Mode=OneWay}"/>
-            </Border>
+                Margin="0,0,6,0">
+                <Border
+                    x:Name="PreviewCanvasHost"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8,8,0,0"
+                    Visibility="{x:Bind ViewModel.IsDualPageMode, Mode=OneWay, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                    <controls:PreviewImageCanvasControl
+                        x:Name="PreviewCanvas"
+                        CurrentImage="{x:Bind ViewModel.SelectedImage, Mode=OneWay}"/>
+                </Border>
+
+                <Grid
+                    x:Name="DualPreviewHost"
+                    ColumnSpacing="6"
+                    Visibility="{x:Bind ViewModel.IsDualPageMode, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border
+                        x:Name="LeftPreviewHost"
+                        Grid.Column="0"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8,8,0,0"
+                        Tapped="LeftPreviewHost_Tapped">
+                        <controls:PreviewImageCanvasControl
+                            x:Name="LeftPreviewCanvas"
+                            CurrentImage="{x:Bind ViewModel.LeftPageImage, Mode=OneWay}"/>
+                    </Border>
+
+                    <Border
+                        x:Name="RightPreviewHost"
+                        Grid.Column="1"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8,8,0,0"
+                        Tapped="RightPreviewHost_Tapped">
+                        <controls:PreviewImageCanvasControl
+                            x:Name="RightPreviewCanvas"
+                            CurrentImage="{x:Bind ViewModel.RightPageImage, Mode=OneWay}"/>
+                    </Border>
+                </Grid>
+            </Grid>
 
             <Border
                 x:Name="PreviewInfoDrawer"
@@ -349,6 +393,38 @@
                             ToolTipService.ToolTip="文件信息">
                             <FontIcon Glyph="&#xE946;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
                         </ToggleButton>
+                        <ToggleButton
+                            x:Name="DualPageToggleButton"
+                            IsChecked="{x:Bind ViewModel.IsDualPageMode, Mode=TwoWay}"
+                            Click="DualPageToggleButton_Click"
+                            ToolTipService.ToolTip="双页浏览">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE14C;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
+                                <TextBlock Text="双页"/>
+                            </StackPanel>
+                        </ToggleButton>
+                        <Border
+                            Padding="2"
+                            Background="{ThemeResource ControlAltFillColorSecondaryBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Visibility="{x:Bind ViewModel.IsDualPageMode, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel Orientation="Horizontal" Spacing="2">
+                                <ToggleButton
+                                    x:Name="CompareModeToggleButton"
+                                    Style="{StaticResource DualModeToggleStyle}"
+                                    Click="CompareModeToggleButton_Click">
+                                    <TextBlock Text="对照"/>
+                                </ToggleButton>
+                                <ToggleButton
+                                    x:Name="ContinuousModeToggleButton"
+                                    Style="{StaticResource DualModeToggleStyle}"
+                                    Click="ContinuousModeToggleButton_Click">
+                                    <TextBlock Text="连续"/>
+                                </ToggleButton>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
@@ -359,7 +435,12 @@
                                 Height="16"
                                 Data="m8.75,34.13V12.54c0-4.09,3.32-7.41,7.41-7.41h48.21c4.08,0,7.41,3.32,7.41,7.41v21.59H8.75Zm59.02-21.59c0-1.88-1.53-3.41-3.41-3.41H16.16c-1.88,0-3.41,1.53-3.41,3.41v17.59h55.02V12.54Z M8.75,68.37v-21.59h63.02v21.59c0,4.09-3.32,7.41-7.41,7.41H16.16c-4.08,0-7.41-3.32-7.41-7.41Zm4-17.59v17.59c0,1.88,1.53,3.41,3.41,3.41h48.21c1.88,0,3.41-1.53,3.41-3.41v-17.59H12.75Z M75.75,38.45h-2.5c-1.1,0-2,.9-2,2s.9,2,2,2h2.5c1.1,0,2-.9,2-2s-.9-2-2-2Z M35.87,38.45h-5.5c-1.1,0-2,.9-2,2.01s.9,1.99,2,1.99h5.5c1.1,0,2-.89,2-1.99s-.9-2.01-2-2.01Z M21.58,38.45h-5.5c-1.1,0-2,.9-2,2.01s.9,1.99,2,1.99h5.5c1.1,0,2-.89,2-1.99s-.9-2.01-2-2.01Z M64.46,38.45h-5.5c-1.1,0-2,.9-2,2.01s.9,1.99,2,1.99h5.5c1.1,0,2-.89,2-1.99s-.9-2.01-2-2.01Z M50.17,38.45h-5.5c-1.11,0-2,.9-2,2.01s.89,1.99,2,1.99h5.5c1.1,0,2-.89,2-1.99s-.9-2.01-2-2.01Z M8.69,39.04c-.36-.36-.86-.59-1.41-.59-.01,0-.03,0-.04,0h-2.46c-1.1,0-2,.9-2,2s.9,2,2,2h2.5c.77,0,1.43-.44,1.77-1.08.14-.27.23-.58.23-.91,0,0,0,0,0,0s0,0,0,0c0-.55-.22-1.05-.59-1.41Z"
                                 Fill="{ThemeResource TextFillColorPrimaryBrush}"
-                                Stretch="Uniform"/>
+                                Stretch="Uniform"
+                                RenderTransformOrigin="0.5,0.5">
+                                <Path.RenderTransform>
+                                    <RotateTransform Angle="90"/>
+                                </Path.RenderTransform>
+                            </Path>
                         </Button>
                         <Button Click="RotatePreview_Click" ToolTipService.ToolTip="旋转">
                             <FontIcon Glyph="&#xE7AD;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>

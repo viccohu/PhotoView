@@ -36,17 +36,18 @@ public class KeyboardShortcutService : IKeyboardShortcutService
         VirtualKey.Delete,
     };
 
-    private static readonly HashSet<VirtualKey> DirectionalKeys = new()
+    private static readonly HashSet<VirtualKey> PreviewOverrideKeys = new()
     {
         VirtualKey.Left,
         VirtualKey.Right,
         VirtualKey.Up,
         VirtualKey.Down,
+        VirtualKey.Tab,
     };
 
     private void Window_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (!DirectionalKeys.Contains(e.Key))
+        if (!PreviewOverrideKeys.Contains(e.Key))
             return;
 
         if (IsTextInputFocused())

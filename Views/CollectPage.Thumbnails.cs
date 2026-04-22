@@ -156,6 +156,8 @@ public sealed partial class CollectPage
 
     private void Images_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        RefreshDualPageLayout(forceRebuild: ViewModel.IsDualPageMode);
+
         if (e.Action == NotifyCollectionChangedAction.Reset)
         {
             _thumbnailCoordinator.ClearPendingThumbnailState();

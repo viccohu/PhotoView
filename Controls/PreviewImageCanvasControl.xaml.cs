@@ -11,6 +11,17 @@ using System.Threading.Tasks;
 
 namespace PhotoView.Controls;
 
+public readonly record struct PreviewViewportState(
+    double ZoomScale,
+    double TargetZoomScale,
+    double TranslateX,
+    double TranslateY,
+    double VelocityX,
+    double VelocityY,
+    int RotationDegrees,
+    int MirrorX,
+    int MirrorY);
+
 public sealed partial class PreviewImageCanvasControl : UserControl
 {
     private const double MinZoomPercent = 10d;
@@ -53,6 +64,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
     private const double OriginalDecodeZoomPercentThreshold = 85d;
 
     public event EventHandler<double>? ZoomPercentChanged;
+    public event EventHandler<PreviewViewportState>? ViewportStateChanged;
 
     public PreviewImageCanvasControl()
     {
@@ -102,6 +114,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
         TryStartOriginalImageLoad();
         StartPhysics();
         ZoomPercentChanged?.Invoke(this, percent);
+        RaiseViewportStateChanged();
     }
 
     public void ToggleOriginalOrFitZoom()
@@ -125,18 +138,63 @@ public sealed partial class PreviewImageCanvasControl : UserControl
     {
         _rotationDegrees = (_rotationDegrees + 90) % 360;
         ApplyTransform();
+        RaiseViewportStateChanged();
     }
 
     public void FlipHorizontal()
     {
         _mirrorX *= -1;
         ApplyTransform();
+        RaiseViewportStateChanged();
     }
 
     public void FlipVertical()
     {
         _mirrorY *= -1;
         ApplyTransform();
+        RaiseViewportStateChanged();
+    }
+
+    public PreviewViewportState GetViewportState()
+    {
+        return new PreviewViewportState(
+            _zoomScale,
+            _targetZoomScale,
+            _translateX,
+            _translateY,
+            _velocityX,
+            _velocityY,
+            _rotationDegrees,
+            _mirrorX,
+            _mirrorY);
+    }
+
+    public void ApplyViewportState(PreviewViewportState state)
+    {
+        if (_imageFileInfo == null)
+            return;
+
+        _zoomScale = state.ZoomScale;
+        _targetZoomScale = state.TargetZoomScale;
+        _translateX = state.TranslateX;
+        _translateY = state.TranslateY;
+        _velocityX = state.VelocityX;
+        _velocityY = state.VelocityY;
+        _rotationDegrees = state.RotationDegrees;
+        _mirrorX = state.MirrorX;
+        _mirrorY = state.MirrorY;
+        _hasZoomAnchor = false;
+        ClampTranslation();
+        ApplyTransform();
+        if (Math.Abs(_zoomScale - _targetZoomScale) > 0.0005 ||
+            Math.Abs(_velocityX) > VelocityThreshold ||
+            Math.Abs(_velocityY) > VelocityThreshold)
+        {
+            StartPhysics();
+        }
+
+        ZoomPercentChanged?.Invoke(this, GetCurrentZoomPercent());
+        RaiseViewportStateChanged();
     }
 
     private void PreviewImageCanvasControl_Loaded(object sender, RoutedEventArgs e)
@@ -210,6 +268,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
             MainImage.Source = null;
             EmptyText.Visibility = Visibility.Visible;
             ZoomPercentChanged?.Invoke(this, 100d);
+            RaiseViewportStateChanged();
             return;
         }
 
@@ -457,6 +516,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
         ClampTranslation();
         ApplyTransform();
         ZoomPercentChanged?.Invoke(this, GetCurrentZoomPercent());
+        RaiseViewportStateChanged();
 
         if (_isLoaded &&
             _imageFileInfo != null &&
@@ -503,6 +563,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
         TryStartOriginalImageLoad();
         StartPhysics();
         ZoomPercentChanged?.Invoke(this, GetTargetZoomPercent());
+        RaiseViewportStateChanged();
         e.Handled = true;
     }
 
@@ -514,6 +575,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
             return;
 
         ToggleOriginalOrFitZoom();
+        RaiseViewportStateChanged();
         e.Handled = true;
     }
 
@@ -553,6 +615,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
         _lastDragPoint = current;
         ClampTranslation();
         ApplyTransform();
+        RaiseViewportStateChanged();
     }
 
     private void ImageContainer_PointerReleased(object sender, PointerRoutedEventArgs e)
@@ -563,6 +626,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
         _isDragging = false;
         ImageContainer.ReleasePointerCapture(e.Pointer);
         StartPhysics();
+        RaiseViewportStateChanged();
     }
 
     private void StartPhysics()
@@ -618,6 +682,7 @@ public sealed partial class PreviewImageCanvasControl : UserControl
             ClampTranslation();
             ApplyTransform();
             ZoomPercentChanged?.Invoke(this, GetCurrentZoomPercent());
+            RaiseViewportStateChanged();
             return;
         }
 
@@ -631,6 +696,11 @@ public sealed partial class PreviewImageCanvasControl : UserControl
         ImageTransform.TranslateX = _translateX;
         ImageTransform.TranslateY = _translateY;
         ImageTransform.Rotation = _rotationDegrees;
+    }
+
+    private void RaiseViewportStateChanged()
+    {
+        ViewportStateChanged?.Invoke(this, GetViewportState());
     }
 
     private void ClampTranslation()

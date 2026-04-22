@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
+using PhotoView.Controls;
 using PhotoView.Contracts.Services;
 using PhotoView.Dialogs;
 using PhotoView.Helpers;
@@ -14,9 +15,11 @@ using PhotoView.ViewModels;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IO;
+using Microsoft.UI.Input;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.System;
+using Windows.UI.Core;
 
 namespace PhotoView.Views;
 
@@ -53,6 +56,11 @@ public sealed partial class CollectPage : Page
     private int _selectedThumbnailLoadVersion;
     private int _lastDirectionalNavigationDirection;
     private long _lastDirectionalNavigationTick;
+    private bool _isUpdatingSelectedImageFromPreview;
+    private bool _isUpdatingDualPageZoom;
+    private bool _isSyncingPreviewViewportState;
+    private PointerEventHandler? _previewWheelHandler;
+    private PointerEventHandler? _previewPointerPressedHandler;
 
     public CollectViewModel ViewModel
     {
@@ -76,7 +84,7 @@ public sealed partial class CollectPage : Page
         InitializeComponent();
         DataContext = ViewModel;
         UpdateInfoDrawerState(animate: false);
-        UpdateZoomValueButtonContent(100d);
+        UpdateZoomValueButtonContent(100d, isFitZoomActive: false);
         _thumbnailCoordinator = new CollectPageThumbnailCoordinator(TimeSpan.FromMilliseconds(50));
         _thumbnailCoordinator.VisibleThumbnailLoadTimer.Tick += VisibleThumbnailLoadTimer_Tick;
         _ratingDebounceTimer = new DispatcherTimer
@@ -89,8 +97,18 @@ public sealed partial class CollectPage : Page
         ViewModel.Filter.FilterChanged += Filter_FilterChanged;
         PreviewInfoViewModel.RatingUpdated += PreviewInfoViewModel_RatingUpdated;
         PreviewCanvas.ZoomPercentChanged += PreviewCanvas_ZoomPercentChanged;
+        LeftPreviewCanvas.ZoomPercentChanged += PreviewCanvas_ZoomPercentChanged;
+        RightPreviewCanvas.ZoomPercentChanged += PreviewCanvas_ZoomPercentChanged;
+        LeftPreviewCanvas.ViewportStateChanged += PreviewCanvas_ViewportStateChanged;
+        RightPreviewCanvas.ViewportStateChanged += PreviewCanvas_ViewportStateChanged;
         _thumbnailWheelHandler = PreviewThumbnailGridView_PointerWheelChanged;
         PreviewThumbnailGridView.AddHandler(UIElement.PointerWheelChangedEvent, _thumbnailWheelHandler, true);
+        _previewWheelHandler = PreviewHost_PointerWheelChanged;
+        LeftPreviewHost.AddHandler(UIElement.PointerWheelChangedEvent, _previewWheelHandler, true);
+        RightPreviewHost.AddHandler(UIElement.PointerWheelChangedEvent, _previewWheelHandler, true);
+        _previewPointerPressedHandler = PreviewHost_PointerPressed;
+        LeftPreviewHost.AddHandler(UIElement.PointerPressedEvent, _previewPointerPressedHandler, true);
+        RightPreviewHost.AddHandler(UIElement.PointerPressedEvent, _previewPointerPressedHandler, true);
         _thumbnailPreviewKeyDownHandler = PreviewThumbnailGridView_PreviewKeyDown;
         PreviewThumbnailGridView.AddHandler(UIElement.PreviewKeyDownEvent, _thumbnailPreviewKeyDownHandler, true);
         Loaded += CollectPage_Loaded;
@@ -106,6 +124,8 @@ public sealed partial class CollectPage : Page
 
         _isUnloaded = false;
         RegisterShellToolbar();
+        EnsurePreviewSelectionInitialized();
+        RefreshDualPageLayout(forceRebuild: true);
         UpdateSelectedImageUi();
         UpdateLoadDrawerState(animate: false);
         QueueVisibleThumbnailLoad("page-loaded");
@@ -149,10 +169,26 @@ public sealed partial class CollectPage : Page
         PreviewInfoViewModel.RatingUpdated -= PreviewInfoViewModel_RatingUpdated;
         Bindings.StopTracking();
         PreviewCanvas.ZoomPercentChanged -= PreviewCanvas_ZoomPercentChanged;
+        LeftPreviewCanvas.ZoomPercentChanged -= PreviewCanvas_ZoomPercentChanged;
+        RightPreviewCanvas.ZoomPercentChanged -= PreviewCanvas_ZoomPercentChanged;
+        LeftPreviewCanvas.ViewportStateChanged -= PreviewCanvas_ViewportStateChanged;
+        RightPreviewCanvas.ViewportStateChanged -= PreviewCanvas_ViewportStateChanged;
         if (_thumbnailWheelHandler != null)
         {
             PreviewThumbnailGridView.RemoveHandler(UIElement.PointerWheelChangedEvent, _thumbnailWheelHandler);
             _thumbnailWheelHandler = null;
+        }
+        if (_previewWheelHandler != null)
+        {
+            LeftPreviewHost.RemoveHandler(UIElement.PointerWheelChangedEvent, _previewWheelHandler);
+            RightPreviewHost.RemoveHandler(UIElement.PointerWheelChangedEvent, _previewWheelHandler);
+            _previewWheelHandler = null;
+        }
+        if (_previewPointerPressedHandler != null)
+        {
+            LeftPreviewHost.RemoveHandler(UIElement.PointerPressedEvent, _previewPointerPressedHandler);
+            RightPreviewHost.RemoveHandler(UIElement.PointerPressedEvent, _previewPointerPressedHandler);
+            _previewPointerPressedHandler = null;
         }
         if (_thumbnailPreviewKeyDownHandler != null)
         {
@@ -290,7 +326,7 @@ public sealed partial class CollectPage : Page
     {
         if (PreviewThumbnailGridView.SelectedItem is ImageFileInfo imageInfo)
         {
-            ViewModel.SelectedImage = imageInfo;
+            UpdateSelectedImage(imageInfo, syncThumbnailSelection: false);
         }
     }
 
@@ -382,6 +418,7 @@ public sealed partial class CollectPage : Page
     {
         if (e.PropertyName == nameof(CollectViewModel.SelectedImage))
         {
+            RefreshDualPageLayout(forceRebuild: false);
             UpdateSelectedImageUi();
             if (ViewModel.SelectedImage != null)
             {
@@ -408,6 +445,357 @@ public sealed partial class CollectPage : Page
         {
             UpdateInfoDrawerState();
         }
+        else if (e.PropertyName is nameof(CollectViewModel.IsDualPageMode) or nameof(CollectViewModel.DualPageMode))
+        {
+            RefreshDualPageLayout(forceRebuild: true);
+        }
+        else if (e.PropertyName == nameof(CollectViewModel.FocusedPageSlot))
+        {
+            UpdatePreviewHostVisuals();
+            SyncZoomControlsFromActiveCanvas();
+        }
+    }
+
+    private void EnsurePreviewSelectionInitialized()
+    {
+        if (ViewModel.SelectedImage == null && ViewModel.Images.Count > 0)
+        {
+            UpdateSelectedImage(ViewModel.Images[0], syncThumbnailSelection: true);
+        }
+    }
+
+    private void RefreshDualPageLayout(bool forceRebuild)
+    {
+        EnsurePreviewSelectionInitialized();
+
+        if (!ViewModel.IsDualPageMode)
+        {
+            if (forceRebuild)
+            {
+                ViewModel.FocusedPageSlot = PreviewPageSlot.Left;
+            }
+
+            UpdateDualModeButtons();
+            UpdatePreviewHostVisuals();
+            SyncZoomControlsFromActiveCanvas();
+            return;
+        }
+
+        if (ViewModel.DualPageMode == DualPageMode.Continuous)
+        {
+            RefreshContinuousPages();
+        }
+        else
+        {
+            RefreshComparePages(forceRebuild);
+        }
+
+        UpdateDualModeButtons();
+        UpdatePreviewHostVisuals();
+        SyncZoomControlsFromActiveCanvas();
+    }
+
+    private void RefreshComparePages(bool forceRebuild)
+    {
+        var selectedImage = ViewModel.SelectedImage;
+        if (selectedImage == null)
+        {
+            ViewModel.LeftPageImage = null;
+            ViewModel.RightPageImage = null;
+            return;
+        }
+
+        if (forceRebuild)
+        {
+            ViewModel.FocusedPageSlot = PreviewPageSlot.Left;
+        }
+
+        var focusedSlot = ViewModel.FocusedPageSlot;
+        if (focusedSlot == PreviewPageSlot.Left)
+        {
+            ViewModel.LeftPageImage = selectedImage;
+            if (forceRebuild || ViewModel.RightPageImage == null)
+            {
+                ViewModel.RightPageImage = GetAdjacentImage(selectedImage, 1);
+            }
+        }
+        else
+        {
+            ViewModel.RightPageImage = selectedImage;
+            if (forceRebuild || ViewModel.LeftPageImage == null)
+            {
+                ViewModel.LeftPageImage = GetAdjacentImage(selectedImage, -1) ?? GetAdjacentImage(selectedImage, 1);
+            }
+        }
+    }
+
+    private void RefreshContinuousPages()
+    {
+        var selectedImage = ViewModel.SelectedImage;
+        if (selectedImage == null)
+        {
+            ViewModel.LeftPageImage = null;
+            ViewModel.RightPageImage = null;
+            return;
+        }
+
+        if (ViewModel.FocusedPageSlot == PreviewPageSlot.Right)
+        {
+            ViewModel.RightPageImage = selectedImage;
+            ViewModel.LeftPageImage = GetAdjacentImage(selectedImage, -1);
+            if (ViewModel.LeftPageImage == null)
+            {
+                ViewModel.FocusedPageSlot = PreviewPageSlot.Left;
+                ViewModel.LeftPageImage = selectedImage;
+                ViewModel.RightPageImage = GetAdjacentImage(selectedImage, 1);
+            }
+        }
+        else
+        {
+            ViewModel.LeftPageImage = selectedImage;
+            ViewModel.RightPageImage = GetAdjacentImage(selectedImage, 1);
+        }
+    }
+
+    private ImageFileInfo? GetAdjacentImage(ImageFileInfo? image, int delta)
+    {
+        if (image == null || ViewModel.Images.Count == 0)
+            return null;
+
+        var currentIndex = ViewModel.Images.IndexOf(image);
+        if (currentIndex < 0)
+            return null;
+
+        var nextIndex = currentIndex + delta;
+        if (nextIndex < 0 || nextIndex >= ViewModel.Images.Count)
+            return null;
+
+        return ViewModel.Images[nextIndex];
+    }
+
+    private void UpdateSelectedImage(ImageFileInfo? image, bool syncThumbnailSelection)
+    {
+        if (ReferenceEquals(ViewModel.SelectedImage, image))
+        {
+            if (syncThumbnailSelection && image != null)
+            {
+                PreviewThumbnailGridView.SelectedItem = image;
+                PreviewThumbnailGridView.ScrollIntoView(image, ScrollIntoViewAlignment.Default);
+            }
+
+            return;
+        }
+
+        _isUpdatingSelectedImageFromPreview = true;
+        ViewModel.SelectedImage = image;
+        if (syncThumbnailSelection && image != null)
+        {
+            PreviewThumbnailGridView.SelectedItem = image;
+            PreviewThumbnailGridView.ScrollIntoView(image, ScrollIntoViewAlignment.Default);
+        }
+        _isUpdatingSelectedImageFromPreview = false;
+    }
+
+    private void UpdateFocusedSlot(PreviewPageSlot slot)
+    {
+        if (ViewModel.FocusedPageSlot == slot)
+        {
+            UpdatePreviewHostVisuals();
+            SyncZoomControlsFromActiveCanvas();
+            return;
+        }
+
+        ViewModel.FocusedPageSlot = slot;
+        UpdatePreviewHostVisuals();
+        SyncZoomControlsFromActiveCanvas();
+    }
+
+    private ImageFileInfo? GetFocusedPreviewImage()
+    {
+        return ViewModel.FocusedPageSlot == PreviewPageSlot.Left
+            ? ViewModel.LeftPageImage
+            : ViewModel.RightPageImage;
+    }
+
+    private PreviewImageCanvasControl GetActivePreviewCanvas()
+    {
+        if (!ViewModel.IsDualPageMode)
+            return PreviewCanvas;
+
+        return ViewModel.FocusedPageSlot == PreviewPageSlot.Left
+            ? LeftPreviewCanvas
+            : RightPreviewCanvas;
+    }
+
+    private void UpdatePreviewHostVisuals()
+    {
+        var accentBrush = GetThemeBrush("AccentFillColorDefaultBrush", Windows.UI.Color.FromArgb(0xFF, 0x00, 0x78, 0xD4));
+        var defaultBrush = GetThemeBrush("CardStrokeColorDefaultBrush", Windows.UI.Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF));
+
+        if (!ViewModel.IsDualPageMode)
+        {
+            PreviewCanvasHost.BorderBrush = defaultBrush;
+            PreviewCanvasHost.BorderThickness = new Thickness(1);
+            LeftPreviewHost.BorderBrush = defaultBrush;
+            LeftPreviewHost.BorderThickness = new Thickness(1);
+            RightPreviewHost.BorderBrush = defaultBrush;
+            RightPreviewHost.BorderThickness = new Thickness(1);
+            return;
+        }
+
+        PreviewCanvasHost.BorderBrush = defaultBrush;
+        PreviewCanvasHost.BorderThickness = new Thickness(1);
+
+        var leftFocused = ViewModel.FocusedPageSlot == PreviewPageSlot.Left;
+        LeftPreviewHost.BorderBrush = leftFocused ? accentBrush : defaultBrush;
+        LeftPreviewHost.BorderThickness = leftFocused ? new Thickness(2) : new Thickness(1);
+
+        var rightFocused = ViewModel.FocusedPageSlot == PreviewPageSlot.Right;
+        RightPreviewHost.BorderBrush = rightFocused ? accentBrush : defaultBrush;
+        RightPreviewHost.BorderThickness = rightFocused ? new Thickness(2) : new Thickness(1);
+    }
+
+    private void UpdateDualModeButtons()
+    {
+        if (CompareModeToggleButton == null || ContinuousModeToggleButton == null)
+            return;
+
+        CompareModeToggleButton.IsChecked = ViewModel.IsDualPageMode && ViewModel.DualPageMode == DualPageMode.Compare;
+        ContinuousModeToggleButton.IsChecked = ViewModel.IsDualPageMode && ViewModel.DualPageMode == DualPageMode.Continuous;
+        RightPreviewHost.IsHitTestVisible = ViewModel.DualPageMode == DualPageMode.Compare || ViewModel.RightPageImage != null;
+    }
+
+    private void SyncZoomControlsFromActiveCanvas()
+    {
+        var activeCanvas = GetActivePreviewCanvas();
+        UpdateZoomValueButtonContent(activeCanvas.ZoomPercent, activeCanvas.IsFitZoomActive);
+
+        _isUpdatingZoomSlider = true;
+        ZoomSlider.Value = Math.Clamp(activeCanvas.ZoomPercent, ZoomSlider.Minimum, ZoomSlider.Maximum);
+        _isUpdatingZoomSlider = false;
+    }
+
+    private void DualPageToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ViewModel.IsDualPageMode)
+        {
+            ViewModel.LeftPageImage = null;
+            ViewModel.RightPageImage = null;
+            ViewModel.FocusedPageSlot = PreviewPageSlot.Left;
+        }
+        else
+        {
+            ViewModel.DualPageMode = DualPageMode.Compare;
+        }
+
+        RefreshDualPageLayout(forceRebuild: true);
+    }
+
+    private void CompareModeToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ViewModel.IsDualPageMode || ViewModel.DualPageMode == DualPageMode.Compare)
+            return;
+
+        ViewModel.DualPageMode = DualPageMode.Compare;
+        ViewModel.FocusedPageSlot = PreviewPageSlot.Left;
+        RefreshDualPageLayout(forceRebuild: true);
+    }
+
+    private void ContinuousModeToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ViewModel.IsDualPageMode || ViewModel.DualPageMode == DualPageMode.Continuous)
+            return;
+
+        ViewModel.DualPageMode = DualPageMode.Continuous;
+        ViewModel.FocusedPageSlot = PreviewPageSlot.Left;
+        RefreshDualPageLayout(forceRebuild: true);
+    }
+
+    private void LeftPreviewHost_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (TryActivatePreviewHost(sender, allowContinuousPromotion: true))
+        {
+            e.Handled = true;
+        }
+    }
+
+    private void RightPreviewHost_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (TryActivatePreviewHost(sender, allowContinuousPromotion: true))
+        {
+            e.Handled = true;
+        }
+    }
+
+    private void PreviewHost_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
+    {
+        if (!ViewModel.IsDualPageMode || !IsControlKeyDown())
+            return;
+
+        var delta = e.GetCurrentPoint(this).Properties.MouseWheelDelta;
+        if (delta == 0)
+            return;
+
+        var sourceCanvas = sender == RightPreviewHost ? RightPreviewCanvas : LeftPreviewCanvas;
+        var targetPercent = Math.Clamp(sourceCanvas.ZoomPercent + (delta > 0 ? 10d : -10d), ZoomSlider.Minimum, ZoomSlider.Maximum);
+
+        _isUpdatingDualPageZoom = true;
+        if (ViewModel.LeftPageImage != null)
+        {
+            LeftPreviewCanvas.SetZoomPercent(targetPercent);
+        }
+
+        if (ViewModel.RightPageImage != null)
+        {
+            RightPreviewCanvas.SetZoomPercent(targetPercent);
+        }
+
+        _isUpdatingDualPageZoom = false;
+        SyncZoomControlsFromActiveCanvas();
+        e.Handled = true;
+    }
+
+    private static bool IsControlKeyDown()
+    {
+        return InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control).HasFlag(CoreVirtualKeyStates.Down);
+    }
+
+    private bool ShouldSyncDualPreviewInteractions()
+    {
+        return ViewModel.IsDualPageMode && IsControlKeyDown();
+    }
+
+    private void PreviewHost_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        TryActivatePreviewHost(sender, allowContinuousPromotion: false);
+    }
+
+    private bool TryActivatePreviewHost(object sender, bool allowContinuousPromotion)
+    {
+        if (!ViewModel.IsDualPageMode)
+            return false;
+
+        if (ReferenceEquals(sender, LeftPreviewHost))
+        {
+            UpdateFocusedSlot(PreviewPageSlot.Left);
+            if (ViewModel.LeftPageImage != null)
+            {
+                UpdateSelectedImage(ViewModel.LeftPageImage, syncThumbnailSelection: true);
+            }
+
+            return true;
+        }
+
+        if (!ReferenceEquals(sender, RightPreviewHost) || ViewModel.RightPageImage == null)
+            return false;
+
+        UpdateFocusedSlot(PreviewPageSlot.Right);
+        if (ViewModel.RightPageImage != null)
+        {
+            UpdateSelectedImage(ViewModel.RightPageImage, syncThumbnailSelection: true);
+        }
+
+        return true;
     }
 
     private void LoadDrawerToggleButton_Click(object sender, RoutedEventArgs e)
@@ -1022,10 +1410,40 @@ public sealed partial class CollectPage : Page
 
     private void PreviewCanvas_ZoomPercentChanged(object? sender, double percent)
     {
+        if (sender is not PreviewImageCanvasControl canvas)
+            return;
+
+        if (!_isUpdatingDualPageZoom && !ReferenceEquals(canvas, GetActivePreviewCanvas()))
+            return;
+
         _isUpdatingZoomSlider = true;
         ZoomSlider.Value = Math.Clamp(percent, ZoomSlider.Minimum, ZoomSlider.Maximum);
-        UpdateZoomValueButtonContent(percent);
+        UpdateZoomValueButtonContent(percent, canvas.IsFitZoomActive);
         _isUpdatingZoomSlider = false;
+    }
+
+    private void PreviewCanvas_ViewportStateChanged(object? sender, PreviewViewportState state)
+    {
+        if (sender is not PreviewImageCanvasControl sourceCanvas ||
+            _isSyncingPreviewViewportState ||
+            !ShouldSyncDualPreviewInteractions())
+        {
+            return;
+        }
+
+        var targetCanvas = ReferenceEquals(sourceCanvas, LeftPreviewCanvas)
+            ? RightPreviewCanvas
+            : LeftPreviewCanvas;
+
+        var targetImage = ReferenceEquals(targetCanvas, LeftPreviewCanvas)
+            ? ViewModel.LeftPageImage
+            : ViewModel.RightPageImage;
+        if (targetImage == null)
+            return;
+
+        _isSyncingPreviewViewportState = true;
+        targetCanvas.ApplyViewportState(state);
+        _isSyncingPreviewViewportState = false;
     }
 
     private void ZoomSlider_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
@@ -1033,13 +1451,50 @@ public sealed partial class CollectPage : Page
         if (_isUpdatingZoomSlider)
             return;
 
-        PreviewCanvas.SetZoomPercent(e.NewValue);
-        UpdateZoomValueButtonContent(e.NewValue);
+        if (ShouldSyncDualPreviewInteractions())
+        {
+            if (ViewModel.LeftPageImage != null)
+            {
+                LeftPreviewCanvas.SetZoomPercent(e.NewValue);
+            }
+
+            if (ViewModel.RightPageImage != null)
+            {
+                RightPreviewCanvas.SetZoomPercent(e.NewValue);
+            }
+        }
+        else
+        {
+            var activeCanvas = GetActivePreviewCanvas();
+            activeCanvas.SetZoomPercent(e.NewValue);
+            UpdateZoomValueButtonContent(e.NewValue, activeCanvas.IsFitZoomActive);
+            return;
+        }
+
+        SyncZoomControlsFromActiveCanvas();
     }
 
     private void ZoomValueButton_Click(object sender, RoutedEventArgs e)
     {
-        PreviewCanvas.ToggleOriginalOrFitZoom();
+        if (ShouldSyncDualPreviewInteractions())
+        {
+            if (ViewModel.LeftPageImage != null)
+            {
+                LeftPreviewCanvas.ToggleOriginalOrFitZoom();
+            }
+
+            if (ViewModel.RightPageImage != null)
+            {
+                RightPreviewCanvas.ToggleOriginalOrFitZoom();
+            }
+        }
+        else
+        {
+            var activeCanvas = GetActivePreviewCanvas();
+            activeCanvas.ToggleOriginalOrFitZoom();
+        }
+
+        SyncZoomControlsFromActiveCanvas();
     }
     private void ZoomOutButton_Click(object sender, RoutedEventArgs e)
     {
@@ -1053,13 +1508,31 @@ public sealed partial class CollectPage : Page
 
     private void StepZoomPercent(double deltaPercent)
     {
-        var targetPercent = Math.Clamp(ZoomSlider.Value + deltaPercent, ZoomSlider.Minimum, ZoomSlider.Maximum);
-        PreviewCanvas.SetZoomPercent(targetPercent);
+        var activeCanvas = GetActivePreviewCanvas();
+        var targetPercent = Math.Clamp(activeCanvas.ZoomPercent + deltaPercent, ZoomSlider.Minimum, ZoomSlider.Maximum);
+
+        if (ShouldSyncDualPreviewInteractions())
+        {
+            if (ViewModel.LeftPageImage != null)
+            {
+                LeftPreviewCanvas.SetZoomPercent(targetPercent);
+            }
+
+            if (ViewModel.RightPageImage != null)
+            {
+                RightPreviewCanvas.SetZoomPercent(targetPercent);
+            }
+        }
+        else
+        {
+            activeCanvas.SetZoomPercent(targetPercent);
+        }
+
         ZoomSlider.Value = targetPercent;
-        UpdateZoomValueButtonContent(targetPercent);
+        UpdateZoomValueButtonContent(targetPercent, activeCanvas.IsFitZoomActive);
     }
 
-    private void UpdateZoomValueButtonContent(double percent)
+    private void UpdateZoomValueButtonContent(double percent, bool isFitZoomActive)
     {
         var iconLayer = new Grid
         {
@@ -1076,7 +1549,7 @@ public sealed partial class CollectPage : Page
             HorizontalAlignment = HorizontalAlignment.Center
         });
 
-        if (PreviewCanvas.IsFitZoomActive)
+        if (isFitZoomActive)
         {
             iconLayer.Children.Add(new FontIcon
             {
@@ -1109,17 +1582,62 @@ public sealed partial class CollectPage : Page
 
     private void RotatePreview_Click(object sender, RoutedEventArgs e)
     {
-        PreviewCanvas.RotateClockwise();
+        if (ShouldSyncDualPreviewInteractions())
+        {
+            if (ViewModel.LeftPageImage != null)
+            {
+                LeftPreviewCanvas.RotateClockwise();
+            }
+
+            if (ViewModel.RightPageImage != null)
+            {
+                RightPreviewCanvas.RotateClockwise();
+            }
+
+            return;
+        }
+
+        GetActivePreviewCanvas().RotateClockwise();
     }
 
     private void FlipPreviewHorizontal_Click(object sender, RoutedEventArgs e)
     {
-        PreviewCanvas.FlipHorizontal();
+        if (ShouldSyncDualPreviewInteractions())
+        {
+            if (ViewModel.LeftPageImage != null)
+            {
+                LeftPreviewCanvas.FlipHorizontal();
+            }
+
+            if (ViewModel.RightPageImage != null)
+            {
+                RightPreviewCanvas.FlipHorizontal();
+            }
+
+            return;
+        }
+
+        GetActivePreviewCanvas().FlipHorizontal();
     }
 
     private void FlipPreviewVertical_Click(object sender, RoutedEventArgs e)
     {
-        PreviewCanvas.FlipVertical();
+        if (ShouldSyncDualPreviewInteractions())
+        {
+            if (ViewModel.LeftPageImage != null)
+            {
+                LeftPreviewCanvas.FlipVertical();
+            }
+
+            if (ViewModel.RightPageImage != null)
+            {
+                RightPreviewCanvas.FlipVertical();
+            }
+
+            return;
+        }
+
+        GetActivePreviewCanvas().FlipVertical();
     }
 
     private void ToggleInfoDrawer_Click(object sender, RoutedEventArgs e)
@@ -1241,12 +1759,59 @@ public sealed partial class CollectPage : Page
 
         if (e.Key == VirtualKey.Space && ViewModel.SelectedImage != null)
         {
-            PreviewCanvas.ToggleOriginalOrFitZoom();
+            if (ShouldSyncDualPreviewInteractions())
+            {
+                if (ViewModel.LeftPageImage != null)
+                {
+                    LeftPreviewCanvas.ToggleOriginalOrFitZoom();
+                }
+
+                if (ViewModel.RightPageImage != null)
+                {
+                    RightPreviewCanvas.ToggleOriginalOrFitZoom();
+                }
+            }
+            else
+            {
+                GetActivePreviewCanvas().ToggleOriginalOrFitZoom();
+            }
+
+            SyncZoomControlsFromActiveCanvas();
             return true;
         }
         else if (e.Key == VirtualKey.Escape && ViewModel.SelectedImage != null)
         {
-            PreviewCanvas.ResetToFitZoom();
+            if (ShouldSyncDualPreviewInteractions())
+            {
+                if (ViewModel.LeftPageImage != null)
+                {
+                    LeftPreviewCanvas.ResetToFitZoom();
+                }
+
+                if (ViewModel.RightPageImage != null)
+                {
+                    RightPreviewCanvas.ResetToFitZoom();
+                }
+            }
+            else
+            {
+                GetActivePreviewCanvas().ResetToFitZoom();
+            }
+
+            SyncZoomControlsFromActiveCanvas();
+            return true;
+        }
+        else if (e.Key == VirtualKey.Tab && ViewModel.IsDualPageMode)
+        {
+            var nextSlot = GetNextPreviewSlot();
+            UpdateFocusedSlot(nextSlot);
+            var focusedImage = GetFocusedPreviewImage();
+            if (focusedImage != null)
+            {
+                UpdateSelectedImage(focusedImage, syncThumbnailSelection: true);
+            }
+
+            (nextSlot == PreviewPageSlot.Left ? LeftPreviewHost : RightPreviewHost).Focus(FocusState.Programmatic);
             return true;
         }
         else if (e.Key == VirtualKey.Delete)
@@ -1344,15 +1909,66 @@ public sealed partial class CollectPage : Page
         if (ViewModel.Images.Count == 0)
             return;
 
-        var currentIndex = ViewModel.SelectedImage != null
-            ? ViewModel.Images.IndexOf(ViewModel.SelectedImage)
-            : -1;
+        if (!ViewModel.IsDualPageMode)
+        {
+            var currentIndex = ViewModel.SelectedImage != null
+                ? ViewModel.Images.IndexOf(ViewModel.SelectedImage)
+                : -1;
+            var nextIndex = Math.Clamp(currentIndex + delta, 0, ViewModel.Images.Count - 1);
+            var nextImage = ViewModel.Images[nextIndex];
+            UpdateSelectedImage(nextImage, syncThumbnailSelection: true);
+            return;
+        }
+
+        if (ViewModel.DualPageMode == DualPageMode.Continuous)
+        {
+            var currentImage = ViewModel.SelectedImage ?? ViewModel.Images[0];
+            var nextImage = GetClampedAdjacentImage(currentImage, delta);
+            if (nextImage != null)
+            {
+                UpdateSelectedImage(nextImage, syncThumbnailSelection: true);
+            }
+
+            return;
+        }
+
+        var focusedImage = GetFocusedPreviewImage() ?? ViewModel.SelectedImage ?? ViewModel.Images[0];
+        var compareNextImage = GetClampedAdjacentImage(focusedImage, delta);
+        if (compareNextImage == null)
+            return;
+
+        if (ViewModel.FocusedPageSlot == PreviewPageSlot.Left)
+        {
+            ViewModel.LeftPageImage = compareNextImage;
+        }
+        else
+        {
+            ViewModel.RightPageImage = compareNextImage;
+        }
+
+        UpdateSelectedImage(compareNextImage, syncThumbnailSelection: true);
+        UpdatePreviewHostVisuals();
+        SyncZoomControlsFromActiveCanvas();
+    }
+
+    private ImageFileInfo? GetClampedAdjacentImage(ImageFileInfo image, int delta)
+    {
+        var currentIndex = ViewModel.Images.IndexOf(image);
+        if (currentIndex < 0)
+            return null;
+
         var nextIndex = Math.Clamp(currentIndex + delta, 0, ViewModel.Images.Count - 1);
-        var nextImage = ViewModel.Images[nextIndex];
-        
-        ViewModel.SelectedImage = nextImage;
-        PreviewThumbnailGridView.SelectedItem = nextImage;
-        PreviewThumbnailGridView.ScrollIntoView(nextImage, ScrollIntoViewAlignment.Default);
+        return ViewModel.Images[nextIndex];
+    }
+
+    private PreviewPageSlot GetNextPreviewSlot()
+    {
+        if (ViewModel.FocusedPageSlot == PreviewPageSlot.Left && ViewModel.RightPageImage != null)
+        {
+            return PreviewPageSlot.Right;
+        }
+
+        return PreviewPageSlot.Left;
     }
 
     private static bool TryGetDirectionalNavigationDelta(VirtualKey key, out int direction)
