@@ -30,17 +30,10 @@ public sealed partial class MainPage : Page
 
     private readonly DispatcherTimer _loadImagesThrottleTimer;
     private readonly DispatcherTimer _ratingDebounceTimer;
-    private readonly DispatcherTimer _visibleThumbnailLoadTimer;
     private readonly ISettingsService _settingsService;
     private readonly ShellToolbarService _shellToolbarService;
     private readonly IThumbnailService _thumbnailService;
-    private readonly HashSet<ImageFileInfo> _pendingFastPreviewLoads = new();
-    private readonly HashSet<ImageFileInfo> _pendingTargetThumbnailLoads = new();
-    private readonly List<ImageFileInfo> _pendingWarmPreviewLoads = new();
-    private readonly HashSet<ImageFileInfo> _queuedWarmPreviewLoads = new();
-    private readonly HashSet<ImageFileInfo> _realizedImageItems = new();
-    private readonly HashSet<ImageFileInfo> _immediateVisibleThumbnailLoads = new();
-    private readonly HashSet<ImageFileInfo> _targetThumbnailRetainedItems = new();
+    private readonly MainPageThumbnailCoordinator _thumbnailCoordinator;
     private readonly HashSet<ImageFileInfo> _selectedImageState = new();
     private const double GridViewItemMargin = 4d;
     private const double GridViewItemGap = GridViewItemMargin * 2d;
@@ -83,14 +76,10 @@ public sealed partial class MainPage : Page
     private bool _isSwitchingViewerImage;
     private bool _suppressNextImageDragStart;
     private double _lastImageGridVerticalOffset;
-    private int _immediateVisibleThumbnailStartCount;
     private int _folderDrawerAnimationVersion;
-    private int _thumbnailQueueVersion;
-    private int _activeWarmPreviewLoads;
     private int _lastDirectionalNavigationScope;
     private int _lastDirectionalNavigationDirection;
     private long _lastDirectionalNavigationTick;
-    private CancellationTokenSource _warmPreviewCts = new();
     private Storyboard? _navigationDrawerStoryboard;
     private Storyboard? _folderDrawerStoryboard;
     private (ImageFileInfo Image, uint Rating)? _pendingRatingUpdate;
@@ -128,11 +117,8 @@ public sealed partial class MainPage : Page
         };
         _ratingDebounceTimer.Tick += RatingDebounceTimer_Tick;
 
-        _visibleThumbnailLoadTimer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromMilliseconds(50)
-        };
-        _visibleThumbnailLoadTimer.Tick += VisibleThumbnailLoadTimer_Tick;
+        _thumbnailCoordinator = new MainPageThumbnailCoordinator(TimeSpan.FromMilliseconds(50));
+        _thumbnailCoordinator.VisibleThumbnailLoadTimer.Tick += VisibleThumbnailLoadTimer_Tick;
 
         ViewModel.ImagesChanged += ViewModel_ImagesChanged;
         ViewModel.ThumbnailSizeChanged += ViewModel_ThumbnailSizeChanged;
@@ -726,7 +712,7 @@ public sealed partial class MainPage : Page
         DetachImageGridKeyDown();
         _loadImagesThrottleTimer.Stop();
         _ratingDebounceTimer.Stop();
-        _visibleThumbnailLoadTimer.Stop();
+        _thumbnailCoordinator.VisibleThumbnailLoadTimer.Stop();
         StopNavigationDrawerAnimation();
         _pendingRatingUpdate = null;
         _isSwitchingViewerImage = false;
@@ -734,7 +720,7 @@ public sealed partial class MainPage : Page
         _lastDirectionalNavigationDirection = 0;
         _lastDirectionalNavigationTick = 0;
         ClearThumbnailQueues();
-        _realizedImageItems.Clear();
+        _thumbnailCoordinator.ClearRealizedImageItems();
         _selectedImageState.Clear();
         DetachImageGridPointerWheel();
         DetachImageGridScrollViewer();
@@ -1122,7 +1108,7 @@ public sealed partial class MainPage : Page
                 // System.Diagnostics.Debug.WriteLine("[MainPage] ImagesChanged -> clearing transient grid state for empty collection");
                 ClearGridViewSelection();
                 ClearThumbnailQueues();
-                _realizedImageItems.Clear();
+                _thumbnailCoordinator.ClearRealizedImageItems();
                 ResetImmediateVisibleThumbnailLoadState();
                 ClearSelectedImageState();
             }
@@ -1143,10 +1129,10 @@ public sealed partial class MainPage : Page
         if (args.InRecycleQueue)
         {
             imageInfo.CancelTargetThumbnailLoad();
-            _pendingFastPreviewLoads.Remove(imageInfo);
-            _pendingTargetThumbnailLoads.Remove(imageInfo);
-            _realizedImageItems.Remove(imageInfo);
-            _immediateVisibleThumbnailLoads.Remove(imageInfo);
+            _thumbnailCoordinator.PendingFastPreviewLoads.Remove(imageInfo);
+            _thumbnailCoordinator.PendingTargetThumbnailLoads.Remove(imageInfo);
+            _thumbnailCoordinator.RealizedImageItems.Remove(imageInfo);
+            _thumbnailCoordinator.ImmediateVisibleThumbnailLoads.Remove(imageInfo);
             return;
         }
 
@@ -1156,7 +1142,7 @@ public sealed partial class MainPage : Page
         }
         else if (args.Phase == 1)
         {
-            _realizedImageItems.Add(imageInfo);
+            _thumbnailCoordinator.RealizedImageItems.Add(imageInfo);
             TryStartImmediateFastPreviewLoad(imageInfo, "container-phase1");
             QueueVisibleThumbnailLoad("container-phase1");
         }
@@ -1787,9 +1773,9 @@ public sealed partial class MainPage : Page
                 return _imageItemsWrapGrid.FirstVisibleIndex;
             }
 
-            if (_realizedImageItems.Count > 0)
+            if (_thumbnailCoordinator.RealizedImageItems.Count > 0)
             {
-                return _realizedImageItems
+                return _thumbnailCoordinator.RealizedImageItems
                     .Select(image => ViewModel.Images.IndexOf(image))
                     .Where(index => index >= 0)
                     .DefaultIfEmpty(0)
@@ -1910,3 +1896,6 @@ public sealed partial class MainPage : Page
         ViewModel.ClearAllPendingDelete();
     }
 }
+
+
+

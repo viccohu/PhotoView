@@ -236,7 +236,7 @@ public sealed partial class MainPage
         var warmupImages = ViewModel.GetBurstExpansionWarmupImages(imageInfo);
         foreach (var warmupImage in warmupImages.Take(TargetThumbnailStartBudgetPerTick))
         {
-            _pendingFastPreviewLoads.Remove(warmupImage);
+            _thumbnailCoordinator.PendingFastPreviewLoads.Remove(warmupImage);
             await warmupImage.EnsureFastPreviewAsync(ViewModel.ThumbnailSize);
         }
 
@@ -349,3 +349,4 @@ public sealed partial class MainPage
         return false;
     }
 }
+

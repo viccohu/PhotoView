@@ -577,3 +577,4 @@ public sealed partial class MainPage
         SetFolderDrawerExpanded(!_isFolderDrawerExpanded, "manual-toggle");
     }
 }
+

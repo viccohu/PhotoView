@@ -19,7 +19,7 @@ public sealed partial class CollectPage
             return;
 
         AttachThumbnailScrollViewer();
-        if (_thumbnailScrollViewer == null || _thumbnailScrollViewer.ScrollableWidth <= 0)
+        if (_thumbnailCoordinator.ThumbnailScrollViewer == null || _thumbnailCoordinator.ThumbnailScrollViewer.ScrollableWidth <= 0)
             return;
 
         var delta = e.GetCurrentPoint(PreviewThumbnailGridView).Properties.MouseWheelDelta;
@@ -27,10 +27,10 @@ public sealed partial class CollectPage
             return;
 
         var targetOffset = Math.Clamp(
-            _thumbnailScrollViewer.HorizontalOffset - delta,
+            _thumbnailCoordinator.ThumbnailScrollViewer.HorizontalOffset - delta,
             0,
-            _thumbnailScrollViewer.ScrollableWidth);
-        _thumbnailScrollViewer.ChangeView(targetOffset, null, null, true);
+            _thumbnailCoordinator.ThumbnailScrollViewer.ScrollableWidth);
+        _thumbnailCoordinator.ThumbnailScrollViewer.ChangeView(targetOffset, null, null, true);
         e.Handled = true;
         QueueVisibleThumbnailLoad("thumbnail-wheel");
     }
@@ -58,8 +58,8 @@ public sealed partial class CollectPage
         if (args.InRecycleQueue)
         {
             imageInfo.CancelTargetThumbnailLoad();
-            _pendingVisibleThumbnailLoads.Remove(imageInfo);
-            _realizedImageItems.Remove(imageInfo);
+            _thumbnailCoordinator.PendingVisibleThumbnailLoads.Remove(imageInfo);
+            _thumbnailCoordinator.RealizedImageItems.Remove(imageInfo);
             DebugThumbnailLoad($"Recycle cancel target image={GetDebugName(imageInfo)}");
             return;
         }
@@ -70,22 +70,22 @@ public sealed partial class CollectPage
         }
         else if (args.Phase == 1)
         {
-            _realizedImageItems.Add(imageInfo);
+            _thumbnailCoordinator.RealizedImageItems.Add(imageInfo);
             QueueVisibleThumbnailLoad("container-phase1");
         }
     }
 
     private void VisibleThumbnailLoadTimer_Tick(object? sender, object e)
     {
-        _visibleThumbnailLoadTimer.Stop();
+        _thumbnailCoordinator.VisibleThumbnailLoadTimer.Stop();
         if (_isUnloaded)
             return;
 
         ThumbnailQueueHelper.DrainPendingItems(
-            _pendingVisibleThumbnailLoads,
+            _thumbnailCoordinator.PendingVisibleThumbnailLoads,
             ViewModel.Images,
             VisibleThumbnailStartBudgetPerTick,
-            imageInfo => _realizedImageItems.Contains(imageInfo),
+            imageInfo => _thumbnailCoordinator.RealizedImageItems.Contains(imageInfo),
             imageInfo => _ = imageInfo.EnsureThumbnailAsync(ViewModel.ThumbnailSize));
 
         RestartVisibleThumbnailTimerIfNeeded();
@@ -98,17 +98,23 @@ public sealed partial class CollectPage
 
         AttachThumbnailItemsPanel();
 
-        var hasVisibleRange = _thumbnailItemsPanel != null &&
-            _thumbnailItemsPanel.FirstVisibleIndex >= 0 &&
-            _thumbnailItemsPanel.LastVisibleIndex >= _thumbnailItemsPanel.FirstVisibleIndex;
+        var firstVisibleIndex = -1;
+        var lastVisibleIndex = -1;
+        var hasVisibleRange = _thumbnailCoordinator.ThumbnailItemsPanel != null &&
+            ThumbnailQueueHelper.TryClampVisibleRange(
+                _thumbnailCoordinator.ThumbnailItemsPanel.FirstVisibleIndex,
+                _thumbnailCoordinator.ThumbnailItemsPanel.LastVisibleIndex,
+                PreviewThumbnailGridView.Items.Count,
+                out firstVisibleIndex,
+                out lastVisibleIndex);
 
         ThumbnailQueueHelper.QueueVisibleOrRealizedFallback(
             PreviewThumbnailGridView.Items,
-            hasVisibleRange ? _thumbnailItemsPanel!.FirstVisibleIndex : null,
-            hasVisibleRange ? _thumbnailItemsPanel!.LastVisibleIndex : null,
+            hasVisibleRange ? firstVisibleIndex : null,
+            hasVisibleRange ? lastVisibleIndex : null,
             VisibleThumbnailPrefetchItemCount,
-            _pendingVisibleThumbnailLoads,
-            _realizedImageItems,
+            _thumbnailCoordinator.PendingVisibleThumbnailLoads,
+            _thumbnailCoordinator.RealizedImageItems,
             ViewModel.Images,
             VisibleThumbnailStartBudgetPerTick + VisibleThumbnailPrefetchItemCount);
 
@@ -117,27 +123,23 @@ public sealed partial class CollectPage
 
     private void RestartVisibleThumbnailTimerIfNeeded()
     {
-        if (_pendingVisibleThumbnailLoads.Count == 0)
-            return;
-
-        _visibleThumbnailLoadTimer.Stop();
-        _visibleThumbnailLoadTimer.Start();
+        _thumbnailCoordinator.RestartVisibleThumbnailTimerIfNeeded();
     }
 
     private void AttachThumbnailItemsPanel()
     {
-        if (_thumbnailItemsPanel != null)
+        if (_thumbnailCoordinator.ThumbnailItemsPanel != null)
             return;
 
-        _thumbnailItemsPanel = FindDescendant<ItemsStackPanel>(PreviewThumbnailGridView);
+        _thumbnailCoordinator.ThumbnailItemsPanel = FindDescendant<ItemsStackPanel>(PreviewThumbnailGridView);
     }
 
     private void AttachThumbnailScrollViewer()
     {
-        if (_thumbnailScrollViewer != null)
+        if (_thumbnailCoordinator.ThumbnailScrollViewer != null)
             return;
 
-        _thumbnailScrollViewer = FindDescendant<ScrollViewer>(PreviewThumbnailGridView);
+        _thumbnailCoordinator.ThumbnailScrollViewer = FindDescendant<ScrollViewer>(PreviewThumbnailGridView);
     }
 
     private static T? FindDescendant<T>(DependencyObject parent)
@@ -161,8 +163,8 @@ public sealed partial class CollectPage
     {
         if (e.Action == NotifyCollectionChangedAction.Reset)
         {
-            _pendingVisibleThumbnailLoads.Clear();
-            _realizedImageItems.Clear();
+            _thumbnailCoordinator.PendingVisibleThumbnailLoads.Clear();
+            _thumbnailCoordinator.ClearRealizedImageItems();
             DebugThumbnailLoad("Images reset; cleared visible thumbnail queues");
         }
         else
@@ -173,3 +175,4 @@ public sealed partial class CollectPage
         QueueVisibleThumbnailLoad("images-changed");
     }
 }
+

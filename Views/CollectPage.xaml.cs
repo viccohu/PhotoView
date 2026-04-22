@@ -29,17 +29,13 @@ public sealed partial class CollectPage : Page
     private const int VisibleThumbnailStartBudgetPerTick = 16;
     private const int VisibleThumbnailPrefetchItemCount = 12;
     private const int DirectionalNavigationRepeatIntervalMs = 180;
-    private readonly DispatcherTimer _visibleThumbnailLoadTimer;
     private readonly DispatcherTimer _ratingDebounceTimer;
     private readonly IKeyboardShortcutService _shortcutService;
-    private readonly HashSet<ImageFileInfo> _pendingVisibleThumbnailLoads = new();
-    private readonly HashSet<ImageFileInfo> _realizedImageItems = new();
+    private readonly CollectPageThumbnailCoordinator _thumbnailCoordinator;
     private readonly Dictionary<RatingControl, bool> _ratingControlEventMap = new();
     private readonly ISettingsService _settingsService;
     private readonly ShellToolbarService _shellToolbarService;
     private FolderNode? _rightClickedFolderNode;
-    private ItemsStackPanel? _thumbnailItemsPanel;
-    private ScrollViewer? _thumbnailScrollViewer;
     private PointerEventHandler? _thumbnailWheelHandler;
     private KeyEventHandler? _thumbnailPreviewKeyDownHandler;
     private Storyboard? _loadDrawerStoryboard;
@@ -81,11 +77,8 @@ public sealed partial class CollectPage : Page
         DataContext = ViewModel;
         UpdateInfoDrawerState(animate: false);
         UpdateZoomValueButtonContent(100d);
-        _visibleThumbnailLoadTimer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromMilliseconds(50)
-        };
-        _visibleThumbnailLoadTimer.Tick += VisibleThumbnailLoadTimer_Tick;
+        _thumbnailCoordinator = new CollectPageThumbnailCoordinator(TimeSpan.FromMilliseconds(50));
+        _thumbnailCoordinator.VisibleThumbnailLoadTimer.Tick += VisibleThumbnailLoadTimer_Tick;
         _ratingDebounceTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromMilliseconds(500)
@@ -133,11 +126,8 @@ public sealed partial class CollectPage : Page
     private void CollectPage_Unloaded(object sender, RoutedEventArgs e)
     {
         _isUnloaded = true;
-        _visibleThumbnailLoadTimer.Stop();
-        _pendingVisibleThumbnailLoads.Clear();
-        _realizedImageItems.Clear();
-        _thumbnailItemsPanel = null;
-        _thumbnailScrollViewer = null;
+        _thumbnailCoordinator.VisibleThumbnailLoadTimer.Stop();
+        _thumbnailCoordinator.Clear();
         
         DisposePageSubscriptions();
     }
@@ -152,7 +142,7 @@ public sealed partial class CollectPage : Page
         _shellDeleteButton = null;
         _shellFilterSplitButton = null;
         _shellFilterActiveIndicator = null;
-        _visibleThumbnailLoadTimer.Tick -= VisibleThumbnailLoadTimer_Tick;
+        _thumbnailCoordinator.VisibleThumbnailLoadTimer.Tick -= VisibleThumbnailLoadTimer_Tick;
         _ratingDebounceTimer.Tick -= RatingDebounceTimer_Tick;
         ViewModel.Images.CollectionChanged -= Images_CollectionChanged;
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
@@ -861,7 +851,7 @@ public sealed partial class CollectPage : Page
             return;
 
         var version = ++_selectedThumbnailLoadVersion;
-        _pendingVisibleThumbnailLoads.Remove(imageInfo);
+        _thumbnailCoordinator.PendingVisibleThumbnailLoads.Remove(imageInfo);
         DebugThumbnailLoad($"Selected thumbnail start image={GetDebugName(imageInfo)} version={version}");
         _ = LoadSelectedThumbnailAsync(imageInfo, version);
     }
@@ -1404,3 +1394,5 @@ public sealed partial class CollectPage : Page
         //Debug.WriteLine($"[CollectThumbnailLoad] {DateTime.Now:HH:mm:ss.fff} {message}");
     }
 }
+
+
