@@ -6,7 +6,7 @@ public class ImageGroup
 {
     public string GroupName { get; }
     public List<ImageFileInfo> Images { get; }
-    public ImageFileInfo PrimaryImage { get; private set; }
+    public ImageFileInfo PrimaryImage { get; private set; } = null!;
 
     public ImageGroup(string groupName, IEnumerable<ImageFileInfo> images, bool preferPsdAsPrimaryPreview = false)
     {

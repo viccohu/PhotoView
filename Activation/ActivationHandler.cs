@@ -7,12 +7,17 @@ public abstract class ActivationHandler<T> : IActivationHandler
 {
     public bool CanHandle(object args)
     {
-        return args is T && CanHandleInternal(args as T);
+        return args is T typedArgs && CanHandleInternal(typedArgs);
     }
 
     public async Task HandleAsync(object args)
     {
-        await HandleInternalAsync(args as T);
+        if (args is not T typedArgs)
+        {
+            throw new ArgumentException($"Activation arguments must be of type {typeof(T).Name}.", nameof(args));
+        }
+
+        await HandleInternalAsync(typedArgs);
     }
 
     protected virtual bool CanHandleInternal(T args)

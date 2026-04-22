@@ -8,16 +8,12 @@ namespace PhotoView.Behaviors;
 
 public class NavigationViewHeaderBehavior
 {
-    private static NavigationViewHeaderBehavior? _current;
-
-    private Page? _currentPage;
-
     public DataTemplate? DefaultHeaderTemplate
     {
         get; set;
     }
 
-    public object DefaultHeader
+    public object? DefaultHeader
     {
         get; set;
     }
@@ -26,11 +22,11 @@ public class NavigationViewHeaderBehavior
 
     public static void SetHeaderMode(Page item, NavigationViewHeaderMode value) { }
 
-    public static object GetHeaderContext(Page item) => null;
+    public static object? GetHeaderContext(Page item) => null;
 
     public static void SetHeaderContext(Page item, object value) { }
 
-    public static DataTemplate GetHeaderTemplate(Page item) => null;
+    public static DataTemplate? GetHeaderTemplate(Page item) => null;
 
     public static void SetHeaderTemplate(Page item, DataTemplate value) { }
 }

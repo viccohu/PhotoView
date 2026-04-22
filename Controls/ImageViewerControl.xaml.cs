@@ -28,7 +28,6 @@ public sealed partial class ImageViewerControl : UserControl
 
     private ImageFileInfo? _imageFileInfo;
     private bool _is1To1Scale = false;
-    private double _fitScale = 1.0;
     private uint _targetDecodeLongSide = 1920;
     private Task<DecodeResult?>? _highResLoadTask;
     private CancellationTokenSource? _highResLoadCts;
@@ -73,8 +72,6 @@ public sealed partial class ImageViewerControl : UserControl
     private bool _isLoaded = false;
     private bool _isLoadingHighRes = false;
     private bool _isViewerLayerReady = false;
-    private bool _isLoadingExif = false;
-
     private ScaleTransform? _cachedScaleTransform;
     private TranslateTransform? _cachedTranslateTransform;
 
@@ -818,7 +815,7 @@ public sealed partial class ImageViewerControl : UserControl
 
     #region 物理引擎
 
-    private void OnPhysicsRendering(object sender, object e)
+    private void OnPhysicsRendering(object? sender, object e)
     {
         try
         {
@@ -1533,14 +1530,11 @@ public sealed partial class ImageViewerControl : UserControl
     {
         try
         {
-            _isLoadingExif = true;
             await ViewModel.LoadFileDetailsAsync(imageFileInfo.ImageFile, imageFileInfo.DateTaken);
-            _isLoadingExif = false;
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[ImageViewer] LoadExifAfterImageAsync error: {ex}");
-            _isLoadingExif = false;
         }
     }
 

@@ -552,7 +552,7 @@ public class ThumbnailService : IThumbnailService
                             tcs.TrySetResult(new DecodeResult((uint)bitmap.PixelWidth, (uint)bitmap.PixelHeight, bitmap));
                         }
                     }
-                    catch (OperationCanceledException ex)
+                    catch (OperationCanceledException)
                     {
                         System.Diagnostics.Debug.WriteLine($"[ThumbnailService] RAW preview canceled for {file.Name}");
                         tcs.TrySetResult(null);
@@ -946,7 +946,7 @@ public class ThumbnailService : IThumbnailService
                     await bitmapSource.SetBitmapAsync(softwareBitmap).AsTask(cancellationToken);
                     tcs.TrySetResult(bitmapSource);
                 }
-                catch (OperationCanceledException ex)
+                catch (OperationCanceledException)
                 {
                     System.Diagnostics.Debug.WriteLine("[ThumbnailService] SoftwareBitmapSource creation canceled");
                     tcs.TrySetResult(null);

@@ -8,7 +8,7 @@
     mc:Ignorable="d">
     <Page.Resources>
         <x:Double x:Key="SettingsCardSpacing">4</x:Double>
-        
+
         <Style
             x:Key="SettingsSectionHeaderTextBlockStyle"
             BasedOn="{StaticResource BodyStrongTextBlockStyle}"
@@ -18,13 +18,13 @@
             </Style.Setters>
         </Style>
     </Page.Resources>
-    
+
     <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-        
+
         <TextBlock
             x:Name="PageHeader"
             x:Uid="SettingsPage_Title"
@@ -32,7 +32,7 @@
             Margin="36,24,36,0"
             AutomationProperties.HeadingLevel="Level1"
             Style="{StaticResource TitleTextBlockStyle}" />
-        
+
         <ScrollView
             Grid.Row="1"
             Padding="36,0,36,0"
@@ -43,10 +43,9 @@
                     <StackPanel.ChildrenTransitions>
                         <RepositionThemeTransition />
                     </StackPanel.ChildrenTransitions>
-                    
-                    <!-- Appearance & behavior -->
+
                     <TextBlock x:Uid="Settings_Section_Appearance" Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" />
-                    
+
                     <toolkit:SettingsCard x:Uid="Settings_Theme">
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE790;" />
@@ -60,7 +59,7 @@
                             <ComboBoxItem x:Uid="Settings_Theme_Default" Tag="Default" />
                         </ComboBox>
                     </toolkit:SettingsCard>
-                    
+
                     <toolkit:SettingsCard x:Uid="Settings_Language">
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE774;" />
@@ -71,7 +70,7 @@
                             <ComboBoxItem x:Uid="Settings_Language_Chinese" Tag="zh-CN" />
                         </ComboBox>
                     </toolkit:SettingsCard>
-                    
+
                     <toolkit:SettingsCard x:Uid="Settings_NavigationStyle">
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xF594;" />
@@ -82,17 +81,16 @@
                         </ComboBox>
                     </toolkit:SettingsCard>
 
-                    <toolkit:SettingsCard x:Uid="Settings_AutoCollapseSidebar">
+                    <toolkit:SettingsCard x:Uid="Settings_AutoCollapseSidebar" Description="Automatically collapse side chrome while browsing large folders.">
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE8B7;" />
                         </toolkit:SettingsCard.HeaderIcon>
                         <ToggleSwitch x:Name="MainPageAutoCollapseSidebarToggleSwitch" Toggled="MainPageAutoCollapseSidebarToggleSwitch_Toggled" />
                     </toolkit:SettingsCard>
-                    
-                    <!-- Performance -->
+
                     <TextBlock x:Uid="Settings_Section_Performance" Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" />
-                    
-                    <toolkit:SettingsCard x:Uid="Settings_PerformanceMode">
+
+                    <toolkit:SettingsCard x:Uid="Settings_PerformanceMode" Description="Balance smooth scrolling and background thumbnail decoding.">
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE9D9;" />
                         </toolkit:SettingsCard.HeaderIcon>
@@ -101,44 +99,50 @@
                             <ComboBoxItem x:Uid="Settings_PerformanceMode_Stable" Tag="Stable" />
                         </ComboBox>
                     </toolkit:SettingsCard>
-                    
-                    <toolkit:SettingsCard x:Uid="Settings_BatchSize">
-                        <toolkit:SettingsCard.HeaderIcon>
-                            <FontIcon Glyph="&#xE8FD;" />
-                        </toolkit:SettingsCard.HeaderIcon>
-                        <ComboBox x:Name="BatchSizeComboBox" SelectionChanged="BatchSizeComboBox_SelectionChanged">
-                            <ComboBoxItem Content="10" Tag="10" />
-                            <ComboBoxItem Content="30" Tag="30" />
-                            <ComboBoxItem Content="50" Tag="50" />
-                            <ComboBoxItem Content="100" Tag="100" />
-                        </ComboBox>
-                    </toolkit:SettingsCard>
-                    
-                    <toolkit:SettingsCard x:Uid="Settings_AlwaysDecodeRaw">
+
+                    <toolkit:SettingsCard x:Uid="Settings_AlwaysDecodeRaw" Description="Favor RAW preview quality, even if some devices load more slowly.">
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE7B8;" />
                         </toolkit:SettingsCard.HeaderIcon>
                         <ToggleSwitch x:Name="AlwaysDecodeRawToggleSwitch" Toggled="AlwaysDecodeRawToggleSwitch_Toggled" />
                     </toolkit:SettingsCard>
 
-                    <toolkit:SettingsCard x:Uid="Settings_PreferPsdAsPrimaryPreview">
+                    <toolkit:SettingsCard x:Uid="Settings_PreferPsdAsPrimaryPreview" Description="Prefer PSD or PSB as the primary preview when editable versions exist in a group.">
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE7C3;" />
                         </toolkit:SettingsCard.HeaderIcon>
                         <ToggleSwitch x:Name="PreferPsdAsPrimaryPreviewToggleSwitch" Toggled="PreferPsdAsPrimaryPreviewToggleSwitch_Toggled" />
                     </toolkit:SettingsCard>
-                    
-                    <!-- Display -->
+
+                    <toolkit:SettingsExpander Header="Advanced Performance" Description="Extra controls for heavier browsing workloads.">
+                        <toolkit:SettingsExpander.HeaderIcon>
+                            <FontIcon Glyph="&#xE9D9;" />
+                        </toolkit:SettingsExpander.HeaderIcon>
+                        <toolkit:SettingsExpander.Items>
+                            <toolkit:SettingsCard x:Uid="Settings_BatchSize" Description="Control how many files are scanned per batch. Larger values can increase first-pass load.">
+                                <toolkit:SettingsCard.HeaderIcon>
+                                    <FontIcon Glyph="&#xE8FD;" />
+                                </toolkit:SettingsCard.HeaderIcon>
+                                <ComboBox x:Name="BatchSizeComboBox" SelectionChanged="BatchSizeComboBox_SelectionChanged">
+                                    <ComboBoxItem Content="10" Tag="10" />
+                                    <ComboBoxItem Content="30" Tag="30" />
+                                    <ComboBoxItem Content="50" Tag="50" />
+                                    <ComboBoxItem Content="100" Tag="100" />
+                                </ComboBox>
+                            </toolkit:SettingsCard>
+                        </toolkit:SettingsExpander.Items>
+                    </toolkit:SettingsExpander>
+
                     <TextBlock x:Uid="Settings_Section_Display" Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" />
-                    
-                    <toolkit:SettingsCard x:Uid="Settings_RememberLastFolder">
+
+                    <toolkit:SettingsCard x:Uid="Settings_RememberLastFolder" Description="Return to the most recently browsed folder on the next launch.">
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE838;" />
                         </toolkit:SettingsCard.HeaderIcon>
                         <ToggleSwitch x:Name="RememberLastFolderToggleSwitch" Toggled="RememberLastFolderToggleSwitch_Toggled" />
                     </toolkit:SettingsCard>
-                    
-                    <toolkit:SettingsCard x:Uid="Settings_ThumbnailSize">
+
+                    <toolkit:SettingsCard x:Uid="Settings_ThumbnailSize" Description="Choose the default thumbnail size used in grid views.">
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE7B8;" />
                         </toolkit:SettingsCard.HeaderIcon>
@@ -149,26 +153,24 @@
                         </ComboBox>
                     </toolkit:SettingsCard>
 
-                    <toolkit:SettingsCard Header="连拍折叠" Description="在主缩略图页将连拍照片折叠为一组">
+                    <toolkit:SettingsCard Header="Burst Collapse" Description="Collapse photos from the same burst into a tighter group in the thumbnail page.">
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE8B7;" />
                         </toolkit:SettingsCard.HeaderIcon>
                         <ToggleSwitch x:Name="CollapseBurstGroupsToggleSwitch" Toggled="CollapseBurstGroupsToggleSwitch_Toggled" />
                     </toolkit:SettingsCard>
-                    
-                    <!-- File Operations -->
+
                     <TextBlock x:Uid="Settings_Section_FileOperations" Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" />
-                    
-                    <toolkit:SettingsCard x:Uid="Settings_DeleteToRecycleBin">
+
+                    <toolkit:SettingsCard x:Uid="Settings_DeleteToRecycleBin" Description="Send deletions to the recycle bin first to reduce accidental loss.">
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE74D;" />
                         </toolkit:SettingsCard.HeaderIcon>
                         <ToggleSwitch x:Name="DeleteToRecycleBinToggleSwitch" Toggled="DeleteToRecycleBinToggleSwitch_Toggled" />
                     </toolkit:SettingsCard>
-                    
-                    <!-- About -->
+
                     <TextBlock x:Uid="Settings_Section_About" Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" />
-                    
+
                     <toolkit:SettingsExpander Margin="0,0,0,36" Header="PhotoView">
                         <toolkit:SettingsExpander.HeaderIcon>
                             <BitmapIcon ShowAsMonochrome="False" UriSource="/Assets/WindowIcon.png" />

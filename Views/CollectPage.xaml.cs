@@ -1404,66 +1404,11 @@ public sealed partial class CollectPage : Page
         ViewModel.RemoveDeletedImages(deleteResult.DeletedImages);
         QueueVisibleThumbnailLoad("delete");
         return;
-
-        dialog.StartProgress();
-        var deletedImages = new List<ImageFileInfo>();
-        var thumbnailService = App.GetService<IThumbnailService>();
-
-        for (var index = 0; index < filesToDelete.Count; index++)
-        {
-            var file = filesToDelete[index];
-            try
-            {
-                await DeleteFileToRecycleBinAsync(file);
-                thumbnailService.Invalidate(file);
-                var image = pendingImages.FirstOrDefault(candidate => candidate.ImageFile.Path == file.Path);
-                if (image != null && !deletedImages.Contains(image))
-                {
-                    deletedImages.Add(image);
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[CollectPage] delete failed {file.Path}: {ex.Message}");
-            }
-
-            dialog.SetProgress(index + 1, filesToDelete.Count);
-            await Task.Delay(10);
-        }
-
-        dialog.SetComplete();
-        await Task.Delay(350);
-        ViewModel.RemoveDeletedImages(deletedImages);
-        QueueVisibleThumbnailLoad("delete");
     }
 
     private static List<StorageFile> GetFilesToDelete(List<ImageFileInfo> pendingImages, List<string> selectedExtensions)
     {
         return DeleteWorkflowHelper.GetFilesToDelete(pendingImages, selectedExtensions);
-
-        var files = new List<StorageFile>();
-        foreach (var image in pendingImages)
-        {
-            var extension = Path.GetExtension(image.ImageFile.Path).ToLowerInvariant();
-            if (selectedExtensions.Contains(extension))
-            {
-                files.Add(image.ImageFile);
-            }
-
-            if (image.AlternateFormats != null)
-            {
-                foreach (var alternate in image.AlternateFormats)
-                {
-                    var alternateExtension = Path.GetExtension(alternate.ImageFile.Path).ToLowerInvariant();
-                    if (selectedExtensions.Contains(alternateExtension))
-                    {
-                        files.Add(alternate.ImageFile);
-                    }
-                }
-            }
-        }
-
-        return files.DistinctBy(file => file.Path).ToList();
     }
 
     private static async Task DeleteFileToRecycleBinAsync(StorageFile file)

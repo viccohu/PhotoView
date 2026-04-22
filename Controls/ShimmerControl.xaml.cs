@@ -6,7 +6,7 @@ namespace PhotoView.Controls;
 
 public sealed partial class ShimmerControl : UserControl
 {
-    public static readonly DependencyProperty ContentProperty = DependencyProperty.Register(
+    public new static readonly DependencyProperty ContentProperty = DependencyProperty.Register(
         nameof(Content),
         typeof(object),
         typeof(ShimmerControl),
@@ -18,7 +18,7 @@ public sealed partial class ShimmerControl : UserControl
         typeof(ShimmerControl),
         new PropertyMetadata(false, OnIsLoadingChanged));
 
-    public object? Content
+    public new object? Content
     {
         get => GetValue(ContentProperty);
         set => SetValue(ContentProperty, value);

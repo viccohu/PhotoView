@@ -289,9 +289,10 @@ public sealed partial class ExportDialog : ContentDialog
         {
             AddExportJobIfNeeded(image, exportImage, exportRaw, imageMinRating, rawMinRating, basePath, imageFolderName, rawFolderName, resizeOptions, usedTargetPaths, exportJobs);
 
-            if (image.Group != null)
+            var alternateFormats = image.AlternateFormats;
+            if (image.Group != null && alternateFormats != null)
             {
-                foreach (var alternateImage in image.AlternateFormats)
+                foreach (var alternateImage in alternateFormats)
                 {
                     AddExportJobIfNeeded(alternateImage, exportImage, exportRaw, imageMinRating, rawMinRating, basePath, imageFolderName, rawFolderName, resizeOptions, usedTargetPaths, exportJobs);
                 }
@@ -657,10 +658,11 @@ public sealed partial class ExportDialog : ContentDialog
         {
             yield return image;
 
-            if (image.Group == null)
+            var alternateFormats = image.AlternateFormats;
+            if (image.Group == null || alternateFormats == null)
                 continue;
 
-            foreach (var alternateImage in image.AlternateFormats)
+            foreach (var alternateImage in alternateFormats)
             {
                 yield return alternateImage;
             }

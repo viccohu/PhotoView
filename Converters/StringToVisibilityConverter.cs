@@ -8,7 +8,7 @@ public class StringToVisibilityConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language)
     {
-        string str = value?.ToString();
+        string? str = value?.ToString();
         if (!string.IsNullOrEmpty(str))
         {
             return Visibility.Visible;

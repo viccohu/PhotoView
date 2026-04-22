@@ -105,13 +105,19 @@ public partial class MainViewModel : ObservableRecipient
     private ObservableCollection<FolderNode> _breadcrumbPath;
 
     [ObservableProperty]
-    private FolderNode _selectedFolder;
+    private FolderNode? _selectedFolder;
 
     [ObservableProperty]
     private ObservableCollection<ImageFileInfo> _images;
 
     [ObservableProperty]
     private ThumbnailSize _thumbnailSize = ThumbnailSize.Medium;
+
+    [ObservableProperty]
+    private string _statusMessage = string.Empty;
+
+    [ObservableProperty]
+    private bool _isStatusVisible;
 
     public bool CanGoBack => _navigationHistory.Count > 1;
     
@@ -135,6 +141,30 @@ public partial class MainViewModel : ObservableRecipient
     {
         get => _totalPhotoCount;
         private set => SetProperty(ref _totalPhotoCount, value);
+    }
+
+    public void ClearStatus()
+    {
+        StatusMessage = string.Empty;
+        IsStatusVisible = false;
+    }
+
+    private void ShowStatus(string message)
+    {
+        StatusMessage = message;
+        IsStatusVisible = !string.IsNullOrWhiteSpace(message);
+    }
+
+    private void ReportFailure(string area, string message, Exception ex, bool showToUser = false, string? userMessage = null, params (string Key, object? Value)[] context)
+    {
+        if (AppDiagnostics.IsExpectedCancellation(ex))
+            return;
+
+        AppDiagnostics.Error(area, message, ex, context);
+        if (showToUser && !string.IsNullOrWhiteSpace(userMessage))
+        {
+            ShowStatus(userMessage);
+        }
     }
 
     public double ThumbnailHeight => ThumbnailSize switch
@@ -203,10 +233,17 @@ public partial class MainViewModel : ObservableRecipient
             FolderTree.Add(_thisPcNode);
             FolderTree.Add(_externalDeviceNode);
 
+            ClearStatus();
             FolderTreeLoaded?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
         {
+            ReportFailure(
+                "MainViewModel.LoadDrives",
+                "Failed to build root folder tree.",
+                ex,
+                showToUser: true,
+                userMessage: "无法加载文件夹入口，请稍后重试。");
         }
     }
 
@@ -348,6 +385,7 @@ public partial class MainViewModel : ObservableRecipient
 
         try
         {
+            ClearStatus();
             var fileTypeFilter = ImageExtensions.ToList();
             var queryOptions = new QueryOptions(CommonFileQuery.OrderByName, fileTypeFilter)
             {
@@ -447,6 +485,13 @@ public partial class MainViewModel : ObservableRecipient
         }
         catch (Exception ex)
         {
+            ReportFailure(
+                "MainViewModel.LoadImages",
+                "Failed while enumerating folder images.",
+                ex,
+                showToUser: true,
+                userMessage: $"无法读取文件夹“{folderNode?.Name ?? "未知目录"}”中的图片。",
+                ("Folder", folderNode?.FullPath));
         }
     }
 
@@ -481,7 +526,7 @@ public partial class MainViewModel : ObservableRecipient
         return null;
     }
 
-    private void UpdateBreadcrumbPath(FolderNode folderNode)
+    private void UpdateBreadcrumbPath(FolderNode? folderNode)
     {
         BreadcrumbPath.Clear();
         if (folderNode == null)
@@ -1014,6 +1059,11 @@ public partial class MainViewModel : ObservableRecipient
         }
         catch (Exception ex)
         {
+            ReportFailure(
+                "MainViewModel.LoadImageInfoSafe",
+                "Skipping unreadable file before metadata load.",
+                ex,
+                context: new[] { ("File", (object?)file.Path) });
             return null;
         }
 
@@ -1048,6 +1098,11 @@ public partial class MainViewModel : ObservableRecipient
             }
             catch (Exception ex)
             {
+                ReportFailure(
+                    "MainViewModel.LoadImageInfoSafe",
+                    "Image properties probe failed; will continue with fallback metadata readers.",
+                    ex,
+                    context: new[] { ("File", (object?)file.Path) });
             }
 
             if (width == 200 && height == 200 && ImageFormatRegistry.IsPhotoshop(file.FileType))
@@ -1084,10 +1139,20 @@ public partial class MainViewModel : ObservableRecipient
                     }
                     catch (Exception ex)
                     {
+                        ReportFailure(
+                            "MainViewModel.LoadImageInfoSafe",
+                            "Bitmap orientation probe failed.",
+                            ex,
+                            context: new[] { ("File", (object?)file.Path) });
                     }
                 }
                 catch (Exception ex)
                 {
+                    ReportFailure(
+                        "MainViewModel.LoadImageInfoSafe",
+                        "Bitmap decoder probe failed.",
+                        ex,
+                        context: new[] { ("File", (object?)file.Path) });
                 }
             }
 
@@ -1103,6 +1168,11 @@ public partial class MainViewModel : ObservableRecipient
         }
         catch (Exception ex)
         {
+            ReportFailure(
+                "MainViewModel.LoadImageInfoSafe",
+                "Failed to materialize image info.",
+                ex,
+                context: new[] { ("File", (object?)file.Path) });
             return null;
         }
     }
@@ -1287,6 +1357,13 @@ public partial class MainViewModel : ObservableRecipient
         }
         catch (Exception ex)
         {
+            ReportFailure(
+                "MainViewModel.LoadImagesWithoutHistory",
+                "Failed while enumerating folder images without history tracking.",
+                ex,
+                showToUser: true,
+                userMessage: $"无法刷新文件夹“{folderNode?.Name ?? "未知目录"}”中的图片。",
+                ("Folder", folderNode?.FullPath));
         }
     }
 

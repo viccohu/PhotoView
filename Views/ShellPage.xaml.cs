@@ -79,7 +79,7 @@ public sealed partial class ShellPage : Page
         });
     }
 
-    private void OnNavigationViewModeChanged(object sender, NavigationViewPaneDisplayMode mode)
+    private void OnNavigationViewModeChanged(object? sender, NavigationViewPaneDisplayMode mode)
     {
         // 鍦?UI 绾跨▼涓婃洿鏂?
         DispatcherQueue.TryEnqueue(() =>

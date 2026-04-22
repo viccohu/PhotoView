@@ -389,6 +389,20 @@
                             </Button>
                         </StackPanel>
                     </Border>
+                    <Border
+                        Margin="0,8,0,0"
+                        Padding="10,6"
+                        Background="{ThemeResource SystemFillColorCautionBackgroundBrush}"
+                        BorderBrush="{ThemeResource SystemFillColorCautionBrush}"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Visibility="{x:Bind ViewModel.IsStatusVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock
+                            Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
+                            Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                            Style="{ThemeResource CaptionTextBlockStyle}"
+                            TextWrapping="WrapWholeWords"/>
+                    </Border>
                 </StackPanel>
                 <StackPanel 
                     Orientation="Horizontal" 

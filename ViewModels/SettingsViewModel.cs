@@ -357,7 +357,7 @@ public class SettingsViewModel : ObservableRecipient
         SetLanguageCommand = new RelayCommand<string>(
             async (param) =>
             {
-                if (CurrentLanguage != param)
+                if (!string.IsNullOrWhiteSpace(param) && CurrentLanguage != param)
                 {
                     CurrentLanguage = param;
                     await _languageService.SetLanguageAsync(param);

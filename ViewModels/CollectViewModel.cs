@@ -972,13 +972,13 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     [System.Diagnostics.Conditional("DEBUG")]
     private static void DebugSelection(string message)
     {
-        System.Diagnostics.Debug.WriteLine($"[CollectSelection] {DateTime.Now:HH:mm:ss.fff} {message}");
+        //System.Diagnostics.Debug.WriteLine($"[CollectSelection] {DateTime.Now:HH:mm:ss.fff} {message}");
     }
 
     [System.Diagnostics.Conditional("DEBUG")]
     private static void DebugLoad(string message)
     {
-        System.Diagnostics.Debug.WriteLine($"[CollectLoad] {DateTime.Now:HH:mm:ss.fff} {message}");
+        //System.Diagnostics.Debug.WriteLine($"[CollectLoad] {DateTime.Now:HH:mm:ss.fff} {message}");
     }
 
     private sealed class SourceLoadState
