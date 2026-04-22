@@ -299,16 +299,15 @@ public partial class ImageViewerViewModel : ObservableRecipient
 
         var deviceInfoList = new System.Collections.Generic.List<string>();
 
-        if (!string.IsNullOrEmpty(exifData.CameraManufacturer))
-        {
-            deviceInfoList.Add(exifData.CameraManufacturer);
-            // Debug.WriteLine($"[ImageViewerViewModel] CameraManufacturer: {exifData.CameraManufacturer}");
-        }
-
         if (!string.IsNullOrEmpty(exifData.CameraModel))
         {
             deviceInfoList.Add(exifData.CameraModel);
             // Debug.WriteLine($"[ImageViewerViewModel] CameraModel: {exifData.CameraModel}");
+        }
+        else if (!string.IsNullOrEmpty(exifData.CameraManufacturer))
+        {
+            deviceInfoList.Add(exifData.CameraManufacturer);
+            // Debug.WriteLine($"[ImageViewerViewModel] CameraManufacturer fallback: {exifData.CameraManufacturer}");
         }
 
         foreach (var info in deviceInfoList)

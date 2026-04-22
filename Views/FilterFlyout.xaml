@@ -101,7 +101,7 @@
         <StackPanel Grid.Column="0" Margin="10,0,16,0" Spacing="8" HorizontalAlignment="Stretch">
             <TextBlock Text="类型" Style="{ThemeResource BodyTextBlockStyle}" Margin="10,0"/>
 
-            <StackPanel HorizontalAlignment="Stretch">
+            <StackPanel HorizontalAlignment="Stretch" Spacing="6">
                 <ToggleButton
                     x:Name="ImageFilterButton"
                     Style="{StaticResource FilterChipToggleButtonStyle}"
@@ -126,7 +126,7 @@
                 </ToggleButton>
 
                 <Border
-                    Margin="10,0,10,0"
+                    Margin="0,0,0,0"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="0,0,0,1"/>
 
@@ -142,7 +142,7 @@
                 </ToggleButton>
 
                 <Border
-                    Margin="10,0,10,0"
+                    Margin="0,0,0,0"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="0,0,0,1"/>
 

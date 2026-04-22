@@ -130,14 +130,14 @@
                                     <VisualState x:Name="PointerOver">
                                         <VisualState.Setters>
                                             <Setter Target="RootBorder.Background" Value="{ThemeResource ControlStrokeColorOnAccentSecondaryBrush}"/>
-                                            <Setter Target="RootBorder.BorderBrush" Value="{ThemeResource ControlStrokeColorOnAccentSecondaryBrush}"/>
+                                            <Setter Target="RootBorder.BorderBrush" Value="{ThemeResource CircleElevationBorderBrush}"/>
                                             <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource ControlStrokeColorOnAccentSecondaryBrush}"/>
                                         </VisualState.Setters>
                                     </VisualState>
                                     <VisualState x:Name="Pressed">
                                         <VisualState.Setters>
                                             <Setter Target="RootBorder.Background" Value="{ThemeResource ControlStrokeColorOnAccentDefaultBrush}"/>
-                                            <Setter Target="RootBorder.BorderBrush" Value="{ThemeResource ControlStrokeColorOnAccentDefaultBrush}"/>
+                                            <Setter Target="RootBorder.BorderBrush" Value="{ThemeResource CircleElevationBorderBrush}"/>
                                             <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource ControlStrokeColorOnAccentDefaultBrush}"/>
                                             <Setter Target="RootBorder.Opacity" Value="0.9"/>
                                         </VisualState.Setters>

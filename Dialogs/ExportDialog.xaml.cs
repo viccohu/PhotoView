@@ -826,8 +826,8 @@ public sealed partial class ExportDialog : ContentDialog
     private static Brush GetToggleContentForegroundBrush(bool isChecked)
     {
         var resourceKey = isChecked
-            ? "TextFillColorPrimaryBrush"
-            : "TextOnAccentFillColorPrimaryBrush";
+            ? "TextOnAccentFillColorPrimaryBrush"
+            : "TextFillColorPrimaryBrush";
 
         return (Brush)Application.Current.Resources[resourceKey];
     }
