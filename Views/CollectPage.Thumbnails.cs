@@ -58,8 +58,7 @@ public sealed partial class CollectPage
         if (args.InRecycleQueue)
         {
             imageInfo.CancelTargetThumbnailLoad();
-            _thumbnailCoordinator.PendingVisibleThumbnailLoads.Remove(imageInfo);
-            _thumbnailCoordinator.RealizedImageItems.Remove(imageInfo);
+            _thumbnailCoordinator.MarkItemRecycled(imageInfo);
             DebugThumbnailLoad($"Recycle cancel target image={GetDebugName(imageInfo)}");
             return;
         }
@@ -70,7 +69,7 @@ public sealed partial class CollectPage
         }
         else if (args.Phase == 1)
         {
-            _thumbnailCoordinator.RealizedImageItems.Add(imageInfo);
+            _thumbnailCoordinator.MarkItemRealized(imageInfo);
             QueueVisibleThumbnailLoad("container-phase1");
         }
     }
@@ -108,13 +107,11 @@ public sealed partial class CollectPage
                 out firstVisibleIndex,
                 out lastVisibleIndex);
 
-        ThumbnailQueueHelper.QueueVisibleOrRealizedFallback(
+        _thumbnailCoordinator.QueueVisibleThumbnailCandidates(
             PreviewThumbnailGridView.Items,
             hasVisibleRange ? firstVisibleIndex : null,
             hasVisibleRange ? lastVisibleIndex : null,
             VisibleThumbnailPrefetchItemCount,
-            _thumbnailCoordinator.PendingVisibleThumbnailLoads,
-            _thumbnailCoordinator.RealizedImageItems,
             ViewModel.Images,
             VisibleThumbnailStartBudgetPerTick + VisibleThumbnailPrefetchItemCount);
 
@@ -163,8 +160,7 @@ public sealed partial class CollectPage
     {
         if (e.Action == NotifyCollectionChangedAction.Reset)
         {
-            _thumbnailCoordinator.PendingVisibleThumbnailLoads.Clear();
-            _thumbnailCoordinator.ClearRealizedImageItems();
+            _thumbnailCoordinator.ClearPendingThumbnailState();
             DebugThumbnailLoad("Images reset; cleared visible thumbnail queues");
         }
         else

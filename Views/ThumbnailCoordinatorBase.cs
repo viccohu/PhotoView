@@ -20,9 +20,24 @@ internal abstract class ThumbnailCoordinatorBase
 
     public HashSet<ImageFileInfo> RealizedImageItems { get; } = new();
 
+    public void StopVisibleThumbnailTimer()
+    {
+        VisibleThumbnailLoadTimer.Stop();
+    }
+
     public void ClearRealizedImageItems()
     {
         RealizedImageItems.Clear();
+    }
+
+    public void MarkItemRealized(ImageFileInfo imageInfo)
+    {
+        RealizedImageItems.Add(imageInfo);
+    }
+
+    public virtual void MarkItemRecycled(ImageFileInfo imageInfo)
+    {
+        RealizedImageItems.Remove(imageInfo);
     }
 
     protected void RestartVisibleThumbnailTimer(bool hasPendingWork)

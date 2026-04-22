@@ -712,15 +712,13 @@ public sealed partial class MainPage : Page
         DetachImageGridKeyDown();
         _loadImagesThrottleTimer.Stop();
         _ratingDebounceTimer.Stop();
-        _thumbnailCoordinator.VisibleThumbnailLoadTimer.Stop();
+        _thumbnailCoordinator.ResetState();
         StopNavigationDrawerAnimation();
         _pendingRatingUpdate = null;
         _isSwitchingViewerImage = false;
         _lastDirectionalNavigationScope = 0;
         _lastDirectionalNavigationDirection = 0;
         _lastDirectionalNavigationTick = 0;
-        ClearThumbnailQueues();
-        _thumbnailCoordinator.ClearRealizedImageItems();
         _selectedImageState.Clear();
         DetachImageGridPointerWheel();
         DetachImageGridScrollViewer();
@@ -1107,9 +1105,7 @@ public sealed partial class MainPage : Page
             {
                 // System.Diagnostics.Debug.WriteLine("[MainPage] ImagesChanged -> clearing transient grid state for empty collection");
                 ClearGridViewSelection();
-                ClearThumbnailQueues();
-                _thumbnailCoordinator.ClearRealizedImageItems();
-                ResetImmediateVisibleThumbnailLoadState();
+                _thumbnailCoordinator.ResetState();
                 ClearSelectedImageState();
             }
             else
@@ -1129,10 +1125,7 @@ public sealed partial class MainPage : Page
         if (args.InRecycleQueue)
         {
             imageInfo.CancelTargetThumbnailLoad();
-            _thumbnailCoordinator.PendingFastPreviewLoads.Remove(imageInfo);
-            _thumbnailCoordinator.PendingTargetThumbnailLoads.Remove(imageInfo);
-            _thumbnailCoordinator.RealizedImageItems.Remove(imageInfo);
-            _thumbnailCoordinator.ImmediateVisibleThumbnailLoads.Remove(imageInfo);
+            _thumbnailCoordinator.MarkItemRecycled(imageInfo);
             return;
         }
 
@@ -1142,7 +1135,7 @@ public sealed partial class MainPage : Page
         }
         else if (args.Phase == 1)
         {
-            _thumbnailCoordinator.RealizedImageItems.Add(imageInfo);
+            _thumbnailCoordinator.MarkItemRealized(imageInfo);
             TryStartImmediateFastPreviewLoad(imageInfo, "container-phase1");
             QueueVisibleThumbnailLoad("container-phase1");
         }
@@ -1896,6 +1889,9 @@ public sealed partial class MainPage : Page
         ViewModel.ClearAllPendingDelete();
     }
 }
+
+
+
 
 
 

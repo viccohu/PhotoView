@@ -126,8 +126,7 @@ public sealed partial class CollectPage : Page
     private void CollectPage_Unloaded(object sender, RoutedEventArgs e)
     {
         _isUnloaded = true;
-        _thumbnailCoordinator.VisibleThumbnailLoadTimer.Stop();
-        _thumbnailCoordinator.Clear();
+        _thumbnailCoordinator.ResetState();
         
         DisposePageSubscriptions();
     }
@@ -1394,5 +1393,6 @@ public sealed partial class CollectPage : Page
         //Debug.WriteLine($"[CollectThumbnailLoad] {DateTime.Now:HH:mm:ss.fff} {message}");
     }
 }
+
 
 

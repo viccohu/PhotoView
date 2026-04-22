@@ -45,10 +45,7 @@ public sealed partial class MainPage
 
         if (!_isUserScrollInProgress)
         {
-            foreach (var imageInfo in targetCandidates)
-            {
-                _thumbnailCoordinator.PendingTargetThumbnailLoads.Add(imageInfo);
-            }
+            _thumbnailCoordinator.RequeueTargetThumbnailCandidates(targetCandidates);
 
             ThumbnailQueueHelper.DrainPendingItems(
                 _thumbnailCoordinator.PendingTargetThumbnailLoads,
@@ -62,10 +59,7 @@ public sealed partial class MainPage
         }
         else
         {
-            foreach (var imageInfo in targetCandidates)
-            {
-                _thumbnailCoordinator.PendingTargetThumbnailLoads.Add(imageInfo);
-            }
+            _thumbnailCoordinator.RequeueTargetThumbnailCandidates(targetCandidates);
         }
 
         StartWarmPreviewLoads(_isUserScrollInProgress ? WarmPreviewScrollBudgetPerTick : WarmPreviewIdleBudgetPerTick);
@@ -153,11 +147,6 @@ public sealed partial class MainPage
         var index = ViewModel.Images.IndexOf(imageInfo);
         return index >= _imageItemsWrapGrid.FirstVisibleIndex &&
                index <= _imageItemsWrapGrid.LastVisibleIndex;
-    }
-
-    private void ResetImmediateVisibleThumbnailLoadState()
-    {
-        _thumbnailCoordinator.ResetImmediateVisibleLoadState();
     }
 
     private bool HasPendingThumbnailWork()
@@ -290,29 +279,23 @@ public sealed partial class MainPage
         {
             var visibleCount = Math.Max(1, lastVisibleIndex - firstVisibleIndex + 1);
             var fastPreviewPadding = Math.Max(visibleCount * FastPreviewPrefetchScreenCount, FastPreviewStartBudgetPerTick);
-            ThumbnailQueueHelper.QueueVisibleOrRealizedFallback(
+            _thumbnailCoordinator.QueueFastPreviewCandidates(
                 ImageGridView.Items,
                 Math.Max(0, firstVisibleIndex - fastPreviewPadding),
                 Math.Min(ImageGridView.Items.Count - 1, lastVisibleIndex + fastPreviewPadding),
                 0,
-                _thumbnailCoordinator.PendingFastPreviewLoads,
-                _thumbnailCoordinator.RealizedImageItems,
                 ViewModel.Images,
-                FastPreviewStartBudgetPerTick,
-                imageInfo => !imageInfo.HasFastPreview);
+                FastPreviewStartBudgetPerTick);
 
             var targetFirstIndex = Math.Max(0, firstVisibleIndex - TargetThumbnailPrefetchItemCount);
             var targetLastIndex = Math.Min(ImageGridView.Items.Count - 1, lastVisibleIndex + TargetThumbnailPrefetchItemCount);
-            ThumbnailQueueHelper.QueueVisibleOrRealizedFallback(
+            _thumbnailCoordinator.QueueTargetThumbnailCandidates(
                 ImageGridView.Items,
                 targetFirstIndex,
                 targetLastIndex,
                 0,
-                _thumbnailCoordinator.PendingTargetThumbnailLoads,
-                _thumbnailCoordinator.RealizedImageItems,
                 ViewModel.Images,
-                TargetThumbnailStartBudgetPerTick,
-                imageInfo => !imageInfo.HasTargetThumbnail);
+                TargetThumbnailStartBudgetPerTick);
             TrimTargetThumbnails(targetFirstIndex, targetLastIndex);
 
             QueueBackgroundPreviewWarmup(firstVisibleIndex, lastVisibleIndex, prioritize: true);
@@ -320,26 +303,20 @@ public sealed partial class MainPage
         else
         {
             var realizedFallbackLimit = FastPreviewStartBudgetPerTick + TargetThumbnailPrefetchItemCount;
-            ThumbnailQueueHelper.QueueVisibleOrRealizedFallback(
+            _thumbnailCoordinator.QueueFastPreviewCandidates(
                 ImageGridView.Items,
                 null,
                 null,
                 0,
-                _thumbnailCoordinator.PendingFastPreviewLoads,
-                _thumbnailCoordinator.RealizedImageItems,
                 ViewModel.Images,
-                realizedFallbackLimit,
-                imageInfo => !imageInfo.HasFastPreview);
-            ThumbnailQueueHelper.QueueVisibleOrRealizedFallback(
+                realizedFallbackLimit);
+            _thumbnailCoordinator.QueueTargetThumbnailCandidates(
                 ImageGridView.Items,
                 null,
                 null,
                 0,
-                _thumbnailCoordinator.PendingTargetThumbnailLoads,
-                _thumbnailCoordinator.RealizedImageItems,
                 ViewModel.Images,
-                realizedFallbackLimit,
-                imageInfo => !imageInfo.HasTargetThumbnail);
+                realizedFallbackLimit);
 
             QueueBackgroundPreviewWarmup(0, Math.Max(0, ImageGridView.Items.Count - 1), prioritize: false);
         }
@@ -352,15 +329,8 @@ public sealed partial class MainPage
         if (_isUnloaded || AppLifetime.IsShuttingDown)
             return;
 
-        if (!imageInfo.HasFastPreview)
-        {
-            _thumbnailCoordinator.PendingFastPreviewLoads.Add(imageInfo);
-        }
-
-        if (!imageInfo.HasTargetThumbnail)
-        {
-            _thumbnailCoordinator.PendingTargetThumbnailLoads.Add(imageInfo);
-        }
+        _thumbnailCoordinator.EnqueueFastPreviewIfNeeded(imageInfo);
+        _thumbnailCoordinator.EnqueueTargetThumbnailIfNeeded(imageInfo);
 
         QueueBackgroundPreviewWarmup(imageInfo, prioritize: true);
         RestartVisibleThumbnailTimerIfNeeded();
