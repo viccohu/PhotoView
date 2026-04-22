@@ -165,8 +165,11 @@ public sealed partial class CollectPage : Page
 
     private async void LoadPreview_Click(object sender, RoutedEventArgs e)
     {
-        CollapseLoadDrawer();
-        await ViewModel.LoadPreviewAsync();
+        var result = await ViewModel.LoadPreviewAsync();
+        if (result.AutoCollapseDrawer)
+        {
+            CollapseLoadDrawer();
+        }
         QueueVisibleThumbnailLoad("load-preview");
     }
 

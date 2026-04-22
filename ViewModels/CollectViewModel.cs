@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using PhotoView.Contracts.Services;
 using PhotoView.Helpers;
 using PhotoView.Models;
@@ -13,6 +13,12 @@ namespace PhotoView.ViewModels;
 
 public partial class CollectViewModel : ObservableRecipient, IDisposable
 {
+    public readonly record struct LoadPreviewResult(
+        bool StartedLoading,
+        bool CompletedSuccessfully,
+        bool LoadedAnyFiles,
+        bool AutoCollapseDrawer);
+
     private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif", ".webp", ".psd", ".psb",
@@ -82,6 +88,12 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
 
     [ObservableProperty]
     private bool _isLoading;
+
+    [ObservableProperty]
+    private double _loadProgressValue;
+
+    [ObservableProperty]
+    private bool _isLoadProgressIndeterminate;
 
     [ObservableProperty]
     private string _statusText = "添加最多 5 个文件夹后载入";
@@ -191,8 +203,9 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         });
     }
 
-    public async Task LoadPreviewAsync()
+        public async Task<LoadPreviewResult> LoadPreviewAsync()
     {
+        ResetLoadProgress();
         var sourcePaths = SelectedSources.Select(source => source.Path).ToArray();
         if (sourcePaths.Length == 0)
         {
@@ -202,7 +215,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
             ClearBurstGroups();
             _loadedSourcePaths.Clear();
             StatusText = "添加文件夹后载入";
-            return;
+            return new LoadPreviewResult(false, false, false, false);
         }
 
         var canAppend = _loadedSourcePaths.Count > 0 &&
@@ -216,7 +229,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         if (pathsToLoad.Length == 0)
         {
             StatusText = "当前预览列表已是最新";
-            return;
+            return new LoadPreviewResult(false, false, false, false);
         }
 
         var metadataCancellationToken = canAppend
@@ -227,6 +240,8 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         _loadCts = new CancellationTokenSource();
         var cancellationToken = _loadCts.Token;
         IsLoading = true;
+        IsLoadProgressIndeterminate = true;
+        LoadProgressValue = 10d;
         StatusText = canAppend ? "正在追加载入..." : "正在载入...";
 
         if (!canAppend)
@@ -250,33 +265,40 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
                 IncludeSubfolders,
                 cancellationToken,
                 metadataCancellationToken);
+
             foreach (var path in pathsToLoad)
             {
                 _loadedSourcePaths.Add(path);
             }
+
             _loadedIncludeSubfolders = IncludeSubfolders;
             SelectedImage ??= Images.FirstOrDefault();
+            UpdateLoadProgress(100d, isIndeterminate: false);
             StatusText = $"已载入 {_allImages.Count} 张图片";
             if (loadedCount == 0 && _allImages.Count == 0)
             {
                 StatusText = "没有找到可预览图片";
             }
+
+            return new LoadPreviewResult(true, true, loadedCount > 0, true);
         }
         catch (OperationCanceledException)
         {
             StatusText = "载入已取消";
+            return new LoadPreviewResult(true, false, false, false);
         }
         catch (Exception ex)
         {
             StatusText = $"载入失败: {ex.Message}";
             System.Diagnostics.Debug.WriteLine($"[CollectViewModel] LoadPreviewAsync failed: {ex}");
+            return new LoadPreviewResult(true, false, false, false);
         }
         finally
         {
             IsLoading = false;
+            ResetLoadProgress();
         }
     }
-
     public void TogglePendingDelete(ImageFileInfo? image)
     {
         if (image == null)
@@ -414,11 +436,17 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
                     FolderDepth = includeSubfolders ? FolderDepth.Deep : FolderDepth.Shallow
                 };
                 states.Add(new SourceLoadState(path, folder.CreateFileQueryWithOptions(queryOptions)));
+                UpdateSourceInitializationProgress(states.Count, sourcePaths.Count);
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[CollectViewModel] Source open failed {path}: {ex.Message}");
             }
+        }
+
+        if (states.Count > 0)
+        {
+            UpdateLoadProgress(25d, isIndeterminate: false);
         }
 
         var totalAdded = 0;
@@ -458,9 +486,12 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
                         $"Batch appended source={state.SourcePath} files={batch.Count} new={addedImages.Count} visibleAdded={appendResult.VisibleAdded} total={_allImages.Count} visible={Images.Count} selected={GetDebugName(SelectedImage)}");
                     await Task.Yield();
                 }
+
+                UpdateRoundRobinProgress(states);
             }
         }
 
+        UpdateLoadProgress(90d, isIndeterminate: false);
         return totalAdded;
     }
 
@@ -941,6 +972,42 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         StatusText = $"已载入 {_allImages.Count} 张图片";
     }
 
+    private void UpdateSourceInitializationProgress(int initializedCount, int totalCount)
+    {
+        if (totalCount <= 0)
+            return;
+
+        var ratio = Math.Clamp(initializedCount / (double)totalCount, 0d, 1d);
+        var progress = 10d + (15d * ratio);
+        UpdateLoadProgress(progress, isIndeterminate: initializedCount == 0);
+    }
+
+    private void UpdateRoundRobinProgress(IReadOnlyList<SourceLoadState> states)
+    {
+        if (states.Count == 0)
+            return;
+
+        var completedCount = states.Count(state => state.IsComplete);
+        var activeRatio = completedCount / (double)states.Count;
+        var progress = 25d + (60d * activeRatio);
+        UpdateLoadProgress(progress, isIndeterminate: false);
+    }
+
+    private void UpdateLoadProgress(double value, bool isIndeterminate)
+    {
+        if (!isIndeterminate)
+        {
+            LoadProgressValue = Math.Clamp(Math.Max(LoadProgressValue, value), 0d, 100d);
+        }
+
+        IsLoadProgressIndeterminate = isIndeterminate;
+    }
+
+    private void ResetLoadProgress()
+    {
+        LoadProgressValue = 0d;
+        IsLoadProgressIndeterminate = false;
+    }
     private void UpdatePendingDeleteCount()
     {
         PendingDeleteCount = _allImages.Count(image => image.IsPendingDelete);
