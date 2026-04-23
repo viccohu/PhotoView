@@ -160,6 +160,13 @@
                         <ToggleSwitch x:Name="CollapseBurstGroupsToggleSwitch" Toggled="CollapseBurstGroupsToggleSwitch_Toggled" />
                     </toolkit:SettingsCard>
 
+                    <toolkit:SettingsCard Header="Auto Sync Ratings" Description="Keep JPG and RAW ratings aligned inside the same group, and resolve mismatches to the higher rating.">
+                        <toolkit:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE1D3;" />
+                        </toolkit:SettingsCard.HeaderIcon>
+                        <ToggleSwitch x:Name="AutoSyncGroupRatingsToggleSwitch" Toggled="AutoSyncGroupRatingsToggleSwitch_Toggled" />
+                    </toolkit:SettingsCard>
+
                     <TextBlock x:Uid="Settings_Section_FileOperations" Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" />
 
                     <toolkit:SettingsCard x:Uid="Settings_DeleteToRecycleBin" Description="Send deletions to the recycle bin first to reduce accidental loss.">

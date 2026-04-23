@@ -1188,7 +1188,12 @@ public sealed partial class CollectPage : Page
         {
             Setters =
             {
-                new Setter(Control.PaddingProperty, new Thickness(16))
+                new Setter(FrameworkElement.WidthProperty, 700d),
+                new Setter(FrameworkElement.MinWidthProperty, 700d),
+                new Setter(FrameworkElement.MaxWidthProperty, 700d),
+                new Setter(Control.PaddingProperty, new Thickness(16)),
+                new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Left),
+                new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Top)
             }
         };
         flyout.Opening += (_, _) =>
@@ -1374,10 +1379,10 @@ public sealed partial class CollectPage : Page
         return null;
     }
 
-    private static List<ImageFileInfo> GetImagesForRatingUpdate(ImageFileInfo image)
+    private List<ImageFileInfo> GetImagesForRatingUpdate(ImageFileInfo image)
     {
         var imagesToProcess = new List<ImageFileInfo>();
-        if (image.Group != null)
+        if (_settingsService.AutoSyncGroupRatings && image.Group != null)
         {
             foreach (var groupImage in image.Group.Images)
             {
@@ -1653,13 +1658,23 @@ public sealed partial class CollectPage : Page
         }
         else
         {
-            sender.Flyout?.ShowAt(sender);
+            if (sender.Flyout is FlyoutBase flyout)
+            {
+                flyout.ShowAt(sender, new FlyoutShowOptions
+                {
+                    PreferredPlacement = FlyoutPlacementMode.BottomEdgeAlignedRight
+                });
+            }
         }
     }
 
     private async void ExportButton_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new ExportDialog(_settingsService, ViewModel.Images.ToList())
+        var dialog = new ExportDialog(
+            _settingsService,
+            ViewModel.GetFilteredExportImages(),
+            ViewModel.GetLoadedExportImages(),
+            ViewModel.IsFilterActive)
         {
             XamlRoot = XamlRoot
         };

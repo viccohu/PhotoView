@@ -29,6 +29,18 @@ public partial class FilterViewModel : ObservableObject
     private bool _isRawFilter;
 
     [ObservableProperty]
+    private bool _isImageSingleOnlyFilter;
+
+    [ObservableProperty]
+    private bool _isRawSingleOnlyFilter;
+
+    [ObservableProperty]
+    private bool _isDualFormatFilter;
+
+    [ObservableProperty]
+    private bool _isDualFormatInverseFilter;
+
+    [ObservableProperty]
     private RatingFilterMode _ratingMode = RatingFilterMode.All;
 
     [ObservableProperty]
@@ -50,6 +62,8 @@ public partial class FilterViewModel : ObservableObject
         get
         {
             return IsImageFilter || IsRawFilter ||
+                   IsImageSingleOnlyFilter || IsRawSingleOnlyFilter ||
+                   IsDualFormatFilter || IsDualFormatInverseFilter ||
                    RatingMode != RatingFilterMode.All || IsPendingDeleteFilter || IsBurstFilter;
         }
     }
@@ -65,11 +79,64 @@ public partial class FilterViewModel : ObservableObject
 
     partial void OnIsImageFilterChanged(bool value)
     {
+        if (!value && IsImageSingleOnlyFilter)
+        {
+            IsImageSingleOnlyFilter = false;
+        }
+
         OnFilterChanged();
     }
 
     partial void OnIsRawFilterChanged(bool value)
     {
+        if (!value && IsRawSingleOnlyFilter)
+        {
+            IsRawSingleOnlyFilter = false;
+        }
+
+        OnFilterChanged();
+    }
+
+    partial void OnIsImageSingleOnlyFilterChanged(bool value)
+    {
+        if (value && !IsImageFilter)
+        {
+            IsImageFilter = true;
+            return;
+        }
+
+        OnFilterChanged();
+    }
+
+    partial void OnIsRawSingleOnlyFilterChanged(bool value)
+    {
+        if (value && !IsRawFilter)
+        {
+            IsRawFilter = true;
+            return;
+        }
+
+        OnFilterChanged();
+    }
+
+    partial void OnIsDualFormatFilterChanged(bool value)
+    {
+        if (!value && IsDualFormatInverseFilter)
+        {
+            IsDualFormatInverseFilter = false;
+        }
+
+        OnFilterChanged();
+    }
+
+    partial void OnIsDualFormatInverseFilterChanged(bool value)
+    {
+        if (value && !IsDualFormatFilter)
+        {
+            IsDualFormatFilter = true;
+            return;
+        }
+
         OnFilterChanged();
     }
 
@@ -107,6 +174,10 @@ public partial class FilterViewModel : ObservableObject
     {
         IsImageFilter = false;
         IsRawFilter = false;
+        IsImageSingleOnlyFilter = false;
+        IsRawSingleOnlyFilter = false;
+        IsDualFormatFilter = false;
+        IsDualFormatInverseFilter = false;
         RatingMode = RatingFilterMode.All;
         RatingCondition = RatingCondition.GreaterOrEqual;
         RatingStars = 1;

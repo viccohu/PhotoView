@@ -91,6 +91,8 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
 
     public FilterViewModel Filter { get; }
 
+    public bool IsFilterActive => Filter.IsFilterActive;
+
     public int SelectedSourceCount => SelectedSources.Count;
 
     public int MaxSourceCount => PreviewWorkspaceService.MaxSourceCount;
@@ -361,6 +363,38 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     public List<ImageFileInfo> GetPendingDeleteImages()
     {
         return _allImages.Where(image => image.IsPendingDelete).ToList();
+    }
+
+    public List<ImageFileInfo> GetLoadedExportImages()
+    {
+        return _allImages.Where(image => !image.IsPendingDelete).ToList();
+    }
+
+    public List<ImageFileInfo> GetFilteredExportImages()
+    {
+        var countedGroups = new HashSet<ImageGroup>();
+        var filteredImages = new List<ImageFileInfo>();
+
+        foreach (var image in _allImages)
+        {
+            if (image.Group is { } group)
+            {
+                if (!countedGroups.Add(group))
+                    continue;
+
+                filteredImages.AddRange(group.Images.Where(MatchFilter));
+                continue;
+            }
+
+            if (MatchFilter(image))
+            {
+                filteredImages.Add(image);
+            }
+        }
+
+        return filteredImages
+            .Where(image => !image.IsPendingDelete)
+            .ToList();
     }
 
     public void RemoveDeletedImages(IEnumerable<ImageFileInfo> deletedImages)
@@ -723,6 +757,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
 
     private void OnFilterChanged(object? sender, EventArgs e)
     {
+        OnPropertyChanged(nameof(IsFilterActive));
         ApplyFilter();
     }
 

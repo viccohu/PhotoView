@@ -105,6 +105,11 @@ public interface ISettingsService
         set;
     }
 
+    bool AutoSyncGroupRatings {
+        get;
+        set;
+    }
+
     event EventHandler<NavigationViewPaneDisplayMode> NavigationViewModeChanged;
     event EventHandler<int> BatchSizeChanged;
     event EventHandler<PerformanceMode>? PerformanceModeChanged;
@@ -116,6 +121,7 @@ public interface ISettingsService
     event EventHandler<bool>? PreferPsdAsPrimaryPreviewChanged;
     event EventHandler<bool>? AutoExpandBurstOnDirectionalNavigationChanged;
     event EventHandler<bool>? CollapseBurstGroupsChanged;
+    event EventHandler<bool>? AutoSyncGroupRatingsChanged;
 
     Task SaveNavigationViewModeAsync(NavigationViewPaneDisplayMode mode);
     Task<NavigationViewPaneDisplayMode> LoadNavigationViewModeAsync();
@@ -159,6 +165,8 @@ public interface ISettingsService
     Task<bool> LoadAutoExpandBurstOnDirectionalNavigationAsync();
     Task SaveCollapseBurstGroupsAsync(bool enabled);
     Task<bool> LoadCollapseBurstGroupsAsync();
+    Task SaveAutoSyncGroupRatingsAsync(bool enabled);
+    Task<bool> LoadAutoSyncGroupRatingsAsync();
     void SuspendAlwaysDecodeRawPersistence(string reason);
     Task ResumeAlwaysDecodeRawPersistenceAsync(string reason);
 

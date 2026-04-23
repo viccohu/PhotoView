@@ -246,4 +246,19 @@ public partial class ImageFileInfo
             System.Diagnostics.Debug.WriteLine($"[SetRatingAsync] error: {ex.Message}");
         }
     }
+
+    internal bool ApplySynchronizedRating(uint rating, RatingSource source)
+    {
+        lock (_thumbnailLoadLock)
+        {
+            var changed = _rating != rating || _ratingSource != source || !_isRatingLoaded || _isRatingLoading || _isRatingLoadRequested;
+            _ratingEditVersion++;
+            SetRatingCore(rating);
+            RatingSource = source;
+            IsRatingLoaded = true;
+            IsRatingLoading = false;
+            _isRatingLoadRequested = false;
+            return changed;
+        }
+    }
 }

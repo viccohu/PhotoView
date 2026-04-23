@@ -13,6 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\Helpers\GroupRatingSyncHelper.cs" Link="Source\Helpers\GroupRatingSyncHelper.cs" />
     <Compile Include="..\Helpers\ThumbnailRangeHelper.cs" Link="Source\Helpers\ThumbnailRangeHelper.cs" />
     <Compile Include="..\Models\ImageFormatRegistry.cs" Link="Source\Models\ImageFormatRegistry.cs" />
     <Compile Include="..\Models\PreviewSource.cs" Link="Source\Models\PreviewSource.cs" />

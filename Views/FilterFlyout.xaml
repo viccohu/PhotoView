@@ -5,6 +5,8 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:shapes="using:Microsoft.UI.Xaml.Shapes"
+    HorizontalAlignment="Left"
+    VerticalAlignment="Top"
     mc:Ignorable="d">
 
     <UserControl.Resources>
@@ -12,12 +14,12 @@
         <SolidColorBrush x:Key="FilterChipCheckedForegroundBrush" Color="{ThemeResource TextOnAccentFillColorPrimary}"/>
 
         <Style x:Key="FilterChipToggleButtonStyle" TargetType="ToggleButton">
-            <Setter Property="MinHeight" Value="40"/>
-            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="MinHeight" Value="34"/>
+            <Setter Property="Padding" Value="8,0"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
             <Setter Property="HorizontalAlignment" Value="Stretch"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorSecondaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="6"/>
         </Style>
@@ -94,112 +96,112 @@
         </DataTemplate>
     </UserControl.Resources>
 
-    <Grid >
+    <Grid Width="700" HorizontalAlignment="Left" VerticalAlignment="Top">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
-        <StackPanel Grid.Column="0" Margin="10,0,16,0" Spacing="8" HorizontalAlignment="Stretch">
-            <TextBlock Text="类型" Style="{ThemeResource BodyTextBlockStyle}" Margin="10,0"/>
-
-            <StackPanel HorizontalAlignment="Stretch" Spacing="6">
-                <ToggleButton
-                    x:Name="ImageFilterButton"
-                    Style="{StaticResource FilterChipToggleButtonStyle}"
-                    Checked="ImageFilterButton_Checked"
-                    Unchecked="ImageFilterButton_Unchecked">
+        <Border Grid.Column="0" Margin="6" Padding="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="10">
+            <StackPanel Spacing="12">
+                <TextBlock Text="Actions" Style="{ThemeResource BodyTextBlockStyle}"/>
+                <ToggleButton x:Name="BurstFilterButton" Style="{StaticResource FilterChipToggleButtonStyle}" Checked="BurstFilterButton_Checked" Unchecked="BurstFilterButton_Unchecked" Visibility="Collapsed">
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <ContentControl x:Name="ImageFilterIconControl" ContentTemplate="{StaticResource PictureFileIconTemplate}"/>
-                        <TextBlock Text="照片" VerticalAlignment="Center"/>
+                        <TextBlock Text="Burst" VerticalAlignment="Center"/>
                     </StackPanel>
                 </ToggleButton>
-
-                <ToggleButton
-                    x:Name="RawFilterButton"
-                    Style="{StaticResource FilterChipToggleButtonStyle}"
-                    FontSize="14"
-                    Checked="RawFilterButton_Checked"
-                    Unchecked="RawFilterButton_Unchecked">
+                <ToggleButton x:Name="PendingDeleteFilterButton" Style="{StaticResource FilterChipToggleButtonStyle}" Checked="PendingDeleteFilterButton_Checked" Unchecked="PendingDeleteFilterButton_Unchecked">
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <ContentControl x:Name="RawFilterIconControl" ContentTemplate="{StaticResource RawFileIconTemplate}"/>
-                        <TextBlock Text="数字底片" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </ToggleButton>
-
-                <Border
-                    Margin="0,0,0,0"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="0,0,0,1"/>
-
-                <ToggleButton
-                    x:Name="PendingDeleteFilterButton"
-                    Style="{StaticResource FilterChipToggleButtonStyle}"
-                    Checked="PendingDeleteFilterButton_Checked"
-                    Unchecked="PendingDeleteFilterButton_Unchecked">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <ContentControl x:Name="PendingDeleteFilterIconControl" ContentTemplate="{StaticResource DeleteFileIconTemplate}"/>
-                        <TextBlock Text="预删除" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </ToggleButton>
-
-                <Border
-                    Margin="0,0,0,0"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="0,0,0,1"/>
-
-                <ToggleButton
-                    x:Name="BurstFilterButton"
-                    Style="{StaticResource FilterChipToggleButtonStyle}"
-                    Checked="BurstFilterButton_Checked"
-                    Unchecked="BurstFilterButton_Unchecked"
-                    Visibility="Collapsed">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <ContentControl x:Name="BurstFilterIconControl" ContentTemplate="{StaticResource BurstFileIconTemplate}"/>
-                        <TextBlock Text="连拍" VerticalAlignment="Center"/>
+                        <TextBlock Text="Pending Delete" VerticalAlignment="Center"/>
                     </StackPanel>
                 </ToggleButton>
             </StackPanel>
-        </StackPanel>
+        </Border>
 
-        <Border Grid.Column="1" Width="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" Margin="0,4"/>
-
-        <StackPanel Grid.Column="2" Margin="16,0,20,0" Spacing="12" HorizontalAlignment="Left">
-            <TextBlock Text="评级" Style="{ThemeResource BodyTextBlockStyle}"/>
-
-            <StackPanel Spacing="4">
-                <TextBlock Text="模式" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
-                <StackPanel x:Name="RatingModeButtonsPanel" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Stretch"/>
-            </StackPanel>
-            <Border
-                Margin="0,6,0,0"
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                BorderThickness="0,0,0,1"/>
-            <StackPanel Spacing="8">
-                <Grid ColumnSpacing="12">
+        <Border Grid.Column="1" Margin="6" Padding="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="10">
+            <StackPanel Spacing="12">
+                <TextBlock Text="Format" Style="{ThemeResource BodyTextBlockStyle}"/>
+                <Grid ColumnSpacing="8">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="56"/>
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Spacing="4">
-                        <TextBlock Text="条件" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
-                        <ComboBox x:Name="RatingConditionComboBox" >
-                            <ComboBoxItem Tag="GreaterOrEqual" Content="&gt;="/>
-                            <ComboBoxItem Tag="Equals" Content="="/>
-                            <ComboBoxItem Tag="LessOrEqual" Content="&lt;="/>
-                        </ComboBox>
-                    </StackPanel>
-                          
-                    <StackPanel Grid.Column="1" Spacing="4" HorizontalAlignment="Left">
-                        <TextBlock Text="星级" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
-                        <RatingControl
-                            x:Name="RatingStarsControl"
-                            IsClearEnabled="True"
-                            MaxRating="5"/>
-                    </StackPanel>
+                    <ToggleButton x:Name="ImageFilterButton" Style="{StaticResource FilterChipToggleButtonStyle}" Checked="ImageFilterButton_Checked" Unchecked="ImageFilterButton_Unchecked">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Photo" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </ToggleButton>
+                    <ToggleButton x:Name="ImageSingleOnlyFilterButton" Grid.Column="1" Style="{StaticResource FilterChipToggleButtonStyle}" Checked="ImageSingleOnlyFilterButton_Checked" Unchecked="ImageSingleOnlyFilterButton_Unchecked">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Solo" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </ToggleButton>
+                </Grid>
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="56"/>
+                    </Grid.ColumnDefinitions>
+                    <ToggleButton x:Name="RawFilterButton" Style="{StaticResource FilterChipToggleButtonStyle}" Checked="RawFilterButton_Checked" Unchecked="RawFilterButton_Unchecked">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="RAW" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </ToggleButton>
+                    <ToggleButton x:Name="RawSingleOnlyFilterButton" Grid.Column="1" Style="{StaticResource FilterChipToggleButtonStyle}" Checked="RawSingleOnlyFilterButton_Checked" Unchecked="RawSingleOnlyFilterButton_Unchecked">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Solo" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </ToggleButton>
+                </Grid>
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="56"/>
+                    </Grid.ColumnDefinitions>
+                    <ToggleButton x:Name="DualFormatFilterButton" Style="{StaticResource FilterChipToggleButtonStyle}" Checked="DualFormatFilterButton_Checked" Unchecked="DualFormatFilterButton_Unchecked">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Dual" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </ToggleButton>
+                    <ToggleButton x:Name="DualFormatInverseFilterButton" Grid.Column="1" Style="{StaticResource FilterChipToggleButtonStyle}" Checked="DualFormatInverseFilterButton_Checked" Unchecked="DualFormatInverseFilterButton_Unchecked">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Inv" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </ToggleButton>
                 </Grid>
             </StackPanel>
-        </StackPanel>
+        </Border>
+
+        <Border Grid.Column="2" Margin="6" Padding="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="10">
+            <StackPanel Spacing="12">
+                <TextBlock Text="Rating" Style="{ThemeResource BodyTextBlockStyle}"/>
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Mode" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                    <StackPanel x:Name="RatingModeButtonsPanel" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Stretch"/>
+                </StackPanel>
+                <Border Margin="0,6,0,0" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1"/>
+                <StackPanel Spacing="8">
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Spacing="4">
+                            <TextBlock Text="Condition" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                            <ComboBox x:Name="RatingConditionComboBox">
+                                <ComboBoxItem Tag="GreaterOrEqual" Content="&gt;="/>
+                                <ComboBoxItem Tag="Equals" Content="="/>
+                                <ComboBoxItem Tag="LessOrEqual" Content="&lt;="/>
+                            </ComboBox>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="4" HorizontalAlignment="Left">
+                            <TextBlock Text="Stars" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                            <RatingControl x:Name="RatingStarsControl" IsClearEnabled="True" MaxRating="5"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </StackPanel>
+        </Border>
     </Grid>
 </UserControl>

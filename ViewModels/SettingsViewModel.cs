@@ -175,6 +175,19 @@ public class SettingsViewModel : ObservableRecipient
         }
     }
 
+    public bool AutoSyncGroupRatings
+    {
+        get => _settingsService.AutoSyncGroupRatings;
+        set
+        {
+            if (_settingsService.AutoSyncGroupRatings != value)
+            {
+                _settingsService.AutoSyncGroupRatings = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public ICommand SwitchThemeCommand
     {
         get;
@@ -226,6 +239,11 @@ public class SettingsViewModel : ObservableRecipient
     }
 
     public ICommand SetCollapseBurstGroupsCommand
+    {
+        get;
+    }
+
+    public ICommand SetAutoSyncGroupRatingsCommand
     {
         get;
     }
@@ -351,6 +369,16 @@ public class SettingsViewModel : ObservableRecipient
                 {
                     CollapseBurstGroups = param;
                     await _settingsService.SaveCollapseBurstGroupsAsync(param);
+                }
+            });
+
+        SetAutoSyncGroupRatingsCommand = new RelayCommand<bool>(
+            async (param) =>
+            {
+                if (AutoSyncGroupRatings != param)
+                {
+                    AutoSyncGroupRatings = param;
+                    await _settingsService.SaveAutoSyncGroupRatingsAsync(param);
                 }
             });
 

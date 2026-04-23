@@ -1,4 +1,4 @@
-using Microsoft.UI.Xaml;
+﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
@@ -10,9 +10,9 @@ namespace PhotoView.Views;
 public sealed partial class FilterFlyout : UserControl
 {
     private FilterViewModel? _filterViewModel;
-    private ToggleButton? _ratingAllButton;
     private ToggleButton? _ratingHasButton;
     private ToggleButton? _ratingNoButton;
+    private bool _isUpdatingFormatButtons;
     private bool _showBurstFilter;
     private bool _isUpdatingRatingModeButtons;
 
@@ -67,7 +67,11 @@ public sealed partial class FilterFlyout : UserControl
     private void OnFilterViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(FilterViewModel.IsImageFilter) ||
-            e.PropertyName == nameof(FilterViewModel.IsRawFilter))
+            e.PropertyName == nameof(FilterViewModel.IsRawFilter) ||
+            e.PropertyName == nameof(FilterViewModel.IsImageSingleOnlyFilter) ||
+            e.PropertyName == nameof(FilterViewModel.IsRawSingleOnlyFilter) ||
+            e.PropertyName == nameof(FilterViewModel.IsDualFormatFilter) ||
+            e.PropertyName == nameof(FilterViewModel.IsDualFormatInverseFilter))
         {
             UpdateFileTypeButtonsState();
         }
@@ -97,19 +101,46 @@ public sealed partial class FilterFlyout : UserControl
         if (_filterViewModel == null)
             return;
 
-        ImageFilterButton.IsChecked = _filterViewModel.IsImageFilter;
-        RawFilterButton.IsChecked = _filterViewModel.IsRawFilter;
+        _isUpdatingFormatButtons = true;
+
+        try
+        {
+            ImageFilterButton.IsChecked = _filterViewModel.IsImageFilter;
+            RawFilterButton.IsChecked = _filterViewModel.IsRawFilter;
+            ImageSingleOnlyFilterButton.IsChecked = _filterViewModel.IsImageSingleOnlyFilter;
+            RawSingleOnlyFilterButton.IsChecked = _filterViewModel.IsRawSingleOnlyFilter;
+            DualFormatFilterButton.IsChecked = _filterViewModel.IsDualFormatFilter;
+            DualFormatInverseFilterButton.IsChecked = _filterViewModel.IsDualFormatInverseFilter;
+            ImageSingleOnlyFilterButton.IsEnabled = _filterViewModel.IsImageFilter;
+            RawSingleOnlyFilterButton.IsEnabled = _filterViewModel.IsRawFilter;
+            DualFormatInverseFilterButton.IsEnabled = _filterViewModel.IsDualFormatFilter;
+            ImageSingleOnlyFilterButton.Opacity = ImageSingleOnlyFilterButton.IsEnabled ? 1d : 0.55d;
+            RawSingleOnlyFilterButton.Opacity = RawSingleOnlyFilterButton.IsEnabled ? 1d : 0.55d;
+            DualFormatInverseFilterButton.Opacity = DualFormatInverseFilterButton.IsEnabled ? 1d : 0.55d;
+        }
+        finally
+        {
+            _isUpdatingFormatButtons = false;
+        }
+
         UpdateToggleContentForeground(ImageFilterButton);
         UpdateToggleContentForeground(RawFilterButton);
+        UpdateToggleContentForeground(ImageSingleOnlyFilterButton);
+        UpdateToggleContentForeground(RawSingleOnlyFilterButton);
+        UpdateToggleContentForeground(DualFormatFilterButton);
+        UpdateToggleContentForeground(DualFormatInverseFilterButton);
     }
 
     private void RefreshToggleContentForegrounds()
     {
         UpdateToggleContentForeground(ImageFilterButton);
         UpdateToggleContentForeground(RawFilterButton);
+        UpdateToggleContentForeground(ImageSingleOnlyFilterButton);
+        UpdateToggleContentForeground(RawSingleOnlyFilterButton);
+        UpdateToggleContentForeground(DualFormatFilterButton);
+        UpdateToggleContentForeground(DualFormatInverseFilterButton);
         UpdateToggleContentForeground(PendingDeleteFilterButton);
         UpdateToggleContentForeground(BurstFilterButton);
-        UpdateToggleContentForeground(_ratingAllButton);
         UpdateToggleContentForeground(_ratingHasButton);
         UpdateToggleContentForeground(_ratingNoButton);
     }
@@ -117,17 +148,11 @@ public sealed partial class FilterFlyout : UserControl
     private void InitializeRatingModeButtons()
     {
         RatingModeButtonsPanel.Children.Clear();
-        _ratingAllButton = null;
         _ratingHasButton = null;
         _ratingNoButton = null;
 
         if (_filterViewModel == null)
             return;
-
-        _ratingAllButton = CreateRatingModeButton("AllIconTemplate", "全部", showText: false, _filterViewModel.RatingMode == RatingFilterMode.All);
-        _ratingAllButton.Checked += RatingAllButton_Checked;
-        _ratingAllButton.Unchecked += RatingAllButton_Unchecked;
-        RatingModeButtonsPanel.Children.Add(_ratingAllButton);
 
         _ratingHasButton = CreateRatingModeButton("HasRatingIconTemplate", "有评级", showText: false, _filterViewModel.RatingMode == RatingFilterMode.HasRating);
         _ratingHasButton.Checked += RatingHasButton_Checked;
@@ -163,11 +188,6 @@ public sealed partial class FilterFlyout : UserControl
 
         try
         {
-            if (_ratingAllButton != null)
-            {
-                _ratingAllButton.IsChecked = _filterViewModel.RatingMode == RatingFilterMode.All;
-                UpdateToggleContentForeground(_ratingAllButton);
-            }
             if (_ratingHasButton != null)
             {
                 _ratingHasButton.IsChecked = _filterViewModel.RatingMode == RatingFilterMode.HasRating;
@@ -211,7 +231,7 @@ public sealed partial class FilterFlyout : UserControl
 
     private void ImageFilterButton_Checked(object sender, RoutedEventArgs e)
     {
-        if (_filterViewModel == null)
+        if (_filterViewModel == null || _isUpdatingFormatButtons)
             return;
 
         _filterViewModel.IsImageFilter = true;
@@ -219,7 +239,7 @@ public sealed partial class FilterFlyout : UserControl
 
     private void ImageFilterButton_Unchecked(object sender, RoutedEventArgs e)
     {
-        if (_filterViewModel == null)
+        if (_filterViewModel == null || _isUpdatingFormatButtons)
             return;
 
         _filterViewModel.IsImageFilter = false;
@@ -227,7 +247,7 @@ public sealed partial class FilterFlyout : UserControl
 
     private void RawFilterButton_Checked(object sender, RoutedEventArgs e)
     {
-        if (_filterViewModel == null)
+        if (_filterViewModel == null || _isUpdatingFormatButtons)
             return;
 
         _filterViewModel.IsRawFilter = true;
@@ -235,26 +255,74 @@ public sealed partial class FilterFlyout : UserControl
 
     private void RawFilterButton_Unchecked(object sender, RoutedEventArgs e)
     {
-        if (_filterViewModel == null)
+        if (_filterViewModel == null || _isUpdatingFormatButtons)
             return;
 
         _filterViewModel.IsRawFilter = false;
     }
 
-    private void RatingAllButton_Checked(object sender, RoutedEventArgs e)
+    private void ImageSingleOnlyFilterButton_Checked(object sender, RoutedEventArgs e)
     {
-        if (_filterViewModel == null || _isUpdatingRatingModeButtons)
+        if (_filterViewModel == null || _isUpdatingFormatButtons)
             return;
 
-        if (_ratingHasButton != null)
-            _ratingHasButton.IsChecked = false;
-        if (_ratingNoButton != null)
-            _ratingNoButton.IsChecked = false;
+        _filterViewModel.IsImageSingleOnlyFilter = true;
+    }
 
-        _filterViewModel.RatingMode = RatingFilterMode.All;
-        UpdateToggleContentForeground(_ratingAllButton);
-        UpdateToggleContentForeground(_ratingHasButton);
-        UpdateToggleContentForeground(_ratingNoButton);
+    private void ImageSingleOnlyFilterButton_Unchecked(object sender, RoutedEventArgs e)
+    {
+        if (_filterViewModel == null || _isUpdatingFormatButtons)
+            return;
+
+        _filterViewModel.IsImageSingleOnlyFilter = false;
+    }
+
+    private void RawSingleOnlyFilterButton_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_filterViewModel == null || _isUpdatingFormatButtons)
+            return;
+
+        _filterViewModel.IsRawSingleOnlyFilter = true;
+    }
+
+    private void RawSingleOnlyFilterButton_Unchecked(object sender, RoutedEventArgs e)
+    {
+        if (_filterViewModel == null || _isUpdatingFormatButtons)
+            return;
+
+        _filterViewModel.IsRawSingleOnlyFilter = false;
+    }
+
+    private void DualFormatFilterButton_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_filterViewModel == null || _isUpdatingFormatButtons)
+            return;
+
+        _filterViewModel.IsDualFormatFilter = true;
+    }
+
+    private void DualFormatFilterButton_Unchecked(object sender, RoutedEventArgs e)
+    {
+        if (_filterViewModel == null || _isUpdatingFormatButtons)
+            return;
+
+        _filterViewModel.IsDualFormatFilter = false;
+    }
+
+    private void DualFormatInverseFilterButton_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_filterViewModel == null || _isUpdatingFormatButtons)
+            return;
+
+        _filterViewModel.IsDualFormatInverseFilter = true;
+    }
+
+    private void DualFormatInverseFilterButton_Unchecked(object sender, RoutedEventArgs e)
+    {
+        if (_filterViewModel == null || _isUpdatingFormatButtons)
+            return;
+
+        _filterViewModel.IsDualFormatInverseFilter = false;
     }
 
     private void RatingHasButton_Checked(object sender, RoutedEventArgs e)
@@ -262,8 +330,6 @@ public sealed partial class FilterFlyout : UserControl
         if (_filterViewModel == null || _isUpdatingRatingModeButtons)
             return;
 
-        if (_ratingAllButton != null)
-            _ratingAllButton.IsChecked = false;
         if (_ratingNoButton != null)
             _ratingNoButton.IsChecked = false;
 
@@ -273,7 +339,6 @@ public sealed partial class FilterFlyout : UserControl
 
         RatingConditionComboBox.SelectedIndex = 0;
         RatingStarsControl.Value = 1;
-        UpdateToggleContentForeground(_ratingAllButton);
         UpdateToggleContentForeground(_ratingHasButton);
         UpdateToggleContentForeground(_ratingNoButton);
     }
@@ -283,35 +348,12 @@ public sealed partial class FilterFlyout : UserControl
         if (_filterViewModel == null || _isUpdatingRatingModeButtons)
             return;
 
-        if (_ratingAllButton != null)
-            _ratingAllButton.IsChecked = false;
         if (_ratingHasButton != null)
             _ratingHasButton.IsChecked = false;
 
         _filterViewModel.RatingMode = RatingFilterMode.NoRating;
-        UpdateToggleContentForeground(_ratingAllButton);
         UpdateToggleContentForeground(_ratingHasButton);
         UpdateToggleContentForeground(_ratingNoButton);
-    }
-
-    private void RatingAllButton_Unchecked(object sender, RoutedEventArgs e)
-    {
-        if (_filterViewModel == null || _isUpdatingRatingModeButtons)
-            return;
-
-        if (_filterViewModel.RatingMode == RatingFilterMode.All && _ratingAllButton != null)
-        {
-            _isUpdatingRatingModeButtons = true;
-            try
-            {
-                _ratingAllButton.IsChecked = true;
-                UpdateToggleContentForeground(_ratingAllButton);
-            }
-            finally
-            {
-                _isUpdatingRatingModeButtons = false;
-            }
-        }
     }
 
     private void RatingHasButton_Unchecked(object sender, RoutedEventArgs e)
@@ -345,8 +387,6 @@ public sealed partial class FilterFlyout : UserControl
 
         try
         {
-            if (_ratingAllButton != null)
-                _ratingAllButton.IsChecked = true;
             if (_ratingHasButton != null)
                 _ratingHasButton.IsChecked = false;
             if (_ratingNoButton != null)
@@ -358,7 +398,6 @@ public sealed partial class FilterFlyout : UserControl
         }
 
         _filterViewModel.RatingMode = RatingFilterMode.All;
-        UpdateToggleContentForeground(_ratingAllButton);
         UpdateToggleContentForeground(_ratingHasButton);
         UpdateToggleContentForeground(_ratingNoButton);
         UpdateRatingControlsState();

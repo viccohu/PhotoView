@@ -23,7 +23,9 @@ public sealed partial class ExportDialog : ContentDialog
     private const int DefaultJpegQuality = 100;
 
     private readonly ISettingsService _settingsService;
-    private readonly List<ImageFileInfo> _images;
+    private readonly List<ImageFileInfo> _filteredImages;
+    private readonly List<ImageFileInfo> _loadedImages;
+    private readonly bool _hasActiveFilter;
     private readonly DispatcherTimer _previewDebounceTimer;
     private CancellationTokenSource? _cancellationTokenSource;
     private CancellationTokenSource? _previewCancellationTokenSource;
@@ -31,12 +33,18 @@ public sealed partial class ExportDialog : ContentDialog
     private bool _isExportComplete = false;
     private string? _exportedFolderPath;
 
-    public ExportDialog(ISettingsService settingsService, List<ImageFileInfo> images)
+    public ExportDialog(
+        ISettingsService settingsService,
+        IReadOnlyList<ImageFileInfo> filteredImages,
+        IReadOnlyList<ImageFileInfo> loadedImages,
+        bool hasActiveFilter)
     {
         InitializeComponent();
         ApplyCurrentAppTheme();
         _settingsService = settingsService;
-        _images = images.Where(img => !img.IsPendingDelete).ToList();
+        _filteredImages = filteredImages.Where(img => !img.IsPendingDelete).ToList();
+        _loadedImages = loadedImages.Where(img => !img.IsPendingDelete).ToList();
+        _hasActiveFilter = hasActiveFilter;
         
         LoadSettings();
         Opened += ExportDialog_Opened;
@@ -52,6 +60,7 @@ public sealed partial class ExportDialog : ContentDialog
         ExportPathTextBox.TextChanged += ExportPathTextBox_TextChanged;
         ImageRatingComboBox.SelectionChanged += ExportOptionSelectionChanged;
         RawRatingComboBox.SelectionChanged += ExportOptionSelectionChanged;
+        FilteredScopeToggleSwitch.Toggled += FilteredScopeToggleSwitch_Toggled;
 
         ResizeEnabledSwitch.Toggled += ResizeOptionChanged;
         ResizeModeComboBox.SelectionChanged += ResizeOptionSelectionChanged;
@@ -104,18 +113,38 @@ public sealed partial class ExportDialog : ContentDialog
 
     private void UpdateControlStates()
     {
-        ImageRatingComboBox.IsEnabled = ImageToggleButton.IsChecked == true;
-        ImageFolderTextBox.IsEnabled = ImageToggleButton.IsChecked == true;
-        RawRatingComboBox.IsEnabled = RawToggleButton.IsChecked == true;
-        RawFolderTextBox.IsEnabled = RawToggleButton.IsChecked == true;
+        if (!_hasActiveFilter && FilteredScopeToggleSwitch.IsOn)
+        {
+            FilteredScopeToggleSwitch.IsOn = false;
+        }
+
+        var useFilteredScope = IsFilteredScopeActive;
+        var hasFilteredImages = useFilteredScope && _filteredImages.Any(image => IsImageExtension(Path.GetExtension(image.ImageFile.Path).ToLowerInvariant()));
+        var hasFilteredRawFiles = useFilteredScope && _filteredImages.Any(image => !IsImageExtension(Path.GetExtension(image.ImageFile.Path).ToLowerInvariant()));
+
+        ImageToggleButton.IsEnabled = !useFilteredScope;
+        RawToggleButton.IsEnabled = !useFilteredScope;
+        ImageToggleButton.Opacity = ImageToggleButton.IsEnabled ? 1d : 0.55d;
+        RawToggleButton.Opacity = RawToggleButton.IsEnabled ? 1d : 0.55d;
+        ImageRatingComboBox.IsEnabled = ImageToggleButton.IsChecked == true && !useFilteredScope;
+        ImageFolderTextBox.IsEnabled = useFilteredScope ? hasFilteredImages : ImageToggleButton.IsChecked == true;
+        RawRatingComboBox.IsEnabled = RawToggleButton.IsChecked == true && !useFilteredScope;
+        RawFolderTextBox.IsEnabled = useFilteredScope ? hasFilteredRawFiles : RawToggleButton.IsChecked == true;
+        FilteredScopeToggleSwitch.IsEnabled = _hasActiveFilter;
+        FilteredScopeContainerBorder.Opacity = _hasActiveFilter ? 1d : 0.5d;
         UpdateToggleContentForeground(ImageToggleButton);
         UpdateToggleContentForeground(RawToggleButton);
         
-        var canExport = (ImageToggleButton.IsChecked == true || RawToggleButton.IsChecked == true) && 
+        var summary = GetExpectedExportSummary();
+        var hasEnabledExportSource = useFilteredScope ||
+                                     ImageToggleButton.IsChecked == true ||
+                                     RawToggleButton.IsChecked == true;
+        var canExport = hasEnabledExportSource &&
                         !string.IsNullOrWhiteSpace(ExportPathTextBox.Text) &&
-                        TryGetResizeOptions(out _, out _);
+                        TryGetResizeOptions(out _, out _) &&
+                        summary.TotalCount > 0;
         IsPrimaryButtonEnabled = canExport && !_isExporting;
-        UpdateExpectedExportSummary();
+        UpdateExpectedExportSummary(summary);
     }
 
     private void RefreshToggleContentForegrounds()
@@ -147,6 +176,7 @@ public sealed partial class ExportDialog : ContentDialog
     {
         ApplyCurrentAppTheme();
         ResetResizeOptions();
+        FilteredScopeToggleSwitch.IsOn = false;
         _isExporting = false;
         _isExportComplete = false;
         _exportedFolderPath = null;
@@ -289,27 +319,30 @@ public sealed partial class ExportDialog : ContentDialog
 
     private List<ExportJob> BuildExportJobs(string basePath, ExportResizeOptions? resizeOptions)
     {
-        var exportImage = ImageToggleButton.IsChecked == true;
-        var exportRaw = RawToggleButton.IsChecked == true;
-        var imageMinRating = GetSelectedRating(ImageRatingComboBox);
-        var rawMinRating = GetSelectedRating(RawRatingComboBox);
+        var useFilteredScope = IsFilteredScopeActive;
         var imageFolderName = ImageFolderTextBox.Text.Trim();
         var rawFolderName = RawFolderTextBox.Text.Trim();
         var usedTargetPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var exportJobs = new List<ExportJob>();
 
-        foreach (var image in _images)
+        if (useFilteredScope)
+        {
+            foreach (var image in EnumerateBaseScopeImages())
+            {
+                AddFilteredScopeExportJob(image, basePath, imageFolderName, rawFolderName, resizeOptions, usedTargetPaths, exportJobs);
+            }
+
+            return exportJobs;
+        }
+
+        var exportImage = ImageToggleButton.IsChecked == true;
+        var exportRaw = RawToggleButton.IsChecked == true;
+        var imageMinRating = GetSelectedRating(ImageRatingComboBox);
+        var rawMinRating = GetSelectedRating(RawRatingComboBox);
+
+        foreach (var image in EnumerateBaseScopeImages())
         {
             AddExportJobIfNeeded(image, exportImage, exportRaw, imageMinRating, rawMinRating, basePath, imageFolderName, rawFolderName, resizeOptions, usedTargetPaths, exportJobs);
-
-            var alternateFormats = image.AlternateFormats;
-            if (image.Group != null && alternateFormats != null)
-            {
-                foreach (var alternateImage in alternateFormats)
-                {
-                    AddExportJobIfNeeded(alternateImage, exportImage, exportRaw, imageMinRating, rawMinRating, basePath, imageFolderName, rawFolderName, resizeOptions, usedTargetPaths, exportJobs);
-                }
-            }
         }
 
         return exportJobs;
@@ -345,6 +378,27 @@ public sealed partial class ExportDialog : ContentDialog
             targetPath = GetAvailableTargetPath(targetPath, usedTargetPaths);
             exportJobs.Add(new ExportJob(image.ImageFile, targetPath, ExportJobKind.Copy, null));
         }
+    }
+
+    private static void AddFilteredScopeExportJob(
+        ImageFileInfo image,
+        string basePath,
+        string imageFolderName,
+        string rawFolderName,
+        ExportResizeOptions? resizeOptions,
+        HashSet<string> usedTargetPaths,
+        List<ExportJob> exportJobs)
+    {
+        var ext = Path.GetExtension(image.ImageFile.Path).ToLowerInvariant();
+        var isImage = IsImageExtension(ext);
+        var folderName = isImage ? imageFolderName : rawFolderName;
+        var targetPath = GetTargetPath(basePath, folderName, image.ImageFile.Path, isImage ? resizeOptions?.Extension : null);
+        targetPath = GetAvailableTargetPath(targetPath, usedTargetPaths);
+        var kind = isImage && resizeOptions != null
+            ? ExportJobKind.ResizeAndEncode
+            : ExportJobKind.Copy;
+
+        exportJobs.Add(new ExportJob(image.ImageFile, targetPath, kind, kind == ExportJobKind.ResizeAndEncode ? resizeOptions : null));
     }
 
     private static void ResizeAndEncodeImage(
@@ -442,8 +496,12 @@ public sealed partial class ExportDialog : ContentDialog
 
     private void UpdateExpectedExportSummary()
     {
-        var summary = GetExpectedExportSummary();
-        ExportCountSummaryTextBlock.Text = $"{summary.TotalCount} 个文件";
+        UpdateExpectedExportSummary(GetExpectedExportSummary());
+    }
+
+    private void UpdateExpectedExportSummary(ExportCountSummary summary)
+    {
+        ExportCountSummaryTextBlock.Text = $" {summary.TotalCount} 个文件";
         ExportImageCountTextBlock.Text = $"JPG {summary.ImageCount}";
         ExportRawCountTextBlock.Text = $"RAW {summary.RawCount}";
 
@@ -468,6 +526,44 @@ public sealed partial class ExportDialog : ContentDialog
         var imageCount = exportJobs.Count(job => job.Kind == ExportJobKind.ResizeAndEncode || IsImageExtension(Path.GetExtension(job.File.Path).ToLowerInvariant()));
         var rawCount = exportJobs.Count - imageCount;
         return new ExportCountSummary(exportJobs.Count, imageCount, rawCount);
+    }
+
+    private IEnumerable<ImageFileInfo> EnumerateBaseScopeImages()
+    {
+        var sourceImages = IsFilteredScopeActive
+            ? _filteredImages
+            : _loadedImages;
+        var yieldedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var image in sourceImages)
+        {
+            foreach (var candidate in EnumerateScopeCandidates(image, IsFilteredScopeActive))
+            {
+                var path = candidate.ImageFile?.Path;
+                if (string.IsNullOrWhiteSpace(path))
+                    continue;
+
+                if (yieldedPaths.Add(path))
+                {
+                    yield return candidate;
+                }
+            }
+        }
+    }
+
+    private bool IsFilteredScopeActive => _hasActiveFilter && FilteredScopeToggleSwitch.IsOn;
+
+    private static IEnumerable<ImageFileInfo> EnumerateScopeCandidates(ImageFileInfo image, bool useFilteredScope)
+    {
+        yield return image;
+
+        if (useFilteredScope || image.Group == null || image.AlternateFormats == null)
+            yield break;
+
+        foreach (var alternateImage in image.AlternateFormats)
+        {
+            yield return alternateImage;
+        }
     }
 
     private void ResetResizeOptions()
@@ -683,33 +779,18 @@ public sealed partial class ExportDialog : ContentDialog
 
     private ImageFileInfo? GetPreviewSampleImage()
     {
-        if (ImageToggleButton.IsChecked != true)
+        if (!IsFilteredScopeActive && ImageToggleButton.IsChecked != true)
             return null;
 
-        var minRating = GetSelectedRating(ImageRatingComboBox);
-        return EnumerateExportImages()
+        var minRating = IsFilteredScopeActive
+            ? 0
+            : GetSelectedRating(ImageRatingComboBox);
+        return EnumerateBaseScopeImages()
             .FirstOrDefault(image =>
             {
                 var ext = Path.GetExtension(image.ImageFile.Path).ToLowerInvariant();
                 return IsImageExtension(ext) && ImageFileInfo.RatingToStars(image.Rating) >= minRating;
             });
-    }
-
-    private IEnumerable<ImageFileInfo> EnumerateExportImages()
-    {
-        foreach (var image in _images)
-        {
-            yield return image;
-
-            var alternateFormats = image.AlternateFormats;
-            if (image.Group == null || alternateFormats == null)
-                continue;
-
-            foreach (var alternateImage in alternateFormats)
-            {
-                yield return alternateImage;
-            }
-        }
     }
 
     private static long EstimateEncodedSize(string sourcePath, ExportResizeOptions resizeOptions, CancellationToken cancellationToken)
@@ -794,6 +875,12 @@ public sealed partial class ExportDialog : ContentDialog
     }
 
     private void ExportOptionSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        UpdateControlStates();
+        QueuePreviewUpdate();
+    }
+
+    private void FilteredScopeToggleSwitch_Toggled(object sender, RoutedEventArgs e)
     {
         UpdateControlStates();
         QueuePreviewUpdate();

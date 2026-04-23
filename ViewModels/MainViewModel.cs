@@ -90,6 +90,7 @@ public partial class MainViewModel : ObservableRecipient
     private bool _isRatingPreloadRunning;
     private int _ratingPreloadVersion;
     private int _selectedCount;
+    private int _filteredPhotoCount;
     private int _totalPhotoCount;
     public FilterViewModel Filter { get; }
 
@@ -142,6 +143,14 @@ public partial class MainViewModel : ObservableRecipient
         get => _totalPhotoCount;
         private set => SetProperty(ref _totalPhotoCount, value);
     }
+
+    public int FilteredPhotoCount
+    {
+        get => _filteredPhotoCount;
+        private set => SetProperty(ref _filteredPhotoCount, value);
+    }
+
+    public bool IsFilterActive => Filter.IsFilterActive;
 
     public void ClearStatus()
     {
@@ -211,6 +220,7 @@ public partial class MainViewModel : ObservableRecipient
         _images = new ObservableCollection<ImageFileInfo>();
         Filter = new FilterViewModel();
         Filter.FilterChanged += OnFilterChanged;
+        UpdateFilteredPhotoCount();
         _ = _ratingService.InitializeAsync();
         _ = LoadDrivesAsync();
     }
@@ -719,13 +729,18 @@ public partial class MainViewModel : ObservableRecipient
         {
             foreach (var image in _allImages)
             {
-                var path = image.ImageFile.Path;
-                if (_queuedRatingPreloadPaths.Add(path))
+                foreach (var ratingImage in EnumerateGroupImages(image))
                 {
-                    var editVersion = image.BeginRatingPreload();
+                    var path = ratingImage.ImageFile.Path;
+                    if (!_queuedRatingPreloadPaths.Add(path))
+                    {
+                        continue;
+                    }
+
+                    var editVersion = ratingImage.BeginRatingPreload();
                     if (editVersion >= 0)
                     {
-                        _pendingRatingPreloadItems.Enqueue(new RatingPreloadRequest(image, editVersion));
+                        _pendingRatingPreloadItems.Enqueue(new RatingPreloadRequest(ratingImage, editVersion));
                     }
                     else
                     {
@@ -875,10 +890,20 @@ public partial class MainViewModel : ObservableRecipient
                 if (!cancellationToken.IsCancellationRequested &&
                     preloadVersion == Volatile.Read(ref _ratingPreloadVersion))
                 {
+                    var groupsToNormalize = new HashSet<ImageGroup>();
                     foreach (var result in batch)
                     {
                         result.ImageInfo.ApplyLoadedRating(result.Rating, result.Source, result.EditVersion);
+                        if (result.ImageInfo.Group != null)
+                        {
+                            groupsToNormalize.Add(result.ImageInfo.Group);
+                        }
                         RefreshBurstCoverAfterRatingChanged(result.ImageInfo);
+                    }
+
+                    foreach (var group in groupsToNormalize)
+                    {
+                        NormalizeLoadedGroupRatings(group);
                     }
                 }
 
@@ -898,6 +923,77 @@ public partial class MainViewModel : ObservableRecipient
         }
 
         await tcs.Task.ConfigureAwait(false);
+    }
+
+    private void NormalizeLoadedGroupRatings(ImageGroup group)
+    {
+        if (!_settingsService.AutoSyncGroupRatings)
+            return;
+
+        if (group.Images.Count <= 1 || group.Images.Any(image => !image.IsRatingLoaded))
+            return;
+
+        if (!GroupRatingSyncHelper.NeedsSynchronization(group.Images.Select(image => image.Rating), out var canonicalRating))
+            return;
+
+        var canonicalSource = ResolveCanonicalRatingSource(group, canonicalRating);
+        var imagesToPersist = new List<ImageFileInfo>();
+
+        foreach (var image in group.Images)
+        {
+            if (image.Rating == canonicalRating && image.RatingSource == canonicalSource)
+                continue;
+
+            if (image.ApplySynchronizedRating(canonicalRating, canonicalSource))
+            {
+                imagesToPersist.Add(image);
+                RefreshBurstCoverAfterRatingChanged(image);
+            }
+        }
+
+        if (imagesToPersist.Count > 0)
+        {
+            _ = PersistGroupRatingNormalizationAsync(imagesToPersist, canonicalRating);
+        }
+    }
+
+    private async Task PersistGroupRatingNormalizationAsync(
+        IReadOnlyList<ImageFileInfo> images,
+        uint canonicalRating)
+    {
+        foreach (var image in images)
+        {
+            try
+            {
+                await _ratingService.SetRatingAsync(image.ImageFile, canonicalRating).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[GroupRatingNormalization] failed for {image.ImageName}: {ex.Message}");
+            }
+        }
+    }
+
+    private static RatingSource ResolveCanonicalRatingSource(ImageGroup group, uint canonicalRating)
+    {
+        var matchingSources = group.Images
+            .Where(image => image.Rating == canonicalRating)
+            .Select(image => image.RatingSource)
+            .ToList();
+
+        if (matchingSources.Contains(RatingSource.WinRT))
+            return RatingSource.WinRT;
+        if (matchingSources.Contains(RatingSource.Cache))
+            return RatingSource.Cache;
+
+        return RatingSource.Unknown;
+    }
+
+    private static IEnumerable<ImageFileInfo> EnumerateGroupImages(ImageFileInfo image)
+    {
+        return image.Group != null
+            ? image.Group.Images
+            : new[] { image };
     }
 
     private static ImageFileInfo CreatePlaceholderImageInfo(StorageFile file)
@@ -1451,6 +1547,29 @@ public partial class MainViewModel : ObservableRecipient
         return _allImages.Where(i => i.IsPendingDelete).ToList();
     }
 
+    public List<ImageFileInfo> GetLoadedExportImages()
+    {
+        return _allImages.Where(image => !image.IsPendingDelete).ToList();
+    }
+
+    public List<ImageFileInfo> GetFilteredExportImages()
+    {
+        var countedGroups = new HashSet<ImageGroup>();
+        var filteredImages = new List<ImageFileInfo>();
+
+        foreach (var image in _allImages)
+        {
+            if (image.Group is { } group && !countedGroups.Add(group))
+                continue;
+
+            filteredImages.AddRange(GetMatchingGroupFiles(image));
+        }
+
+        return filteredImages
+            .Where(image => !image.IsPendingDelete)
+            .ToList();
+    }
+
     public int GetPendingDeleteBurstGroupCount()
     {
         return _burstGroups.Count(group => group.Images.Any(member => member.IsPendingDelete));
@@ -1554,6 +1673,33 @@ public partial class MainViewModel : ObservableRecipient
         TotalPhotoCount = _allImages.Sum(image => image.Group?.Images.Count ?? 1);
     }
 
+    private void UpdateFilteredPhotoCount()
+    {
+        FilteredPhotoCount = CountMatchingFiles(_allImages);
+    }
+
+    private int CountMatchingFiles(IEnumerable<ImageFileInfo> images)
+    {
+        var countedGroups = new HashSet<ImageGroup>();
+        var total = 0;
+
+        foreach (var image in images)
+        {
+            if (image.Group is { } group)
+            {
+                if (!countedGroups.Add(group))
+                    continue;
+
+                total += GetMatchingGroupFiles(image).Count;
+                continue;
+            }
+
+            total += GetMatchingGroupFiles(image).Count;
+        }
+
+        return total;
+    }
+
     public static bool IsRawFile(string extension)
     {
         return ImageFormatRegistry.IsRaw(extension);
@@ -1567,6 +1713,7 @@ public partial class MainViewModel : ObservableRecipient
 
     private void OnFilterChanged(object? sender, EventArgs e)
     {
+        OnPropertyChanged(nameof(IsFilterActive));
         ApplyFilter();
     }
 
@@ -1942,7 +2089,7 @@ public partial class MainViewModel : ObservableRecipient
         {
             foreach (var image in _allImages)
             {
-                if (!MatchFilter(image))
+                if (!HasAnyMatchingFile(image))
                     continue;
 
                 var isBurstMember = image.BurstGroup?.Images.Count > 1;
@@ -1962,7 +2109,7 @@ public partial class MainViewModel : ObservableRecipient
             var burstGroup = image.BurstGroup;
             if (burstGroup == null || burstGroup.Images.Count < 2)
             {
-                if (MatchFilter(image))
+                if (HasAnyMatchingFile(image))
                 {
                     Images.Add(image);
                     image.SetBurstChildVisible(false);
@@ -1974,7 +2121,7 @@ public partial class MainViewModel : ObservableRecipient
                 continue;
 
             var matchedMembers = burstGroup.Images
-                .Where(MatchFilter)
+                .Where(HasAnyMatchingFile)
                 .OrderBy(member => _allImages.IndexOf(member))
                 .ToList();
 
@@ -2035,6 +2182,7 @@ public partial class MainViewModel : ObservableRecipient
         }
         ImagesChanged?.Invoke(this, EventArgs.Empty);
         UpdatePendingDeleteCount();
+        UpdateFilteredPhotoCount();
     }
 
     public void RebuildBurstGroups()
@@ -2240,7 +2388,92 @@ public partial class MainViewModel : ObservableRecipient
 
     private bool MatchFilter(ImageFileInfo image)
     {
-        return MatchFileType(image) && MatchRating(image) && MatchPendingDelete(image) && MatchBurst(image);
+        return HasAnyMatchingFile(image);
+    }
+
+    private bool HasAnyMatchingFile(ImageFileInfo image)
+    {
+        return GetMatchingGroupFiles(image).Count > 0;
+    }
+
+    private List<ImageFileInfo> GetMatchingGroupFiles(ImageFileInfo image)
+    {
+        if (!MatchBurst(image))
+            return new List<ImageFileInfo>();
+
+        return GetFormatMatchedFiles(image)
+            .Where(MatchNonFormatFilters)
+            .ToList();
+    }
+
+    private IEnumerable<ImageFileInfo> GetSemanticFiles(ImageFileInfo image)
+    {
+        return image.Group?.Images ?? Enumerable.Repeat(image, 1);
+    }
+
+    private bool MatchNonFormatFilters(ImageFileInfo image)
+    {
+        return MatchRating(image) && MatchPendingDelete(image);
+    }
+
+    private IEnumerable<ImageFileInfo> GetFormatMatchedFiles(ImageFileInfo image)
+    {
+        var semanticFiles = GetSemanticFiles(image).ToList();
+        if (semanticFiles.Count == 0)
+            return Enumerable.Empty<ImageFileInfo>();
+
+        if (!HasActiveFormatFilter())
+            return semanticFiles;
+
+        var imageFiles = semanticFiles.Where(candidate => !IsRawCandidate(candidate)).ToList();
+        var rawFiles = semanticFiles.Where(IsRawCandidate).ToList();
+        var hasImageFiles = imageFiles.Count > 0;
+        var hasRawFiles = rawFiles.Count > 0;
+        var isDualFormatGroup = hasImageFiles && hasRawFiles;
+        var isImageOnlyGroup = hasImageFiles && !hasRawFiles;
+        var isRawOnlyGroup = hasRawFiles && !hasImageFiles;
+        var matchedFiles = new HashSet<ImageFileInfo>();
+
+        if (Filter.IsImageFilter)
+        {
+            foreach (var candidate in Filter.IsImageSingleOnlyFilter
+                         ? isImageOnlyGroup ? imageFiles : Enumerable.Empty<ImageFileInfo>()
+                         : imageFiles)
+            {
+                matchedFiles.Add(candidate);
+            }
+        }
+
+        if (Filter.IsRawFilter)
+        {
+            foreach (var candidate in Filter.IsRawSingleOnlyFilter
+                         ? isRawOnlyGroup ? rawFiles : Enumerable.Empty<ImageFileInfo>()
+                         : rawFiles)
+            {
+                matchedFiles.Add(candidate);
+            }
+        }
+
+        if (Filter.IsDualFormatFilter)
+        {
+            var dualCandidates = Filter.IsDualFormatInverseFilter
+                ? !isDualFormatGroup ? semanticFiles : Enumerable.Empty<ImageFileInfo>()
+                : isDualFormatGroup ? semanticFiles : Enumerable.Empty<ImageFileInfo>();
+
+            foreach (var candidate in dualCandidates)
+            {
+                matchedFiles.Add(candidate);
+            }
+        }
+
+        return matchedFiles;
+    }
+
+    private bool HasActiveFormatFilter()
+    {
+        return Filter.IsImageFilter ||
+               Filter.IsRawFilter ||
+               Filter.IsDualFormatFilter;
     }
 
     private bool MatchPendingDelete(ImageFileInfo image)
@@ -2260,23 +2493,16 @@ public partial class MainViewModel : ObservableRecipient
 
     private bool MatchFileType(ImageFileInfo image)
     {
-        if (!Filter.IsImageFilter && !Filter.IsRawFilter)
-            return true;
-        
-        if (image.ImageFile == null)
+        return GetFormatMatchedFiles(image).Contains(image);
+    }
+
+    private static bool IsRawCandidate(ImageFileInfo image)
+    {
+        var path = image.ImageFile?.Path;
+        if (string.IsNullOrWhiteSpace(path))
             return false;
-        
-        var ext = Path.GetExtension(image.ImageFile.Path);
-        bool isRaw = FilterViewModel.IsRawExtension(ext);
-        
-        if (Filter.IsImageFilter && Filter.IsRawFilter)
-            return true;
-        if (Filter.IsImageFilter)
-            return !isRaw;
-        if (Filter.IsRawFilter)
-            return isRaw;
-        
-        return true;
+
+        return FilterViewModel.IsRawExtension(Path.GetExtension(path));
     }
 
     private bool MatchRating(ImageFileInfo image)

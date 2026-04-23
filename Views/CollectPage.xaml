@@ -314,7 +314,7 @@
 
                 <Grid
                     x:Name="DualPreviewHost"
-                    ColumnSpacing="6"
+                    ColumnSpacing="2"
                     Visibility="{x:Bind ViewModel.IsDualPageMode, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -327,7 +327,7 @@
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                         BorderThickness="1"
-                        CornerRadius="8,8,0,0"
+                        CornerRadius="8,0,0,0"
                         Tapped="LeftPreviewHost_Tapped">
                         <controls:PreviewImageCanvasControl
                             x:Name="LeftPreviewCanvas"
@@ -340,7 +340,7 @@
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                         BorderThickness="1"
-                        CornerRadius="8,8,0,0"
+                        CornerRadius="0,8,0,0"
                         Tapped="RightPreviewHost_Tapped">
                         <controls:PreviewImageCanvasControl
                             x:Name="RightPreviewCanvas"

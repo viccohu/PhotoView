@@ -27,6 +27,7 @@ public class SettingsService : ISettingsService
     private bool _preferPsdAsPrimaryPreview = false;
     private bool _autoExpandBurstOnDirectionalNavigation = true;
     private bool _collapseBurstGroups = true;
+    private bool _autoSyncGroupRatings = true;
 
     public event EventHandler<NavigationViewPaneDisplayMode>? NavigationViewModeChanged;
     public event EventHandler<int>? BatchSizeChanged;
@@ -39,6 +40,7 @@ public class SettingsService : ISettingsService
     public event EventHandler<bool>? PreferPsdAsPrimaryPreviewChanged;
     public event EventHandler<bool>? AutoExpandBurstOnDirectionalNavigationChanged;
     public event EventHandler<bool>? CollapseBurstGroupsChanged;
+    public event EventHandler<bool>? AutoSyncGroupRatingsChanged;
 
     public NavigationViewPaneDisplayMode NavigationViewMode
     {
@@ -287,6 +289,19 @@ public class SettingsService : ISettingsService
             {
                 _collapseBurstGroups = value;
                 CollapseBurstGroupsChanged?.Invoke(this, value);
+            }
+        }
+    }
+
+    public bool AutoSyncGroupRatings
+    {
+        get => _autoSyncGroupRatings;
+        set
+        {
+            if (_autoSyncGroupRatings != value)
+            {
+                _autoSyncGroupRatings = value;
+                AutoSyncGroupRatingsChanged?.Invoke(this, value);
             }
         }
     }
@@ -631,6 +646,23 @@ public class SettingsService : ISettingsService
         return _collapseBurstGroups;
     }
 
+    public async Task SaveAutoSyncGroupRatingsAsync(bool enabled)
+    {
+        await _localSettingsService.SaveSettingAsync("AutoSyncGroupRatings", enabled);
+    }
+
+    public async Task<bool> LoadAutoSyncGroupRatingsAsync()
+    {
+        var enabled = await _localSettingsService.ReadSettingAsync<bool?>("AutoSyncGroupRatings");
+        if (enabled.HasValue)
+        {
+            _autoSyncGroupRatings = enabled.Value;
+            return enabled.Value;
+        }
+
+        return _autoSyncGroupRatings;
+    }
+
     public void SuspendAlwaysDecodeRawPersistence(string reason)
     {
         // Reserved hook for viewer lifetime; the setting is only persisted by explicit save calls.
@@ -663,5 +695,6 @@ public class SettingsService : ISettingsService
         await LoadPreferPsdAsPrimaryPreviewAsync();
         await LoadAutoExpandBurstOnDirectionalNavigationAsync();
         await LoadCollapseBurstGroupsAsync();
+        await LoadAutoSyncGroupRatingsAsync();
     }
 }
