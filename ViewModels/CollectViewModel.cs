@@ -57,6 +57,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     private CancellationTokenSource? _metadataCts;
     private DateTime _lastLoadStatusUpdateUtc = DateTime.MinValue;
     private int _pendingDeleteCount;
+    private int _filteredPhotoCount;
     private bool _loadedIncludeSubfolders;
 
     public CollectViewModel(
@@ -78,6 +79,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         Images = new ObservableCollection<ImageFileInfo>();
         Filter = new FilterViewModel();
         Filter.FilterChanged += OnFilterChanged;
+        UpdateFilteredPhotoCount();
         _workspaceService.SourcesChanged += WorkspaceService_SourcesChanged;
         _ = _ratingService.InitializeAsync();
         _ = LoadDrivesAsync();
@@ -96,6 +98,12 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     public int SelectedSourceCount => SelectedSources.Count;
 
     public int MaxSourceCount => PreviewWorkspaceService.MaxSourceCount;
+
+    public int FilteredPhotoCount
+    {
+        get => _filteredPhotoCount;
+        private set => SetProperty(ref _filteredPhotoCount, value);
+    }
 
     [ObservableProperty]
     private bool _includeSubfolders;
@@ -242,6 +250,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
             ReplaceImageList(Array.Empty<ImageFileInfo>());
             _allImages.Clear();
             ClearBurstGroups();
+            UpdateFilteredPhotoCount();
             _loadedSourcePaths.Clear();
             StatusText = "添加文件夹后载入";
             return new LoadPreviewResult(false, false, false, false);
@@ -283,6 +292,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
             Images.Clear();
             SelectedImage = null;
             PendingDeleteCount = 0;
+            UpdateFilteredPhotoCount();
             _loadedSourcePaths.Clear();
             await Task.Yield();
         }
@@ -377,19 +387,10 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
 
         foreach (var image in _allImages)
         {
-            if (image.Group is { } group)
-            {
-                if (!countedGroups.Add(group))
-                    continue;
-
-                filteredImages.AddRange(group.Images.Where(MatchFilter));
+            if (image.Group is { } group && !countedGroups.Add(group))
                 continue;
-            }
 
-            if (MatchFilter(image))
-            {
-                filteredImages.Add(image);
-            }
+            filteredImages.AddRange(GetMatchingGroupFiles(image));
         }
 
         return filteredImages
@@ -440,6 +441,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         }
 
         UpdatePendingDeleteCount();
+        UpdateFilteredPhotoCount();
         DebugLoad($"ApplyFilter reset complete visibleAfter={Images.Count} selected={GetDebugName(SelectedImage)}");
     }
 
@@ -454,6 +456,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         {
             image.CancelThumbnailLoad();
         }
+        Filter.FilterChanged -= OnFilterChanged;
         ClearMetadataHydrationQueue();
     }
 
@@ -635,6 +638,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
             DebugLoad($"Initial selection set image={GetDebugName(initialSelection)}");
         }
 
+        UpdateFilteredPhotoCount();
         return (visibleAdded, initialSelection);
     }
 
@@ -945,59 +949,171 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         DateTimeOffset SortTime,
         bool HasDateTaken);
 
+    private void UpdateFilteredPhotoCount()
+    {
+        FilteredPhotoCount = CountMatchingFiles(_allImages);
+    }
+
+    private int CountMatchingFiles(IEnumerable<ImageFileInfo> images)
+    {
+        var countedGroups = new HashSet<ImageGroup>();
+        var total = 0;
+
+        foreach (var image in images)
+        {
+            if (image.Group is { } group)
+            {
+                if (!countedGroups.Add(group))
+                    continue;
+
+                total += GetMatchingGroupFiles(image).Count;
+                continue;
+            }
+
+            total += GetMatchingGroupFiles(image).Count;
+        }
+
+        return total;
+    }
+
     private bool MatchFilter(ImageFileInfo image)
     {
-        return MatchFileType(image) && MatchRating(image) && MatchPendingDelete(image) && MatchBurst(image);
+        return HasAnyMatchingFile(image);
+    }
+
+    private bool HasAnyMatchingFile(ImageFileInfo image)
+    {
+        return GetMatchingGroupFiles(image).Count > 0;
+    }
+
+    private List<ImageFileInfo> GetMatchingGroupFiles(ImageFileInfo image)
+    {
+        if (!MatchBurst(image))
+            return new List<ImageFileInfo>();
+
+        return GetFormatMatchedFiles(image)
+            .Where(MatchNonFormatFilters)
+            .ToList();
+    }
+
+    private IEnumerable<ImageFileInfo> GetSemanticFiles(ImageFileInfo image)
+    {
+        return image.Group?.Images ?? Enumerable.Repeat(image, 1);
+    }
+
+    private bool MatchNonFormatFilters(ImageFileInfo image)
+    {
+        return MatchRating(image) && MatchPendingDelete(image);
+    }
+
+    private IEnumerable<ImageFileInfo> GetFormatMatchedFiles(ImageFileInfo image)
+    {
+        var semanticFiles = GetSemanticFiles(image).ToList();
+        if (semanticFiles.Count == 0)
+            return Enumerable.Empty<ImageFileInfo>();
+
+        if (!HasActiveFormatFilter())
+            return semanticFiles;
+
+        var imageFiles = semanticFiles.Where(candidate => !IsRawCandidate(candidate)).ToList();
+        var rawFiles = semanticFiles.Where(IsRawCandidate).ToList();
+        var hasImageFiles = imageFiles.Count > 0;
+        var hasRawFiles = rawFiles.Count > 0;
+        var isDualFormatGroup = hasImageFiles && hasRawFiles;
+        var isImageOnlyGroup = hasImageFiles && !hasRawFiles;
+        var isRawOnlyGroup = hasRawFiles && !hasImageFiles;
+        var matchedFiles = new HashSet<ImageFileInfo>();
+
+        if (Filter.IsImageFilter)
+        {
+            foreach (var candidate in Filter.IsImageSingleOnlyFilter
+                         ? isImageOnlyGroup ? imageFiles : Enumerable.Empty<ImageFileInfo>()
+                         : imageFiles)
+            {
+                matchedFiles.Add(candidate);
+            }
+        }
+
+        if (Filter.IsRawFilter)
+        {
+            foreach (var candidate in Filter.IsRawSingleOnlyFilter
+                         ? isRawOnlyGroup ? rawFiles : Enumerable.Empty<ImageFileInfo>()
+                         : rawFiles)
+            {
+                matchedFiles.Add(candidate);
+            }
+        }
+
+        if (Filter.IsDualFormatFilter)
+        {
+            var dualCandidates = Filter.IsDualFormatInverseFilter
+                ? !isDualFormatGroup ? semanticFiles : Enumerable.Empty<ImageFileInfo>()
+                : isDualFormatGroup ? semanticFiles : Enumerable.Empty<ImageFileInfo>();
+
+            foreach (var candidate in dualCandidates)
+            {
+                matchedFiles.Add(candidate);
+            }
+        }
+
+        return matchedFiles;
+    }
+
+    private bool HasActiveFormatFilter()
+    {
+        return Filter.IsImageFilter ||
+               Filter.IsRawFilter ||
+               Filter.IsDualFormatFilter;
     }
 
     private bool MatchPendingDelete(ImageFileInfo image)
     {
-        return !Filter.IsPendingDeleteFilter || image.IsPendingDelete;
+        if (!Filter.IsPendingDeleteFilter)
+            return true;
+
+        return image.IsPendingDelete;
     }
 
     private bool MatchBurst(ImageFileInfo image)
     {
-        return !Filter.IsBurstFilter || image.BurstGroup?.Images.Count > 1;
+        if (!Filter.IsBurstFilter)
+            return true;
+
+        return image.BurstGroup?.Images.Count > 1;
     }
 
-    private bool MatchFileType(ImageFileInfo image)
+    private static bool IsRawCandidate(ImageFileInfo image)
     {
-        if (!Filter.IsImageFilter && !Filter.IsRawFilter)
-            return true;
+        var path = image.ImageFile?.Path;
+        if (string.IsNullOrWhiteSpace(path))
+            return false;
 
-        var ext = Path.GetExtension(image.ImageFile.Path);
-        var isRaw = FilterViewModel.IsRawExtension(ext);
-
-        if (Filter.IsImageFilter && Filter.IsRawFilter)
-            return true;
-        if (Filter.IsImageFilter)
-            return !isRaw;
-        if (Filter.IsRawFilter)
-            return isRaw;
-
-        return true;
+        return FilterViewModel.IsRawExtension(Path.GetExtension(path));
     }
 
     private bool MatchRating(ImageFileInfo image)
     {
-        return Filter.RatingMode switch
+        switch (Filter.RatingMode)
         {
-            RatingFilterMode.All => true,
-            RatingFilterMode.NoRating => image.Rating == 0,
-            RatingFilterMode.HasRating => MatchRatingCondition(ImageFileInfo.RatingToStars(image.Rating)),
-            _ => true
-        };
-    }
+            case RatingFilterMode.All:
+                return true;
+            case RatingFilterMode.NoRating:
+                return image.Rating == 0;
+            case RatingFilterMode.HasRating:
+                var stars = ImageFileInfo.RatingToStars(image.Rating);
+                switch (Filter.RatingCondition)
+                {
+                    case RatingCondition.Equals:
+                        return stars == Filter.RatingStars;
+                    case RatingCondition.GreaterOrEqual:
+                        return stars >= Filter.RatingStars;
+                    case RatingCondition.LessOrEqual:
+                        return stars <= Filter.RatingStars;
+                }
+                return false;
+        }
 
-    private bool MatchRatingCondition(int stars)
-    {
-        return Filter.RatingCondition switch
-        {
-            RatingCondition.Equals => stars == Filter.RatingStars,
-            RatingCondition.GreaterOrEqual => stars >= Filter.RatingStars,
-            RatingCondition.LessOrEqual => stars <= Filter.RatingStars,
-            _ => true
-        };
+        return true;
     }
 
     private void ReplaceImageList(IEnumerable<ImageFileInfo> images)
@@ -1073,6 +1189,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     private void UpdatePendingDeleteCount()
     {
         PendingDeleteCount = _allImages.Count(image => image.IsPendingDelete);
+        UpdateFilteredPhotoCount();
     }
 
     private void ClearMetadataHydrationQueue()

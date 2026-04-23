@@ -1,10 +1,10 @@
 ﻿<ContentDialog
     x:Class="PhotoView.Dialogs.ExportDialog"
+    x:Uid="ExportDialog"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:shapes="using:Microsoft.UI.Xaml.Shapes"
     mc:Ignorable="d"
     CloseButtonText="取消"
     PrimaryButtonText="开始导出"
@@ -20,6 +20,7 @@
             </Grid.ColumnDefinitions>
 
             <TextBlock
+                x:Uid="ExportDialog_Title"
                 Text="导出"
                 VerticalAlignment="Center"
                 FontSize="20"
@@ -37,6 +38,7 @@
                 VerticalAlignment="Center">
                 <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                     <TextBlock
+                        x:Uid="ExportDialog_FilteredScope"
                         Text="按筛选结果导出"
                         Style="{ThemeResource CaptionTextBlockStyle}"
                         FontSize="12"
@@ -59,29 +61,7 @@
         <CornerRadius x:Key="ControlCornerRadius">6</CornerRadius>
         <SolidColorBrush x:Key="ExportToggleUncheckedForegroundBrush" Color="{ThemeResource TextFillColorPrimary}"/>
         <SolidColorBrush x:Key="ExportToggleCheckedForegroundBrush" Color="{ThemeResource TextOnAccentFillColorPrimary}"/>
-
-        <DataTemplate x:Key="ExportPictureFileIconTemplate">
-            <Viewbox Width="20" Height="20">
-                <Canvas x:Name="ExportPictureFileIconRoot" Width="25" Height="25" Tag="{Binding}">
-                    <shapes:Path Fill="{Binding Tag, ElementName=ExportPictureFileIconRoot}" Data="m6.28,14.65s-.01.06-.03.09c-.02.03-.06.05-.11.07-.05.02-.12.03-.2.04s-.19.01-.32.01-.23,0-.32-.01-.15-.02-.2-.04c-.05-.02-.09-.04-.11-.07-.02-.03-.03-.06-.03-.09v-6.1s.01-.06.03-.09c.02-.03.06-.05.11-.06.05-.02.12-.03.2-.04s.19-.01.32-.01.24,0,.32.01.15.02.2.04c.05.02.09.04.11.06.02.03.03.06.03.09v6.1Z"/>
-                    <shapes:Path Fill="{Binding Tag, ElementName=ExportPictureFileIconRoot}" Data="m14.76,14.66s-.01.06-.03.09-.05.05-.1.06c-.05.02-.11.03-.19.04-.08,0-.18.01-.31.01s-.23,0-.31-.01c-.08,0-.15-.02-.19-.04-.05-.02-.08-.04-.1-.06s-.03-.05-.03-.09v-2.64c0-.15-.01-.29-.04-.41s-.07-.23-.13-.32c-.06-.09-.13-.16-.22-.2-.09-.05-.2-.07-.32-.07-.15,0-.3.06-.46.17-.15.12-.32.29-.5.51v2.96s-.01.06-.03.09-.05.05-.1.06c-.05.02-.11.03-.19.04-.08,0-.18.01-.3.01s-.23,0-.31-.01c-.08,0-.14-.02-.19-.04-.05-.02-.08-.04-.1-.06s-.03-.05-.03-.09v-2.64c0-.15-.01-.29-.04-.41-.03-.12-.07-.23-.13-.32-.06-.09-.13-.16-.22-.2-.09-.05-.2-.07-.32-.07-.15,0-.31.06-.46.17-.15.12-.32.29-.5.51v2.96s-.01.06-.03.09c-.02.02-.05.05-.1.06-.05.02-.11.03-.19.04-.08,0-.18.01-.31.01s-.23,0-.31-.01c-.08,0-.14-.02-.19-.04-.05-.02-.08-.04-.1-.06-.02-.02-.03-.05-.03-.09v-4.45s0-.06.03-.09c.02-.02.05-.05.09-.06.04-.02.1-.03.17-.04s.15-.01.26-.01.2,0,.27.01c.07,0,.12.02.16.04.04.02.07.04.08.06.02.02.03.05.03.09v.51c.25-.27.5-.47.74-.6.25-.13.5-.2.77-.2.18,0,.35.02.5.06.15.04.28.09.39.16.12.07.22.16.3.26.08.1.15.21.21.33.13-.14.27-.27.39-.37.13-.1.26-.19.38-.25.13-.06.25-.11.38-.14s.25-.05.38-.05c.3,0,.55.05.75.15.2.1.37.23.5.41.13.17.22.37.27.6s.08.47.08.73v2.85Z"/>
-                    <shapes:Path Fill="{Binding Tag, ElementName=ExportPictureFileIconRoot}" Data="m20.05,10.52c0,.16-.02.28-.06.35s-.08.12-.14.12h-.53c.07.08.13.17.16.27.03.1.05.21.05.32,0,.26-.04.49-.13.69-.09.2-.21.37-.37.51-.16.14-.36.24-.59.31-.23.07-.49.11-.77.11-.14,0-.28-.02-.41-.05-.13-.04-.23-.08-.3-.12-.04.04-.08.09-.11.15-.03.06-.05.13-.05.2,0,.1.04.18.13.24.09.06.21.1.36.1l1.09.04c.25,0,.48.05.68.11s.37.15.5.26.24.25.31.4.11.33.11.53c0,.22-.05.43-.15.62s-.24.36-.44.51-.44.26-.73.34c-.29.08-.64.13-1.03.13s-.71-.03-.98-.09c-.27-.06-.49-.14-.66-.25-.17-.11-.3-.23-.38-.38-.08-.15-.12-.31-.12-.49,0-.11.01-.22.04-.31.03-.1.07-.2.13-.29s.12-.18.2-.26c.08-.08.17-.16.28-.24-.14-.08-.26-.18-.33-.31-.08-.13-.12-.28-.12-.43,0-.2.05-.38.14-.54.09-.16.21-.31.35-.44-.12-.12-.21-.26-.28-.42-.07-.16-.11-.37-.11-.61,0-.26.05-.49.14-.7s.22-.38.38-.52c.16-.14.36-.25.59-.32s.48-.11.75-.11c.14,0,.28,0,.4.02.13.02.25.04.36.07h1.42c.06,0,.1.04.14.11s.05.2.05.37Zm-1.33,4.61c0-.15-.06-.26-.18-.34-.12-.08-.29-.12-.5-.13l-.9-.02c-.09.06-.16.12-.21.18-.05.06-.09.11-.13.17-.03.05-.05.11-.06.16s-.02.1-.02.15c0,.17.08.29.25.38s.41.13.72.13c.19,0,.35-.02.48-.06.13-.04.24-.09.32-.15.08-.06.14-.13.17-.21s.05-.16.05-.25Zm-.3-3.56c0-.24-.07-.43-.2-.56-.13-.13-.32-.2-.57-.2-.12,0-.23.02-.33.06s-.17.1-.23.17c-.06.07-.11.16-.14.25-.03.1-.05.19-.05.3,0,.23.07.41.2.54.13.13.32.2.56.2.13,0,.24-.02.33-.06.09-.04.17-.09.23-.16.06-.07.11-.15.14-.24.03-.09.05-.19.05-.29Z"/>
-                    <shapes:Path Fill="{Binding Tag, ElementName=ExportPictureFileIconRoot}" Data="m19.37,1.03H2.91C1.55,1.03.44,2.13.44,3.49v18.02c0,1.35,1.11,2.46,2.47,2.46h19.17c1.36,0,2.47-1.1,2.47-2.46V6.19l-5.19-5.16Zm2.72,21.41H2.91c-.52,0-.93-.42-.93-.93V3.49c0-.51.42-.93.93-.93h15.23v2.64c0,1.22.99,2.2,2.21,2.2h2.66v14.11c0,.51-.42.93-.93.93Z"/>
-                </Canvas>
-            </Viewbox>
-        </DataTemplate>
-
-        <DataTemplate x:Key="ExportRawFileIconTemplate">
-            <Viewbox Width="20" Height="20">
-                <Canvas x:Name="ExportRawFileIconRoot" Width="25" Height="25" Tag="{Binding}">
-                    <shapes:Path Fill="{Binding Tag, ElementName=ExportRawFileIconRoot}" Data="m8.53,15.5s0,.07-.02.09-.05.05-.1.06c-.05.02-.12.03-.22.03-.1,0-.23,0-.4,0-.14,0-.25,0-.34,0-.08,0-.15-.02-.2-.04-.05-.02-.08-.04-.1-.07s-.04-.06-.05-.1l-.58-1.44c-.07-.16-.14-.31-.21-.43s-.14-.23-.22-.32-.18-.15-.28-.19c-.11-.04-.23-.06-.37-.06h-.41v2.46s-.01.06-.03.09c-.02.03-.06.05-.11.07-.05.02-.12.03-.2.04s-.19.01-.32.01-.23,0-.32-.01-.15-.02-.2-.04c-.05-.02-.09-.04-.11-.07-.02-.03-.03-.06-.03-.09v-5.87c0-.15.04-.25.11-.32.08-.06.17-.1.28-.1h1.68c.17,0,.31,0,.42,0,.11,0,.21.01.3.02.26.04.5.1.71.19.21.09.39.21.53.35.15.15.26.32.33.51s.12.43.12.68c0,.22-.03.41-.08.59-.06.18-.14.34-.24.48-.11.14-.24.26-.4.36-.16.1-.34.19-.54.25.1.05.19.1.27.17.09.07.17.15.24.24.08.1.15.2.21.33s.13.26.2.41l.55,1.27c.05.13.08.22.1.28.02.06.03.1.03.14Zm-1.7-4.39c0-.21-.05-.39-.15-.54-.1-.15-.26-.25-.48-.31-.07-.02-.14-.03-.23-.04s-.2-.01-.35-.01h-.59v1.83h.67c.19,0,.35-.02.49-.07.14-.04.26-.11.35-.19.09-.08.16-.18.21-.29.05-.11.07-.24.07-.38Z"/>
-                    <shapes:Path Fill="{Binding Tag, ElementName=ExportRawFileIconRoot}" Data="m13.25,15.52s-.02.08-.05.11c-.03.03-.09.05-.16.06-.07.01-.18.02-.32.02-.15,0-.26,0-.33-.02-.07-.01-.12-.03-.15-.06-.03-.03-.04-.06-.04-.11v-.35c-.18.2-.39.35-.63.46-.24.11-.5.16-.79.16-.24,0-.46-.03-.66-.09s-.37-.15-.52-.27c-.15-.12-.26-.27-.34-.45-.08-.18-.12-.39-.12-.63,0-.26.05-.48.15-.68.1-.19.26-.35.46-.47.2-.13.46-.22.76-.28.3-.06.65-.09,1.05-.09h.44v-.27c0-.14-.01-.26-.04-.37-.03-.1-.08-.19-.14-.26-.07-.07-.15-.12-.26-.15-.11-.03-.24-.05-.4-.05-.21,0-.4.02-.57.07s-.31.1-.44.15-.23.11-.32.16-.16.07-.21.07c-.04,0-.07-.01-.1-.03-.03-.02-.05-.06-.07-.1-.02-.04-.03-.1-.04-.16-.01-.06-.02-.13-.02-.21,0-.1,0-.18.03-.24.02-.06.05-.11.1-.16.05-.05.13-.1.25-.16.12-.06.25-.11.41-.16.16-.05.33-.09.52-.12.19-.03.38-.05.58-.05.35,0,.65.03.9.1.25.07.46.17.62.31s.28.32.35.55c.07.22.11.49.11.79v3Zm-1.24-1.91h-.48c-.2,0-.38.01-.52.04-.14.03-.26.07-.35.13-.09.06-.16.13-.2.22-.04.08-.06.18-.06.29,0,.19.06.33.18.44.12.11.28.16.5.16.18,0,.34-.04.49-.13.15-.09.3-.22.46-.4v-.76Z"/>
-                    <shapes:Path Fill="{Binding Tag, ElementName=ExportRawFileIconRoot}" Data="m21.29,11.04s0,.08-.02.14c-.01.05-.03.13-.06.23l-1.2,4.03c-.02.06-.04.1-.07.14-.03.03-.07.06-.12.08-.06.02-.13.03-.24.04-.1,0-.24,0-.4,0s-.3,0-.4-.01c-.1,0-.19-.02-.24-.04s-.1-.05-.13-.08-.05-.08-.06-.13l-.75-2.71v-.04s-.02.04-.02.04l-.69,2.71c-.01.06-.03.1-.06.14-.03.03-.07.06-.13.08-.06.02-.14.03-.25.04-.1,0-.24,0-.4,0s-.3,0-.4-.01c-.1,0-.18-.02-.24-.04s-.1-.05-.13-.08c-.03-.03-.05-.08-.06-.13l-1.19-4.03c-.03-.1-.05-.17-.06-.23s-.01-.1-.01-.14c0-.03,0-.06.03-.09.02-.02.05-.04.1-.06s.11-.03.2-.03c.08,0,.19,0,.31,0,.13,0,.24,0,.33,0,.08,0,.15.02.2.04.05.02.08.04.1.07.02.03.03.06.04.1l.89,3.27v.06s.02-.06.02-.06l.83-3.27s.03-.07.05-.1c.02-.03.05-.05.1-.07.04-.02.1-.03.18-.04.08,0,.18,0,.3,0s.22,0,.3.01.14.02.18.03.08.03.1.06c.02.02.03.05.04.09l.9,3.3.02.05v-.06s.87-3.27.87-3.27c0-.04.02-.07.04-.1.02-.03.05-.05.1-.07.05-.02.11-.03.19-.04.08,0,.18,0,.31,0s.23,0,.3,0c.08,0,.14.02.19.03.05.01.08.03.09.06.02.02.03.05.03.09Z"/>
-                    <shapes:Path Fill="{Binding Tag, ElementName=ExportRawFileIconRoot}" Data="m19.37,1.03H2.91C1.55,1.03.44,2.13.44,3.49v18.02c0,1.35,1.11,2.46,2.47,2.46h19.17c1.36,0,2.47-1.1,2.47-2.46V6.19l-5.19-5.16Zm2.72,21.41H2.91c-.52,0-.93-.42-.93-.93V3.49c0-.51.42-.93.93-.93h15.23v2.64c0,1.22.99,2.2,2.21,2.2h2.66v14.11c0,.51-.42.93-.93.93Z"/>
-                </Canvas>
-            </Viewbox>
-        </DataTemplate>
-    </ContentDialog.Resources>
+</ContentDialog.Resources>
 
     <ContentDialog.CloseButtonStyle>
         <Style TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
@@ -94,6 +74,7 @@
 
             <StackPanel Spacing="14">
                 <TextBlock
+                    x:Uid="ExportDialog_SectionHint"
                     Text="选择要导出的文件类型和筛选条件"
                     Style="{ThemeResource CaptionTextBlockStyle}"
                     FontSize="12"
@@ -120,18 +101,18 @@
 
                         <ToggleButton x:Name="ImageToggleButton" HorizontalAlignment="Stretch">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <ContentControl x:Name="ImageToggleIconControl" ContentTemplate="{StaticResource ExportPictureFileIconTemplate}"/>
-                                <TextBlock Text="照片（JPG）" VerticalAlignment="Center"/>
+                                <ContentControl x:Name="ImageToggleIconControl" Content="{ThemeResource TextFillColorPrimaryBrush}" ContentTemplate="{StaticResource PictureFileIconTemplate}"/>
+                                <TextBlock x:Uid="ExportDialog_Photo" Text="照片（JPG）" VerticalAlignment="Center"/>
                             </StackPanel>
                         </ToggleButton>
-                        <ComboBox x:Name="ImageRatingComboBox" Grid.Column="1" PlaceholderText="星级" IsEnabled="False" HorizontalAlignment="Stretch">
-                            <ComboBoxItem Content="≥ 1 星" Tag="1"/>
-                            <ComboBoxItem Content="≥ 2 星" Tag="2"/>
-                            <ComboBoxItem Content="≥ 3 星" Tag="3"/>
-                            <ComboBoxItem Content="≥ 4 星" Tag="4"/>
-                            <ComboBoxItem Content="≥ 5 星" Tag="5"/>
+                        <ComboBox x:Uid="ExportDialog_ImageStarPlaceholder" x:Name="ImageRatingComboBox" Grid.Column="1" PlaceholderText="星级" IsEnabled="False" HorizontalAlignment="Stretch">
+                            <ComboBoxItem x:Uid="ExportDialog_ImageRating1" Content="≥ 1 星" Tag="1"/>
+                            <ComboBoxItem x:Uid="ExportDialog_ImageRating2" Content="≥ 2 星" Tag="2"/>
+                            <ComboBoxItem x:Uid="ExportDialog_ImageRating3" Content="≥ 3 星" Tag="3"/>
+                            <ComboBoxItem x:Uid="ExportDialog_ImageRating4" Content="≥ 4 星" Tag="4"/>
+                            <ComboBoxItem x:Uid="ExportDialog_ImageRating5" Content="≥ 5 星" Tag="5"/>
                         </ComboBox>
-                        <TextBox x:Name="ImageFolderTextBox" Grid.Column="2" PlaceholderText="文件夹名称" IsEnabled="False"/>
+                        <TextBox x:Uid="ExportDialog_FolderName" x:Name="ImageFolderTextBox" Grid.Column="2" PlaceholderText="文件夹名称" IsEnabled="False"/>
                     </Grid>
 
                     <Grid Grid.Row="1" ColumnSpacing="10">
@@ -143,16 +124,16 @@
 
                         <ToggleButton x:Name="RawToggleButton" HorizontalAlignment="Stretch">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <ContentControl x:Name="RawToggleIconControl" ContentTemplate="{StaticResource ExportRawFileIconTemplate}"/>
-                                <TextBlock Text="数字底片（RAW）" VerticalAlignment="Center"/>
+                                <ContentControl x:Name="RawToggleIconControl" Content="{ThemeResource TextFillColorPrimaryBrush}" ContentTemplate="{StaticResource RawFileIconTemplate}"/>
+                                <TextBlock x:Uid="ExportDialog_Raw" Text="数字底片（RAW）" VerticalAlignment="Center"/>
                             </StackPanel>
                         </ToggleButton>
-                        <ComboBox x:Name="RawRatingComboBox" Grid.Column="1" PlaceholderText="星级" IsEnabled="False" HorizontalAlignment="Stretch">
-                            <ComboBoxItem Content="≥ 1 星" Tag="1"/>
-                            <ComboBoxItem Content="≥ 2 星" Tag="2"/>
-                            <ComboBoxItem Content="≥ 3 星" Tag="3"/>
-                            <ComboBoxItem Content="≥ 4 星" Tag="4"/>
-                            <ComboBoxItem Content="≥ 5 星" Tag="5"/>
+                        <ComboBox x:Uid="ExportDialog_RawStarPlaceholder" x:Name="RawRatingComboBox" Grid.Column="1" PlaceholderText="星级" IsEnabled="False" HorizontalAlignment="Stretch">
+                            <ComboBoxItem x:Uid="ExportDialog_RawRating1" Content="≥ 1 星" Tag="1"/>
+                            <ComboBoxItem x:Uid="ExportDialog_RawRating2" Content="≥ 2 星" Tag="2"/>
+                            <ComboBoxItem x:Uid="ExportDialog_RawRating3" Content="≥ 3 星" Tag="3"/>
+                            <ComboBoxItem x:Uid="ExportDialog_RawRating4" Content="≥ 4 星" Tag="4"/>
+                            <ComboBoxItem x:Uid="ExportDialog_RawRating5" Content="≥ 5 星" Tag="5"/>
                         </ComboBox>
                         <TextBox x:Name="RawFolderTextBox" Grid.Column="2" PlaceholderText="RAW" IsEnabled="False"/>
                     </Grid>
@@ -163,8 +144,8 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
-                        <TextBox x:Name="ExportPathTextBox" MinWidth="0" PlaceholderText="导出地址"/>
-                        <Button x:Name="SelectFolderButton" Grid.Column="1" MinWidth="92" Content="浏览"/>
+                        <TextBox x:Uid="ExportDialog_ExportPath" x:Name="ExportPathTextBox" MinWidth="0" PlaceholderText="导出地址"/>
+                        <Button x:Uid="ExportDialog_Browse" x:Name="SelectFolderButton" Grid.Column="1" MinWidth="92" Content="浏览"/>
                     </Grid>
 
                     <Border
@@ -184,6 +165,7 @@
 
                             <StackPanel Spacing="4">
                                 <TextBlock
+                                    x:Uid="ExportDialog_Expected"
                                     Text="预计导出"
                                     Style="{ThemeResource CaptionTextBlockStyle}"
                                     Opacity="0.72"/>
@@ -244,7 +226,7 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
-                        <TextBlock Text="重设大小" FontSize="18" FontWeight="SemiLight" VerticalAlignment="Center"/>
+                        <TextBlock x:Uid="ExportDialog_ResizeTitle" Text="重设大小" FontSize="18" FontWeight="SemiLight" VerticalAlignment="Center"/>
 
                         <ToggleSwitch
                             x:Name="ResizeEnabledSwitch"
@@ -271,27 +253,27 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             
-                            <TextBlock Text="缩放选项" VerticalAlignment="Center" Opacity="0.7"/>
+                            <TextBlock x:Uid="ExportDialog_ResizeOptions" Text="缩放选项" VerticalAlignment="Center" Opacity="0.7"/>
                             <ComboBox x:Name="ResizeModeComboBox" Grid.Column="1" SelectedIndex="0" HorizontalAlignment="Stretch">
-                                <ComboBoxItem Content="像素" Tag="Pixel"/>
-                                <ComboBoxItem Content="百分比" Tag="Percent"/>
+                                <ComboBoxItem x:Uid="ExportDialog_Pixel" Content="像素" Tag="Pixel"/>
+                                <ComboBoxItem x:Uid="ExportDialog_Percent" Content="百分比" Tag="Percent"/>
                             </ComboBox>
 
-                            <TextBlock x:Name="ResizeInputHeaderTextBlock" Grid.Column="2" Text="长边尺寸（像素）" VerticalAlignment="Center" Opacity="0.7"/>
+                            <TextBlock x:Uid="ExportDialog_LongSidePixel" x:Name="ResizeInputHeaderTextBlock" Grid.Column="2" Text="长边尺寸（像素）" VerticalAlignment="Center" Opacity="0.7"/>
                             <Grid Grid.Column="3">
                                 <TextBox x:Name="ResizeLongSideTextBox" Text="1920" InputScope="Number" />
                                 <TextBox x:Name="ResizePercentTextBox" Text="100" InputScope="Number" Visibility="Collapsed" />
                             </Grid>
 
-                            <TextBlock Grid.Column="4" Text="缩放算法" VerticalAlignment="Center" Opacity="0.7"/>
+                            <TextBlock x:Uid="ExportDialog_ResizeAlgorithm" Grid.Column="4" Text="缩放算法" VerticalAlignment="Center" Opacity="0.7"/>
                             <ComboBox x:Name="ResizeFilterComboBox" Grid.Column="5" SelectedIndex="0" HorizontalAlignment="Stretch">
-                                <ComboBoxItem Content="高质量" Tag="HighQuality"/>
-                                <ComboBoxItem Content="均衡" Tag="Balanced"/>
-                                <ComboBoxItem Content="快速" Tag="Fast"/>
-                                <ComboBoxItem Content="锐利" Tag="Sharp"/>
+                                <ComboBoxItem x:Uid="ExportDialog_HighQuality" Content="高质量" Tag="HighQuality"/>
+                                <ComboBoxItem x:Uid="ExportDialog_Balanced" Content="均衡" Tag="Balanced"/>
+                                <ComboBoxItem x:Uid="ExportDialog_Fast" Content="快速" Tag="Fast"/>
+                                <ComboBoxItem x:Uid="ExportDialog_Sharp" Content="锐利" Tag="Sharp"/>
                             </ComboBox>
 
-                            <TextBlock Grid.Row="1" Text="文件格式" VerticalAlignment="Center" Opacity="0.7"/>
+                            <TextBlock x:Uid="ExportDialog_FileFormat" Grid.Row="1" Text="文件格式" VerticalAlignment="Center" Opacity="0.7"/>
                             <ComboBox x:Name="ResizeFormatComboBox" Grid.Row="1" Grid.Column="1" SelectedIndex="0" HorizontalAlignment="Stretch">
                                 <ComboBoxItem Content="JPG" Tag="JPG"/>
                                 <ComboBoxItem Content="PNG" Tag="PNG"/>
@@ -326,10 +308,10 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
-                            <TextBlock Text="当前：" FontWeight="SemiBold" VerticalAlignment="Top" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                            <TextBlock x:Uid="ExportDialog_Current" Text="当前：" FontWeight="SemiBold" VerticalAlignment="Top" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
                             <TextBlock x:Name="ResizePreviewCurrentTextBlock" Grid.Column="1" Text="无可预览照片" TextWrapping="Wrap" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
 
-                            <TextBlock Grid.Row="1" Text="新建：" FontWeight="SemiBold" VerticalAlignment="Top" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                            <TextBlock x:Uid="ExportDialog_New" Grid.Row="1" Text="新建：" FontWeight="SemiBold" VerticalAlignment="Top" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
                             <TextBlock x:Name="ResizePreviewNewTextBlock" Grid.Row="1" Grid.Column="1" Text="启用后显示" TextWrapping="Wrap" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
 
                             <TextBlock
@@ -347,3 +329,4 @@
         </StackPanel>
     </ScrollViewer>
 </ContentDialog>
+

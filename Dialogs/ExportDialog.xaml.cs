@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 using ImageMagick;
 using PhotoView.Contracts.Services;
+using PhotoView.Helpers;
 using PhotoView.Models;
 using System;
 using System.Collections.Generic;
@@ -180,9 +181,9 @@ public sealed partial class ExportDialog : ContentDialog
         _isExporting = false;
         _isExportComplete = false;
         _exportedFolderPath = null;
-        PrimaryButtonText = "开始导出";
+        PrimaryButtonText = "ExportDialog_StartExport".GetLocalized();
         ExportProgressBar.Visibility = Visibility.Collapsed;
-        StatusTextBlock.Text = "准备导出";
+        StatusTextBlock.Text = "ExportDialog_Ready".GetLocalized();
         UpdateResizeControlStates();
         QueuePreviewUpdate();
     }
@@ -227,11 +228,11 @@ public sealed partial class ExportDialog : ContentDialog
         }
         catch (OperationCanceledException)
         {
-            StatusTextBlock.Text = "导出已取消";
+            StatusTextBlock.Text = "ExportDialog_Canceled".GetLocalized();
         }
         catch (Exception ex)
         {
-            StatusTextBlock.Text = $"导出失败: {ex.Message}";
+            StatusTextBlock.Text = string.Format("ExportDialog_Failed".GetLocalized(), ex.Message);
         }
         finally
         {
@@ -257,7 +258,7 @@ public sealed partial class ExportDialog : ContentDialog
         }
         catch (Exception ex)
         {
-            StatusTextBlock.Text = $"打开文件夹失败: {ex.Message}";
+            StatusTextBlock.Text = string.Format("ExportDialog_OpenFolderFailed".GetLocalized(), ex.Message);
         }
     }
 
@@ -278,7 +279,7 @@ public sealed partial class ExportDialog : ContentDialog
         var exportJobs = BuildExportJobs(basePath, resizeOptions);
         if (exportJobs.Count == 0)
         {
-            StatusTextBlock.Text = "没有符合条件的文件";
+            StatusTextBlock.Text = "ExportDialog_NoMatchingFiles".GetLocalized();
             return;
         }
 
@@ -307,13 +308,13 @@ public sealed partial class ExportDialog : ContentDialog
             }
 
             ExportProgressBar.Value = i + 1;
-            StatusTextBlock.Text = $"正在导出: {i + 1}/{exportJobs.Count}";
+            StatusTextBlock.Text = string.Format("ExportDialog_Progress".GetLocalized(), i + 1, exportJobs.Count);
         }
 
-        StatusTextBlock.Text = $"导出完成: {exportJobs.Count} 个文件";
+        StatusTextBlock.Text = string.Format("ExportDialog_Complete".GetLocalized(), exportJobs.Count);
         _isExportComplete = true;
         _exportedFolderPath = basePath;
-        PrimaryButtonText = "打开目标文件夹";
+        PrimaryButtonText = "ExportDialog_OpenTargetFolder".GetLocalized();
         IsPrimaryButtonEnabled = true;
     }
 
@@ -501,7 +502,7 @@ public sealed partial class ExportDialog : ContentDialog
 
     private void UpdateExpectedExportSummary(ExportCountSummary summary)
     {
-        ExportCountSummaryTextBlock.Text = $" {summary.TotalCount} 个文件";
+        ExportCountSummaryTextBlock.Text = " " + string.Format("Common_FileCount".GetLocalized(), summary.TotalCount);
         ExportImageCountTextBlock.Text = $"JPG {summary.ImageCount}";
         ExportRawCountTextBlock.Text = $"RAW {summary.RawCount}";
 
@@ -586,19 +587,21 @@ public sealed partial class ExportDialog : ContentDialog
         var usePercent = IsPercentResizeModeSelected();
         ResizeLongSideTextBox.Visibility = usePercent ? Visibility.Collapsed : Visibility.Visible;
         ResizePercentTextBox.Visibility = usePercent ? Visibility.Visible : Visibility.Collapsed;
-        ResizeInputHeaderTextBlock.Text = usePercent ? "长边尺寸（百分比）" : "长边尺寸（像素）";
+        ResizeInputHeaderTextBlock.Text = usePercent
+            ? "ExportDialog_LongSidePercent".GetLocalized()
+            : "ExportDialog_LongSidePixelLabel".GetLocalized();
 
         var outputFormat = GetSelectedOutputFormat();
         var qualityEnabled = enabled && outputFormat == ExportOutputFormat.Jpg;
         ResizeQualitySlider.IsEnabled = qualityEnabled;
         ResizeQualityTextBlock.Opacity = qualityEnabled ? 1d : 0.55d;
         ResizeQualityTextBlock.Text = outputFormat == ExportOutputFormat.Jpg
-            ? $"质量：{(int)Math.Round(ResizeQualitySlider.Value)}%"
-            : "质量：仅 JPG 生效";
+            ? string.Format("ExportDialog_QualityPercent".GetLocalized(), (int)Math.Round(ResizeQualitySlider.Value))
+            : "ExportDialog_QualityJpgOnly".GetLocalized();
 
         if (!enabled)
         {
-            ResizeHintTextBlock.Text = "开启后仅处理照片导出，RAW 保持原文件复制。";
+            ResizeHintTextBlock.Text = "ExportDialog_ResizeRawHint".GetLocalized();
         }
         else if (!TryGetResizeOptions(out _, out var validationError))
         {
@@ -606,7 +609,7 @@ public sealed partial class ExportDialog : ContentDialog
         }
         else
         {
-            ResizeHintTextBlock.Text = "保持比例，不放大小图。";
+            ResizeHintTextBlock.Text = "ExportDialog_KeepAspectNoUpscale".GetLocalized();
         }
 
         UpdateControlStates();
@@ -640,13 +643,13 @@ public sealed partial class ExportDialog : ContentDialog
         {
             if (!int.TryParse(ResizeLongSideTextBox.Text.Trim(), out longSide) || longSide < 1)
             {
-                validationError = "请输入有效的最长边像素。";
+                validationError = "ExportDialog_InvalidPixel".GetLocalized();
                 return false;
             }
         }
         else if (!int.TryParse(ResizePercentTextBox.Text.Trim(), out percent) || percent < 1)
         {
-            validationError = "请输入有效的百分比。";
+            validationError = "ExportDialog_InvalidPercent".GetLocalized();
             return false;
         }
 
@@ -732,37 +735,37 @@ public sealed partial class ExportDialog : ContentDialog
 
         if (!ResizeEnabledSwitch.IsOn)
         {
-            ResizePreviewCurrentTextBlock.Text = "无可预览照片";
-            ResizePreviewNewTextBlock.Text = "启用后显示";
+            ResizePreviewCurrentTextBlock.Text = "ExportDialog_NoPreviewPhoto".GetLocalized();
+            ResizePreviewNewTextBlock.Text = "ExportDialog_ShowAfterEnabled".GetLocalized();
             return;
         }
 
         var sample = GetPreviewSampleImage();
         if (sample == null)
         {
-            ResizePreviewCurrentTextBlock.Text = "无可预览照片";
-            ResizePreviewNewTextBlock.Text = "没有符合照片筛选条件的文件";
+            ResizePreviewCurrentTextBlock.Text = "ExportDialog_NoPreviewPhoto".GetLocalized();
+            ResizePreviewNewTextBlock.Text = "ExportDialog_NoPhotoMatches".GetLocalized();
             return;
         }
 
         if (!TryGetResizeOptions(out var resizeOptions, out var validationError) || resizeOptions == null)
         {
-            ResizePreviewCurrentTextBlock.Text = $"{sample.Width} x {sample.Height} 像素";
+            ResizePreviewCurrentTextBlock.Text = $"{sample.Width} x {sample.Height} {"ExportDialog_PixelLabel".GetLocalized()}";
             ResizePreviewNewTextBlock.Text = validationError;
             return;
         }
 
-        ResizePreviewCurrentTextBlock.Text = $"{sample.Width} x {sample.Height} 像素  {FormatByteSize(GetFileSize(sample.ImageFile.Path))}  {Path.GetExtension(sample.ImageFile.Path).TrimStart('.').ToUpperInvariant()}";
+        ResizePreviewCurrentTextBlock.Text = $"{sample.Width} x {sample.Height} {"ExportDialog_PixelLabel".GetLocalized()}  {FormatByteSize(GetFileSize(sample.ImageFile.Path))}  {Path.GetExtension(sample.ImageFile.Path).TrimStart('.').ToUpperInvariant()}";
 
         var (targetWidth, targetHeight) = CalculateTargetSize((uint)Math.Max(1, sample.Width), (uint)Math.Max(1, sample.Height), resizeOptions);
-        ResizePreviewNewTextBlock.Text = $"{targetWidth} x {targetHeight} 像素  估算中...  {resizeOptions.DisplayFormat}";
+        ResizePreviewNewTextBlock.Text = $"{targetWidth} x {targetHeight} {"ExportDialog_PixelLabel".GetLocalized()}  {"ExportDialog_Estimating".GetLocalized()}  {resizeOptions.DisplayFormat}";
 
         try
         {
             var estimatedBytes = await Task.Run(() => EstimateEncodedSize(sample.ImageFile.Path, resizeOptions, cancellationToken), cancellationToken);
             if (!cancellationToken.IsCancellationRequested)
             {
-                ResizePreviewNewTextBlock.Text = $"{targetWidth} x {targetHeight} 像素  {FormatByteSize(estimatedBytes)}  {resizeOptions.DisplayFormat}";
+                ResizePreviewNewTextBlock.Text = $"{targetWidth} x {targetHeight} {"ExportDialog_PixelLabel".GetLocalized()}  {FormatByteSize(estimatedBytes)}  {resizeOptions.DisplayFormat}";
             }
         }
         catch (OperationCanceledException)
@@ -772,7 +775,7 @@ public sealed partial class ExportDialog : ContentDialog
         {
             if (!cancellationToken.IsCancellationRequested)
             {
-                ResizePreviewNewTextBlock.Text = $"{targetWidth} x {targetHeight} 像素  无法估算  {resizeOptions.DisplayFormat}";
+                ResizePreviewNewTextBlock.Text = $"{targetWidth} x {targetHeight} {"ExportDialog_PixelLabel".GetLocalized()}  {"ExportDialog_CannotEstimate".GetLocalized()}  {resizeOptions.DisplayFormat}";
             }
         }
     }

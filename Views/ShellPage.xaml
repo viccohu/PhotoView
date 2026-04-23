@@ -28,9 +28,6 @@
                 <ImageIconSource ImageSource="/Assets/WindowIcon.png" />
             </TitleBar.IconSource>
 
-            <TitleBar.Content>
-
-            </TitleBar.Content>
         </TitleBar>
 
         <NavigationView

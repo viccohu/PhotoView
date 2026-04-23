@@ -83,8 +83,10 @@ public sealed partial class CollectPage : Page
         NavigationCacheMode = NavigationCacheMode.Disabled;
         InitializeComponent();
         DataContext = ViewModel;
+        ActualThemeChanged += CollectPage_ActualThemeChanged;
         UpdateInfoDrawerState(animate: false);
         UpdateZoomValueButtonContent(100d, isFitZoomActive: false);
+        RefreshCustomIconForegrounds();
         _thumbnailCoordinator = new CollectPageThumbnailCoordinator(TimeSpan.FromMilliseconds(50));
         _thumbnailCoordinator.VisibleThumbnailLoadTimer.Tick += VisibleThumbnailLoadTimer_Tick;
         _ratingDebounceTimer = new DispatcherTimer
@@ -117,6 +119,11 @@ public sealed partial class CollectPage : Page
         _shortcutService.RegisterPageShortcutHandler("CollectPage", HandleShortcut);
     }
 
+    private void CollectPage_ActualThemeChanged(FrameworkElement sender, object args)
+    {
+        RefreshCustomIconForegrounds();
+    }
+
     private void CollectPage_Loaded(object sender, RoutedEventArgs e)
     {
         if (_isDisposed)
@@ -128,6 +135,7 @@ public sealed partial class CollectPage : Page
         RefreshDualPageLayout(forceRebuild: true);
         UpdateSelectedImageUi();
         UpdateLoadDrawerState(animate: false);
+        RefreshCustomIconForegrounds();
         QueueVisibleThumbnailLoad("page-loaded");
     }
 
@@ -428,6 +436,7 @@ public sealed partial class CollectPage : Page
         else if (e.PropertyName == nameof(CollectViewModel.IsThumbnailStripCollapsed))
         {
             ThumbnailStripHost.Height = ViewModel.IsThumbnailStripCollapsed ? 90 : 135;
+            RefreshCustomIconForegrounds();
         }
         else if (e.PropertyName == nameof(CollectViewModel.PendingDeleteCount))
         {
@@ -448,6 +457,11 @@ public sealed partial class CollectPage : Page
         else if (e.PropertyName is nameof(CollectViewModel.IsDualPageMode) or nameof(CollectViewModel.DualPageMode))
         {
             RefreshDualPageLayout(forceRebuild: true);
+            RefreshCustomIconForegrounds();
+        }
+        else if (e.PropertyName == nameof(CollectViewModel.IncludeSubfolders))
+        {
+            RefreshCustomIconForegrounds();
         }
         else if (e.PropertyName == nameof(CollectViewModel.FocusedPageSlot))
         {
@@ -663,6 +677,82 @@ public sealed partial class CollectPage : Page
         CompareModeToggleButton.IsChecked = ViewModel.IsDualPageMode && ViewModel.DualPageMode == DualPageMode.Compare;
         ContinuousModeToggleButton.IsChecked = ViewModel.IsDualPageMode && ViewModel.DualPageMode == DualPageMode.Continuous;
         RightPreviewHost.IsHitTestVisible = ViewModel.DualPageMode == DualPageMode.Compare || ViewModel.RightPageImage != null;
+        RefreshCustomIconForegrounds();
+    }
+
+    private void CustomIconToggleButton_CheckedChanged(object sender, RoutedEventArgs e)
+    {
+        if (sender is ToggleButton toggleButton)
+        {
+            UpdateToggleContentForeground(toggleButton);
+        }
+    }
+
+    private void RefreshCustomIconForegrounds()
+    {
+        UpdateToggleContentForeground(IncludeSubfoldersToggleButton);
+        UpdateToggleContentForeground(ThumbnailSizeToggleButton);
+        UpdateToggleContentForeground(DualPageToggleButton);
+        UpdateToggleContentForeground(CompareModeToggleButton);
+        UpdateToggleContentForeground(ContinuousModeToggleButton);
+    }
+
+    private void UpdateToggleContentForeground(ToggleButton? button)
+    {
+        if (button == null)
+            return;
+
+        var foregroundBrush = GetToggleContentForegroundBrush(button);
+        ApplyContentForeground(button.Content as DependencyObject, foregroundBrush);
+    }
+
+    private Brush GetToggleContentForegroundBrush(ToggleButton button)
+    {
+        var resourceKey = button.IsChecked == true
+            ? "CollectToggleCheckedForegroundBrush"
+            : "CollectToggleUncheckedForegroundBrush";
+
+        if (Resources.TryGetValue(resourceKey, out var resource) && resource is Brush brush)
+        {
+            return brush;
+        }
+
+        var fallbackKey = button.IsChecked == true
+            ? "TextOnAccentFillColorPrimaryBrush"
+            : "TextFillColorPrimaryBrush";
+
+        return GetThemeBrush(fallbackKey, Windows.UI.Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF));
+    }
+
+    private static void ApplyContentForeground(DependencyObject? element, Brush foregroundBrush)
+    {
+        if (element == null)
+            return;
+
+        if (element is ContentControl contentControl)
+        {
+            contentControl.Content = foregroundBrush;
+            contentControl.Foreground = foregroundBrush;
+        }
+        else if (element is TextBlock textBlock)
+        {
+            textBlock.Foreground = foregroundBrush;
+        }
+
+        if (element is Panel panel)
+        {
+            foreach (var child in panel.Children)
+            {
+                ApplyContentForeground(child, foregroundBrush);
+            }
+            return;
+        }
+
+        var childCount = VisualTreeHelper.GetChildrenCount(element);
+        for (var i = 0; i < childCount; i++)
+        {
+            ApplyContentForeground(VisualTreeHelper.GetChild(element, i), foregroundBrush);
+        }
     }
 
     private void SyncZoomControlsFromActiveCanvas()
@@ -1048,11 +1138,11 @@ public sealed partial class CollectPage : Page
             VerticalAlignment = VerticalAlignment.Center
         };
 
-        var exportButton = CreateToolbarButton("\uE72D", "导出");
+        var exportButton = CreateToolbarButton("\uE72D", "Common_Export".GetLocalized());
         exportButton.Click += ExportButton_Click;
         toolbar.Children.Add(exportButton);
 
-        _shellDeleteButton = CreateToolbarButton("\uE74D", "删除");
+        _shellDeleteButton = CreateToolbarButton("\uE74D", "Common_Delete".GetLocalized());
         _shellDeleteButton.Click += DeleteButton_Click;
         toolbar.Children.Add(_shellDeleteButton);
 
@@ -1203,7 +1293,7 @@ public sealed partial class CollectPage : Page
                 flyout.Content = new FilterFlyout
                 {
                     FilterViewModel = ViewModel.Filter,
-                    ShowBurstFilter = false
+                    ShowBurstFilter = true
                 };
             }
         };
@@ -1662,7 +1752,7 @@ public sealed partial class CollectPage : Page
             {
                 flyout.ShowAt(sender, new FlyoutShowOptions
                 {
-                    PreferredPlacement = FlyoutPlacementMode.BottomEdgeAlignedRight
+                    Placement = FlyoutPlacementMode.BottomEdgeAlignedRight
                 });
             }
         }

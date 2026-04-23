@@ -264,4 +264,505 @@
   <data name="Settings_PrivacyStatement.Header" xml:space="preserve">
     <value>Privacy Statement</value>
   </data>
+  <data name="Common_FileCount" xml:space="preserve">
+    <value>{0} files</value>
+  </data>
+  <data name="Common_Export" xml:space="preserve">
+    <value>Export</value>
+  </data>
+  <data name="Common_Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Common_Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="MainPage_Library.Text" xml:space="preserve">
+    <value>Library</value>
+  </data>
+  <data name="MainPage_AddToPreview.Text" xml:space="preserve">
+    <value>Add to Preview</value>
+  </data>
+  <data name="MainPage_AddFolderToPreview.Text" xml:space="preserve">
+    <value>Add to Preview</value>
+  </data>
+  <data name="MainPage_AddSubFolderToPreview.Text" xml:space="preserve">
+    <value>Add to Preview</value>
+  </data>
+  <data name="MainPage_OpenInExplorer.Text" xml:space="preserve">
+    <value>Open in Explorer</value>
+  </data>
+  <data name="MainPage_OpenFolderInExplorer.Text" xml:space="preserve">
+    <value>Open in Explorer</value>
+  </data>
+  <data name="MainPage_OpenSubFolderInExplorer.Text" xml:space="preserve">
+    <value>Open in Explorer</value>
+  </data>
+  <data name="MainPage_OpenImageInExplorer.Text" xml:space="preserve">
+    <value>Open in Explorer</value>
+  </data>
+  <data name="MainPage_PinFolder.Text" xml:space="preserve">
+    <value>Pin Folder</value>
+  </data>
+  <data name="MainPage_PinRootFolder.Text" xml:space="preserve">
+    <value>Pin Folder</value>
+  </data>
+  <data name="MainPage_PinSubFolder.Text" xml:space="preserve">
+    <value>Pin Folder</value>
+  </data>
+  <data name="MainPage_UnpinFolder.Text" xml:space="preserve">
+    <value>Unpin Folder</value>
+  </data>
+  <data name="MainPage_UnpinRootFolder.Text" xml:space="preserve">
+    <value>Unpin Folder</value>
+  </data>
+  <data name="MainPage_UnpinSubFolder.Text" xml:space="preserve">
+    <value>Unpin Folder</value>
+  </data>
+  <data name="MainPage_RefreshDevices.Text" xml:space="preserve">
+    <value>Refresh Devices</value>
+  </data>
+  <data name="MainPage_RefreshRootDevices.Text" xml:space="preserve">
+    <value>Refresh Devices</value>
+  </data>
+  <data name="MainPage_RefreshSubFolderDevices.Text" xml:space="preserve">
+    <value>Refresh Devices</value>
+  </data>
+  <data name="MainPage_SelectedPrefix.Text" xml:space="preserve">
+    <value>Selected </value>
+  </data>
+  <data name="MainPage_HeaderSelectedPrefix.Text" xml:space="preserve">
+    <value>Selected </value>
+  </data>
+  <data name="MainPage_CompactSelectedPrefix.Text" xml:space="preserve">
+    <value>Selected </value>
+  </data>
+  <data name="MainPage_TotalMiddle.Text" xml:space="preserve">
+    <value> / Total </value>
+  </data>
+  <data name="MainPage_HeaderTotalMiddle.Text" xml:space="preserve">
+    <value> / Total </value>
+  </data>
+  <data name="MainPage_CompactTotalMiddle.Text" xml:space="preserve">
+    <value> / Total </value>
+  </data>
+  <data name="MainPage_FilteredPrefix.Text" xml:space="preserve">
+    <value>Filtered </value>
+  </data>
+  <data name="MainPage_HeaderFilteredPrefix.Text" xml:space="preserve">
+    <value>Filtered </value>
+  </data>
+  <data name="MainPage_CompactFilteredPrefix.Text" xml:space="preserve">
+    <value>Filtered </value>
+  </data>
+  <data name="MainPage_FileSuffix.Text" xml:space="preserve">
+    <value> files</value>
+  </data>
+  <data name="MainPage_HeaderFileSuffix.Text" xml:space="preserve">
+    <value> files</value>
+  </data>
+  <data name="MainPage_CompactFileSuffix.Text" xml:space="preserve">
+    <value> files</value>
+  </data>
+  <data name="MainPage_PendingFileSuffix.Text" xml:space="preserve">
+    <value> files</value>
+  </data>
+  <data name="MainPage_PendingDeleteSuffix.Text" xml:space="preserve">
+    <value> pending delete</value>
+  </data>
+  <data name="MainPage_PendingDeletePrefix.Text" xml:space="preserve">
+    <value>Pending delete: </value>
+  </data>
+  <data name="MainPage_FolderSuffix.Text" xml:space="preserve">
+    <value> folders</value>
+  </data>
+  <data name="MainPage_Folders.Text" xml:space="preserve">
+    <value>Folders</value>
+  </data>
+  <data name="MainPage_Subfolders.Text" xml:space="preserve">
+    <value>Subfolders</value>
+  </data>
+  <data name="MainPage_SubfoldersHeader.Text" xml:space="preserve">
+    <value>Subfolders</value>
+  </data>
+  <data name="MainPage_SubfolderSuffix.Text" xml:space="preserve">
+    <value> subfolders</value>
+  </data>
+  <data name="MainPage_FolderPanelSubfolderSuffix.Text" xml:space="preserve">
+    <value> subfolders</value>
+  </data>
+  <data name="MainPage_FolderDrawerSubfolderSuffix.Text" xml:space="preserve">
+    <value> subfolders</value>
+  </data>
+  <data name="MainPage_Items.Text" xml:space="preserve">
+    <value>Items</value>
+  </data>
+  <data name="MainPage_SizeSmall.Text" xml:space="preserve">
+    <value>Small</value>
+  </data>
+  <data name="MainPage_SizeMedium.Text" xml:space="preserve">
+    <value>Medium</value>
+  </data>
+  <data name="MainPage_SizeLarge.Text" xml:space="preserve">
+    <value>Large</value>
+  </data>
+  <data name="MainPage_NoDeletableFilesTitle" xml:space="preserve">
+    <value>No deletable files</value>
+  </data>
+  <data name="MainPage_NoDeletableFilesContent" xml:space="preserve">
+    <value>No files match the selected delete options.</value>
+  </data>
+  <data name="CollectPage_LoadArea.Text" xml:space="preserve">
+    <value>Load Area</value>
+  </data>
+  <data name="CollectPage_Load.Text" xml:space="preserve">
+    <value>Load</value>
+  </data>
+  <data name="CollectPage_AddToLoadArea.Text" xml:space="preserve">
+    <value>Add to Load Area</value>
+  </data>
+  <data name="CollectPage_PinFolder.Text" xml:space="preserve">
+    <value>Pin to Favorites</value>
+  </data>
+  <data name="CollectPage_UnpinFolder.Text" xml:space="preserve">
+    <value>Unpin</value>
+  </data>
+  <data name="CollectPage_RefreshDevices.Text" xml:space="preserve">
+    <value>Refresh Devices</value>
+  </data>
+  <data name="CollectPage_Tooltip_IncludeSubfolders" xml:space="preserve">
+    <value>Include subfolders</value>
+  </data>
+  <data name="CollectPage_DualPage.Text" xml:space="preserve">
+    <value>Dual Page</value>
+  </data>
+  <data name="CollectPage_Compare.Text" xml:space="preserve">
+    <value>Compare</value>
+  </data>
+  <data name="CollectPage_Continuous.Text" xml:space="preserve">
+    <value>Continuous</value>
+  </data>
+  <data name="FilterFlyout_Actions.Text" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="FilterFlyout_Burst.Text" xml:space="preserve">
+    <value>Burst</value>
+  </data>
+  <data name="FilterFlyout_PendingDelete.Text" xml:space="preserve">
+    <value>Pending Delete</value>
+  </data>
+  <data name="FilterFlyout_Format.Text" xml:space="preserve">
+    <value>Format</value>
+  </data>
+  <data name="FilterFlyout_Photo.Text" xml:space="preserve">
+    <value>Photo</value>
+  </data>
+  <data name="FilterFlyout_Solo.Text" xml:space="preserve">
+    <value>Solo</value>
+  </data>
+  <data name="FilterFlyout_ImageSolo.Text" xml:space="preserve">
+    <value>Solo</value>
+  </data>
+  <data name="FilterFlyout_RawSolo.Text" xml:space="preserve">
+    <value>Solo</value>
+  </data>
+  <data name="FilterFlyout_Raw.Text" xml:space="preserve">
+    <value>RAW</value>
+  </data>
+  <data name="FilterFlyout_Dual.Text" xml:space="preserve">
+    <value>Dual</value>
+  </data>
+  <data name="FilterFlyout_Inverse.Text" xml:space="preserve">
+    <value>Inv</value>
+  </data>
+  <data name="FilterFlyout_Rating.Text" xml:space="preserve">
+    <value>Rating</value>
+  </data>
+  <data name="FilterFlyout_Mode.Text" xml:space="preserve">
+    <value>Mode</value>
+  </data>
+  <data name="FilterFlyout_Condition.Text" xml:space="preserve">
+    <value>Condition</value>
+  </data>
+  <data name="FilterFlyout_Stars.Text" xml:space="preserve">
+    <value>Stars</value>
+  </data>
+  <data name="FilterFlyout_HasRating" xml:space="preserve">
+    <value>Rated</value>
+  </data>
+  <data name="FilterFlyout_NoRating" xml:space="preserve">
+    <value>Unrated</value>
+  </data>
+  <data name="ExportDialog.CloseButtonText" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="ExportDialog.PrimaryButtonText" xml:space="preserve">
+    <value>Start Export</value>
+  </data>
+  <data name="ExportDialog_StartExport" xml:space="preserve">
+    <value>Start Export</value>
+  </data>
+  <data name="ExportDialog_Title.Text" xml:space="preserve">
+    <value>Export</value>
+  </data>
+  <data name="ExportDialog_FilteredScope.Text" xml:space="preserve">
+    <value>Export Filtered Results</value>
+  </data>
+  <data name="ExportDialog_SectionHint.Text" xml:space="preserve">
+    <value>Choose file types and rating conditions to export</value>
+  </data>
+  <data name="ExportDialog_Photo.Text" xml:space="preserve">
+    <value>Photo (JPG)</value>
+  </data>
+  <data name="ExportDialog_Raw.Text" xml:space="preserve">
+    <value>Digital Negative (RAW)</value>
+  </data>
+  <data name="ExportDialog_StarPlaceholder.PlaceholderText" xml:space="preserve">
+    <value>Stars</value>
+  </data>
+  <data name="ExportDialog_ImageStarPlaceholder.PlaceholderText" xml:space="preserve">
+    <value>Stars</value>
+  </data>
+  <data name="ExportDialog_RawStarPlaceholder.PlaceholderText" xml:space="preserve">
+    <value>Stars</value>
+  </data>
+  <data name="ExportDialog_Rating1.Content" xml:space="preserve">
+    <value>≥ 1 star</value>
+  </data>
+  <data name="ExportDialog_ImageRating1.Content" xml:space="preserve">
+    <value>≥ 1 star</value>
+  </data>
+  <data name="ExportDialog_RawRating1.Content" xml:space="preserve">
+    <value>≥ 1 star</value>
+  </data>
+  <data name="ExportDialog_Rating2.Content" xml:space="preserve">
+    <value>≥ 2 stars</value>
+  </data>
+  <data name="ExportDialog_ImageRating2.Content" xml:space="preserve">
+    <value>≥ 2 stars</value>
+  </data>
+  <data name="ExportDialog_RawRating2.Content" xml:space="preserve">
+    <value>≥ 2 stars</value>
+  </data>
+  <data name="ExportDialog_Rating3.Content" xml:space="preserve">
+    <value>≥ 3 stars</value>
+  </data>
+  <data name="ExportDialog_ImageRating3.Content" xml:space="preserve">
+    <value>≥ 3 stars</value>
+  </data>
+  <data name="ExportDialog_RawRating3.Content" xml:space="preserve">
+    <value>≥ 3 stars</value>
+  </data>
+  <data name="ExportDialog_Rating4.Content" xml:space="preserve">
+    <value>≥ 4 stars</value>
+  </data>
+  <data name="ExportDialog_ImageRating4.Content" xml:space="preserve">
+    <value>≥ 4 stars</value>
+  </data>
+  <data name="ExportDialog_RawRating4.Content" xml:space="preserve">
+    <value>≥ 4 stars</value>
+  </data>
+  <data name="ExportDialog_Rating5.Content" xml:space="preserve">
+    <value>≥ 5 stars</value>
+  </data>
+  <data name="ExportDialog_ImageRating5.Content" xml:space="preserve">
+    <value>≥ 5 stars</value>
+  </data>
+  <data name="ExportDialog_RawRating5.Content" xml:space="preserve">
+    <value>≥ 5 stars</value>
+  </data>
+  <data name="ExportDialog_FolderName.PlaceholderText" xml:space="preserve">
+    <value>Folder name</value>
+  </data>
+  <data name="ExportDialog_ExportPath.PlaceholderText" xml:space="preserve">
+    <value>Export path</value>
+  </data>
+  <data name="ExportDialog_Browse.Content" xml:space="preserve">
+    <value>Browse</value>
+  </data>
+  <data name="ExportDialog_Expected.Text" xml:space="preserve">
+    <value>Expected export</value>
+  </data>
+  <data name="ExportDialog_ResizeTitle.Text" xml:space="preserve">
+    <value>Resize</value>
+  </data>
+  <data name="ExportDialog_ResizeOptions.Text" xml:space="preserve">
+    <value>Resize options</value>
+  </data>
+  <data name="ExportDialog_Pixel.Content" xml:space="preserve">
+    <value>Pixels</value>
+  </data>
+  <data name="ExportDialog_PixelLabel" xml:space="preserve">
+    <value>pixels</value>
+  </data>
+  <data name="ExportDialog_Percent.Content" xml:space="preserve">
+    <value>Percent</value>
+  </data>
+  <data name="ExportDialog_LongSidePixel.Text" xml:space="preserve">
+    <value>Long side (pixels)</value>
+  </data>
+  <data name="ExportDialog_LongSidePixelLabel" xml:space="preserve">
+    <value>Long side (pixels)</value>
+  </data>
+  <data name="ExportDialog_LongSidePercent" xml:space="preserve">
+    <value>Long side (percent)</value>
+  </data>
+  <data name="ExportDialog_ResizeAlgorithm.Text" xml:space="preserve">
+    <value>Resize algorithm</value>
+  </data>
+  <data name="ExportDialog_HighQuality.Content" xml:space="preserve">
+    <value>High Quality</value>
+  </data>
+  <data name="ExportDialog_Balanced.Content" xml:space="preserve">
+    <value>Balanced</value>
+  </data>
+  <data name="ExportDialog_Fast.Content" xml:space="preserve">
+    <value>Fast</value>
+  </data>
+  <data name="ExportDialog_Sharp.Content" xml:space="preserve">
+    <value>Sharp</value>
+  </data>
+  <data name="ExportDialog_FileFormat.Text" xml:space="preserve">
+    <value>File format</value>
+  </data>
+  <data name="ExportDialog_QualityPercent" xml:space="preserve">
+    <value>Quality: {0}%</value>
+  </data>
+  <data name="ExportDialog_QualityJpgOnly" xml:space="preserve">
+    <value>Quality: JPG only</value>
+  </data>
+  <data name="ExportDialog_Current.Text" xml:space="preserve">
+    <value>Current:</value>
+  </data>
+  <data name="ExportDialog_New.Text" xml:space="preserve">
+    <value>New:</value>
+  </data>
+  <data name="ExportDialog_NoPreviewPhoto" xml:space="preserve">
+    <value>No photo available for preview</value>
+  </data>
+  <data name="ExportDialog_ShowAfterEnabled" xml:space="preserve">
+    <value>Shown after enabling</value>
+  </data>
+  <data name="ExportDialog_Ready" xml:space="preserve">
+    <value>Ready to export</value>
+  </data>
+  <data name="ExportDialog_Canceled" xml:space="preserve">
+    <value>Export canceled</value>
+  </data>
+  <data name="ExportDialog_Failed" xml:space="preserve">
+    <value>Export failed: {0}</value>
+  </data>
+  <data name="ExportDialog_OpenFolderFailed" xml:space="preserve">
+    <value>Failed to open folder: {0}</value>
+  </data>
+  <data name="ExportDialog_NoMatchingFiles" xml:space="preserve">
+    <value>No matching files</value>
+  </data>
+  <data name="ExportDialog_Progress" xml:space="preserve">
+    <value>Exporting: {0}/{1}</value>
+  </data>
+  <data name="ExportDialog_Complete" xml:space="preserve">
+    <value>Export complete: {0} files</value>
+  </data>
+  <data name="ExportDialog_OpenTargetFolder" xml:space="preserve">
+    <value>Open target folder</value>
+  </data>
+  <data name="ExportDialog_KeepAspectNoUpscale" xml:space="preserve">
+    <value>Keep aspect ratio; do not upscale smaller images.</value>
+  </data>
+  <data name="ExportDialog_ResizeRawHint" xml:space="preserve">
+    <value>When enabled, only photo exports are resized; RAW files are copied as originals.</value>
+  </data>
+  <data name="ExportDialog_InvalidPixel" xml:space="preserve">
+    <value>Enter a valid longest-side pixel value.</value>
+  </data>
+  <data name="ExportDialog_InvalidPercent" xml:space="preserve">
+    <value>Enter a valid percent value.</value>
+  </data>
+  <data name="ExportDialog_NoPhotoMatches" xml:space="preserve">
+    <value>No photos match the current conditions</value>
+  </data>
+  <data name="ExportDialog_Estimating" xml:space="preserve">
+    <value>Estimating...</value>
+  </data>
+  <data name="ExportDialog_CannotEstimate" xml:space="preserve">
+    <value>Cannot estimate</value>
+  </data>
+  <data name="DeleteConfirmDialog.PrimaryButtonText" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="DeleteConfirmDialog.SecondaryButtonText" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="DeleteConfirmDialog_SelectionHint.Text" xml:space="preserve">
+    <value>Select file types to delete:</value>
+  </data>
+  <data name="DeleteConfirmDialog_SelectionHintLabel" xml:space="preserve">
+    <value>Select file types to delete:</value>
+  </data>
+  <data name="DeleteConfirmDialog_Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="DeleteConfirmDialog_All" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="DeleteConfirmDialog_Title" xml:space="preserve">
+    <value>Confirm Delete</value>
+  </data>
+  <data name="DeleteConfirmDialog_Content" xml:space="preserve">
+    <value>{0} files are marked for deletion. Select the file types to delete.</value>
+  </data>
+  <data name="DeleteConfirmDialog_BurstWarning" xml:space="preserve">
+    <value>The current pending delete set includes {0} burst groups. Deleting will apply to every member in those groups.</value>
+  </data>
+  <data name="DeleteConfirmDialog_DeletingTitle" xml:space="preserve">
+    <value>Deleting</value>
+  </data>
+  <data name="DeleteConfirmDialog_Progress" xml:space="preserve">
+    <value>Deleting: {0}/{1}</value>
+  </data>
+  <data name="DeleteConfirmDialog_CompleteTitle" xml:space="preserve">
+    <value>Delete Complete</value>
+  </data>
+  <data name="DeleteConfirmDialog_Failed" xml:space="preserve">
+    <value>Delete failed: {0}</value>
+  </data>
+  <data name="ImageInfo_FileInfo.Text" xml:space="preserve">
+    <value>File Info</value>
+  </data>
+  <data name="ImageInfo_Dimensions.Text" xml:space="preserve">
+    <value>Dimensions</value>
+  </data>
+  <data name="ImageInfo_Size.Text" xml:space="preserve">
+    <value>Size</value>
+  </data>
+  <data name="ImageInfo_BitDepth.Text" xml:space="preserve">
+    <value>Bit Depth</value>
+  </data>
+  <data name="ImageInfo_RatingSource.Text" xml:space="preserve">
+    <value>Rating Source</value>
+  </data>
+  <data name="ImageInfo_DeviceInfo.Text" xml:space="preserve">
+    <value>Device Info</value>
+  </data>
+  <data name="ImageInfo_Camera.Text" xml:space="preserve">
+    <value>Camera</value>
+  </data>
+  <data name="ImageInfo_Lens.Text" xml:space="preserve">
+    <value>Lens</value>
+  </data>
+  <data name="ImageInfo_FocalLength.Text" xml:space="preserve">
+    <value>Focal Length</value>
+  </data>
+  <data name="ImageInfo_Shutter.Text" xml:space="preserve">
+    <value>Shutter</value>
+  </data>
+  <data name="ImageInfo_Aperture.Text" xml:space="preserve">
+    <value>Aperture</value>
+  </data>
+  <data name="ImageInfo_FilePath.Text" xml:space="preserve">
+    <value>File Path</value>
+  </data>
+  <data name="PreviewCanvas_Empty.Text" xml:space="preserve">
+    <value>Select an image</value>
+  </data>
 </root>

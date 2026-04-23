@@ -201,10 +201,13 @@ public sealed partial class MainPage
 
     private FrameworkElement CreateToolbarFoldIcon()
     {
-        return Resources["ToolbarFoldIconTemplate"] is DataTemplate template &&
-            template.LoadContent() is FrameworkElement icon
-                ? icon
-                : CreateToolbarIcon("\uE8B9");
+        return Application.Current.Resources["BurstIconTemplate"] is DataTemplate template
+            ? new ContentControl
+            {
+                Content = GetThemeBrush("TextFillColorPrimaryBrush", Windows.UI.Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF)),
+                ContentTemplate = template
+            }
+            : CreateToolbarIcon("\uE8B9");
     }
 
     private async void AutoExpandBurstToggleButton_CheckedChanged(object sender, RoutedEventArgs e)

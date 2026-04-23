@@ -294,7 +294,7 @@ public sealed partial class MainPage : Page
         {
             var item = new MenuFlyoutItem
             {
-                Text = size,
+                Text = $"MainPage_Size{size}.Text".GetLocalized(),
                 Tag = size
             };
             item.Click += ThumbnailSize_Click;
@@ -537,7 +537,7 @@ public sealed partial class MainPage : Page
             {
                 flyout.ShowAt(sender, new FlyoutShowOptions
                 {
-                    PreferredPlacement = FlyoutPlacementMode.BottomEdgeAlignedRight
+                    Placement = FlyoutPlacementMode.BottomEdgeAlignedRight
                 });
             }
         }
@@ -1583,9 +1583,9 @@ public sealed partial class MainPage : Page
             {
                 var emptyDialog = new ContentDialog
                 {
-                    Title = "无可删除文件",
-                    Content = "No files match the selected delete options.",
-                    CloseButtonText = "确定",
+                    Title = "MainPage_NoDeletableFilesTitle".GetLocalized(),
+                    Content = "MainPage_NoDeletableFilesContent".GetLocalized(),
+                    CloseButtonText = "Common_Ok".GetLocalized(),
                     XamlRoot = XamlRoot
                 };
                 await emptyDialog.ShowAsync();

@@ -6,5 +6,16 @@ public static class ResourceExtensions
 {
     private static readonly ResourceLoader _resourceLoader = new();
 
-    public static string GetLocalized(this string resourceKey) => _resourceLoader.GetString(resourceKey);
+    public static string GetLocalized(this string resourceKey)
+    {
+        try
+        {
+            var value = _resourceLoader.GetString(resourceKey);
+            return string.IsNullOrEmpty(value) ? resourceKey : value;
+        }
+        catch
+        {
+            return resourceKey;
+        }
+    }
 }

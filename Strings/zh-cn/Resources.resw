@@ -264,4 +264,505 @@
   <data name="Settings_PrivacyStatement.Header" xml:space="preserve">
     <value>隐私声明</value>
   </data>
+  <data name="Common_FileCount" xml:space="preserve">
+    <value>{0} 个文件</value>
+  </data>
+  <data name="Common_Export" xml:space="preserve">
+    <value>导出</value>
+  </data>
+  <data name="Common_Delete" xml:space="preserve">
+    <value>删除</value>
+  </data>
+  <data name="Common_Ok" xml:space="preserve">
+    <value>确定</value>
+  </data>
+  <data name="MainPage_Library.Text" xml:space="preserve">
+    <value>相册</value>
+  </data>
+  <data name="MainPage_AddToPreview.Text" xml:space="preserve">
+    <value>添加到预览</value>
+  </data>
+  <data name="MainPage_AddFolderToPreview.Text" xml:space="preserve">
+    <value>添加到预览</value>
+  </data>
+  <data name="MainPage_AddSubFolderToPreview.Text" xml:space="preserve">
+    <value>添加到预览</value>
+  </data>
+  <data name="MainPage_OpenInExplorer.Text" xml:space="preserve">
+    <value>在资源管理器中打开</value>
+  </data>
+  <data name="MainPage_OpenFolderInExplorer.Text" xml:space="preserve">
+    <value>在资源管理器中打开</value>
+  </data>
+  <data name="MainPage_OpenSubFolderInExplorer.Text" xml:space="preserve">
+    <value>在资源管理器中打开</value>
+  </data>
+  <data name="MainPage_OpenImageInExplorer.Text" xml:space="preserve">
+    <value>在资源管理器中打开</value>
+  </data>
+  <data name="MainPage_PinFolder.Text" xml:space="preserve">
+    <value>固定文件夹</value>
+  </data>
+  <data name="MainPage_PinRootFolder.Text" xml:space="preserve">
+    <value>固定文件夹</value>
+  </data>
+  <data name="MainPage_PinSubFolder.Text" xml:space="preserve">
+    <value>固定文件夹</value>
+  </data>
+  <data name="MainPage_UnpinFolder.Text" xml:space="preserve">
+    <value>取消固定文件夹</value>
+  </data>
+  <data name="MainPage_UnpinRootFolder.Text" xml:space="preserve">
+    <value>取消固定文件夹</value>
+  </data>
+  <data name="MainPage_UnpinSubFolder.Text" xml:space="preserve">
+    <value>取消固定文件夹</value>
+  </data>
+  <data name="MainPage_RefreshDevices.Text" xml:space="preserve">
+    <value>刷新外接设备</value>
+  </data>
+  <data name="MainPage_RefreshRootDevices.Text" xml:space="preserve">
+    <value>刷新外接设备</value>
+  </data>
+  <data name="MainPage_RefreshSubFolderDevices.Text" xml:space="preserve">
+    <value>刷新外接设备</value>
+  </data>
+  <data name="MainPage_SelectedPrefix.Text" xml:space="preserve">
+    <value>选中 </value>
+  </data>
+  <data name="MainPage_HeaderSelectedPrefix.Text" xml:space="preserve">
+    <value>选中 </value>
+  </data>
+  <data name="MainPage_CompactSelectedPrefix.Text" xml:space="preserve">
+    <value>选中 </value>
+  </data>
+  <data name="MainPage_TotalMiddle.Text" xml:space="preserve">
+    <value> 张/总计 </value>
+  </data>
+  <data name="MainPage_HeaderTotalMiddle.Text" xml:space="preserve">
+    <value> 张/总计 </value>
+  </data>
+  <data name="MainPage_CompactTotalMiddle.Text" xml:space="preserve">
+    <value> 张/总计 </value>
+  </data>
+  <data name="MainPage_FilteredPrefix.Text" xml:space="preserve">
+    <value>筛选 </value>
+  </data>
+  <data name="MainPage_HeaderFilteredPrefix.Text" xml:space="preserve">
+    <value>筛选 </value>
+  </data>
+  <data name="MainPage_CompactFilteredPrefix.Text" xml:space="preserve">
+    <value>筛选 </value>
+  </data>
+  <data name="MainPage_FileSuffix.Text" xml:space="preserve">
+    <value> 张</value>
+  </data>
+  <data name="MainPage_HeaderFileSuffix.Text" xml:space="preserve">
+    <value> 张</value>
+  </data>
+  <data name="MainPage_CompactFileSuffix.Text" xml:space="preserve">
+    <value> 张</value>
+  </data>
+  <data name="MainPage_PendingFileSuffix.Text" xml:space="preserve">
+    <value> 张</value>
+  </data>
+  <data name="MainPage_PendingDeleteSuffix.Text" xml:space="preserve">
+    <value> 张待删除</value>
+  </data>
+  <data name="MainPage_PendingDeletePrefix.Text" xml:space="preserve">
+    <value>待删除：</value>
+  </data>
+  <data name="MainPage_FolderSuffix.Text" xml:space="preserve">
+    <value> 个文件夹</value>
+  </data>
+  <data name="MainPage_Folders.Text" xml:space="preserve">
+    <value>文件夹</value>
+  </data>
+  <data name="MainPage_Subfolders.Text" xml:space="preserve">
+    <value>子文件夹</value>
+  </data>
+  <data name="MainPage_SubfoldersHeader.Text" xml:space="preserve">
+    <value>子文件夹</value>
+  </data>
+  <data name="MainPage_SubfolderSuffix.Text" xml:space="preserve">
+    <value> 个子文件夹</value>
+  </data>
+  <data name="MainPage_FolderPanelSubfolderSuffix.Text" xml:space="preserve">
+    <value> 个子文件夹</value>
+  </data>
+  <data name="MainPage_FolderDrawerSubfolderSuffix.Text" xml:space="preserve">
+    <value> 个子文件夹</value>
+  </data>
+  <data name="MainPage_Items.Text" xml:space="preserve">
+    <value>项目</value>
+  </data>
+  <data name="MainPage_SizeSmall.Text" xml:space="preserve">
+    <value>小</value>
+  </data>
+  <data name="MainPage_SizeMedium.Text" xml:space="preserve">
+    <value>中</value>
+  </data>
+  <data name="MainPage_SizeLarge.Text" xml:space="preserve">
+    <value>大</value>
+  </data>
+  <data name="MainPage_NoDeletableFilesTitle" xml:space="preserve">
+    <value>无可删除文件</value>
+  </data>
+  <data name="MainPage_NoDeletableFilesContent" xml:space="preserve">
+    <value>没有文件符合当前删除选项。</value>
+  </data>
+  <data name="CollectPage_LoadArea.Text" xml:space="preserve">
+    <value>载入区</value>
+  </data>
+  <data name="CollectPage_Load.Text" xml:space="preserve">
+    <value>载入</value>
+  </data>
+  <data name="CollectPage_AddToLoadArea.Text" xml:space="preserve">
+    <value>添加到载入区</value>
+  </data>
+  <data name="CollectPage_PinFolder.Text" xml:space="preserve">
+    <value>固定到常用文件夹</value>
+  </data>
+  <data name="CollectPage_UnpinFolder.Text" xml:space="preserve">
+    <value>取消固定</value>
+  </data>
+  <data name="CollectPage_RefreshDevices.Text" xml:space="preserve">
+    <value>刷新外接设备</value>
+  </data>
+  <data name="CollectPage_Tooltip_IncludeSubfolders" xml:space="preserve">
+    <value>遍历子文件夹</value>
+  </data>
+  <data name="CollectPage_DualPage.Text" xml:space="preserve">
+    <value>双页</value>
+  </data>
+  <data name="CollectPage_Compare.Text" xml:space="preserve">
+    <value>对照</value>
+  </data>
+  <data name="CollectPage_Continuous.Text" xml:space="preserve">
+    <value>连续</value>
+  </data>
+  <data name="FilterFlyout_Actions.Text" xml:space="preserve">
+    <value>行为</value>
+  </data>
+  <data name="FilterFlyout_Burst.Text" xml:space="preserve">
+    <value>连拍</value>
+  </data>
+  <data name="FilterFlyout_PendingDelete.Text" xml:space="preserve">
+    <value>预删除</value>
+  </data>
+  <data name="FilterFlyout_Format.Text" xml:space="preserve">
+    <value>格式</value>
+  </data>
+  <data name="FilterFlyout_Photo.Text" xml:space="preserve">
+    <value>照片</value>
+  </data>
+  <data name="FilterFlyout_Solo.Text" xml:space="preserve">
+    <value>单</value>
+  </data>
+  <data name="FilterFlyout_ImageSolo.Text" xml:space="preserve">
+    <value>单</value>
+  </data>
+  <data name="FilterFlyout_RawSolo.Text" xml:space="preserve">
+    <value>单</value>
+  </data>
+  <data name="FilterFlyout_Raw.Text" xml:space="preserve">
+    <value>数字底片</value>
+  </data>
+  <data name="FilterFlyout_Dual.Text" xml:space="preserve">
+    <value>双格式</value>
+  </data>
+  <data name="FilterFlyout_Inverse.Text" xml:space="preserve">
+    <value>反向</value>
+  </data>
+  <data name="FilterFlyout_Rating.Text" xml:space="preserve">
+    <value>评级</value>
+  </data>
+  <data name="FilterFlyout_Mode.Text" xml:space="preserve">
+    <value>模式</value>
+  </data>
+  <data name="FilterFlyout_Condition.Text" xml:space="preserve">
+    <value>条件</value>
+  </data>
+  <data name="FilterFlyout_Stars.Text" xml:space="preserve">
+    <value>星级</value>
+  </data>
+  <data name="FilterFlyout_HasRating" xml:space="preserve">
+    <value>有评级</value>
+  </data>
+  <data name="FilterFlyout_NoRating" xml:space="preserve">
+    <value>无评级</value>
+  </data>
+  <data name="ExportDialog.CloseButtonText" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="ExportDialog.PrimaryButtonText" xml:space="preserve">
+    <value>开始导出</value>
+  </data>
+  <data name="ExportDialog_StartExport" xml:space="preserve">
+    <value>开始导出</value>
+  </data>
+  <data name="ExportDialog_Title.Text" xml:space="preserve">
+    <value>导出</value>
+  </data>
+  <data name="ExportDialog_FilteredScope.Text" xml:space="preserve">
+    <value>按筛选结果导出</value>
+  </data>
+  <data name="ExportDialog_SectionHint.Text" xml:space="preserve">
+    <value>选择要导出的文件类型和筛选条件</value>
+  </data>
+  <data name="ExportDialog_Photo.Text" xml:space="preserve">
+    <value>照片（JPG）</value>
+  </data>
+  <data name="ExportDialog_Raw.Text" xml:space="preserve">
+    <value>数字底片（RAW）</value>
+  </data>
+  <data name="ExportDialog_StarPlaceholder.PlaceholderText" xml:space="preserve">
+    <value>星级</value>
+  </data>
+  <data name="ExportDialog_ImageStarPlaceholder.PlaceholderText" xml:space="preserve">
+    <value>星级</value>
+  </data>
+  <data name="ExportDialog_RawStarPlaceholder.PlaceholderText" xml:space="preserve">
+    <value>星级</value>
+  </data>
+  <data name="ExportDialog_Rating1.Content" xml:space="preserve">
+    <value>≥ 1 星</value>
+  </data>
+  <data name="ExportDialog_ImageRating1.Content" xml:space="preserve">
+    <value>≥ 1 星</value>
+  </data>
+  <data name="ExportDialog_RawRating1.Content" xml:space="preserve">
+    <value>≥ 1 星</value>
+  </data>
+  <data name="ExportDialog_Rating2.Content" xml:space="preserve">
+    <value>≥ 2 星</value>
+  </data>
+  <data name="ExportDialog_ImageRating2.Content" xml:space="preserve">
+    <value>≥ 2 星</value>
+  </data>
+  <data name="ExportDialog_RawRating2.Content" xml:space="preserve">
+    <value>≥ 2 星</value>
+  </data>
+  <data name="ExportDialog_Rating3.Content" xml:space="preserve">
+    <value>≥ 3 星</value>
+  </data>
+  <data name="ExportDialog_ImageRating3.Content" xml:space="preserve">
+    <value>≥ 3 星</value>
+  </data>
+  <data name="ExportDialog_RawRating3.Content" xml:space="preserve">
+    <value>≥ 3 星</value>
+  </data>
+  <data name="ExportDialog_Rating4.Content" xml:space="preserve">
+    <value>≥ 4 星</value>
+  </data>
+  <data name="ExportDialog_ImageRating4.Content" xml:space="preserve">
+    <value>≥ 4 星</value>
+  </data>
+  <data name="ExportDialog_RawRating4.Content" xml:space="preserve">
+    <value>≥ 4 星</value>
+  </data>
+  <data name="ExportDialog_Rating5.Content" xml:space="preserve">
+    <value>≥ 5 星</value>
+  </data>
+  <data name="ExportDialog_ImageRating5.Content" xml:space="preserve">
+    <value>≥ 5 星</value>
+  </data>
+  <data name="ExportDialog_RawRating5.Content" xml:space="preserve">
+    <value>≥ 5 星</value>
+  </data>
+  <data name="ExportDialog_FolderName.PlaceholderText" xml:space="preserve">
+    <value>文件夹名称</value>
+  </data>
+  <data name="ExportDialog_ExportPath.PlaceholderText" xml:space="preserve">
+    <value>导出地址</value>
+  </data>
+  <data name="ExportDialog_Browse.Content" xml:space="preserve">
+    <value>浏览</value>
+  </data>
+  <data name="ExportDialog_Expected.Text" xml:space="preserve">
+    <value>预计导出</value>
+  </data>
+  <data name="ExportDialog_ResizeTitle.Text" xml:space="preserve">
+    <value>重设大小</value>
+  </data>
+  <data name="ExportDialog_ResizeOptions.Text" xml:space="preserve">
+    <value>缩放选项</value>
+  </data>
+  <data name="ExportDialog_Pixel.Content" xml:space="preserve">
+    <value>像素</value>
+  </data>
+  <data name="ExportDialog_PixelLabel" xml:space="preserve">
+    <value>像素</value>
+  </data>
+  <data name="ExportDialog_Percent.Content" xml:space="preserve">
+    <value>百分比</value>
+  </data>
+  <data name="ExportDialog_LongSidePixel.Text" xml:space="preserve">
+    <value>长边尺寸（像素）</value>
+  </data>
+  <data name="ExportDialog_LongSidePixelLabel" xml:space="preserve">
+    <value>长边尺寸（像素）</value>
+  </data>
+  <data name="ExportDialog_LongSidePercent" xml:space="preserve">
+    <value>长边尺寸（百分比）</value>
+  </data>
+  <data name="ExportDialog_ResizeAlgorithm.Text" xml:space="preserve">
+    <value>缩放算法</value>
+  </data>
+  <data name="ExportDialog_HighQuality.Content" xml:space="preserve">
+    <value>高质量</value>
+  </data>
+  <data name="ExportDialog_Balanced.Content" xml:space="preserve">
+    <value>均衡</value>
+  </data>
+  <data name="ExportDialog_Fast.Content" xml:space="preserve">
+    <value>快速</value>
+  </data>
+  <data name="ExportDialog_Sharp.Content" xml:space="preserve">
+    <value>锐利</value>
+  </data>
+  <data name="ExportDialog_FileFormat.Text" xml:space="preserve">
+    <value>文件格式</value>
+  </data>
+  <data name="ExportDialog_QualityPercent" xml:space="preserve">
+    <value>质量：{0}%</value>
+  </data>
+  <data name="ExportDialog_QualityJpgOnly" xml:space="preserve">
+    <value>质量：仅 JPG 生效</value>
+  </data>
+  <data name="ExportDialog_Current.Text" xml:space="preserve">
+    <value>当前：</value>
+  </data>
+  <data name="ExportDialog_New.Text" xml:space="preserve">
+    <value>新建：</value>
+  </data>
+  <data name="ExportDialog_NoPreviewPhoto" xml:space="preserve">
+    <value>无可预览照片</value>
+  </data>
+  <data name="ExportDialog_ShowAfterEnabled" xml:space="preserve">
+    <value>启用后显示</value>
+  </data>
+  <data name="ExportDialog_Ready" xml:space="preserve">
+    <value>准备导出</value>
+  </data>
+  <data name="ExportDialog_Canceled" xml:space="preserve">
+    <value>导出已取消</value>
+  </data>
+  <data name="ExportDialog_Failed" xml:space="preserve">
+    <value>导出失败: {0}</value>
+  </data>
+  <data name="ExportDialog_OpenFolderFailed" xml:space="preserve">
+    <value>打开文件夹失败: {0}</value>
+  </data>
+  <data name="ExportDialog_NoMatchingFiles" xml:space="preserve">
+    <value>没有符合条件的文件</value>
+  </data>
+  <data name="ExportDialog_Progress" xml:space="preserve">
+    <value>正在导出: {0}/{1}</value>
+  </data>
+  <data name="ExportDialog_Complete" xml:space="preserve">
+    <value>导出完成: {0} 个文件</value>
+  </data>
+  <data name="ExportDialog_OpenTargetFolder" xml:space="preserve">
+    <value>打开目标文件夹</value>
+  </data>
+  <data name="ExportDialog_KeepAspectNoUpscale" xml:space="preserve">
+    <value>保持比例，不放大小图。</value>
+  </data>
+  <data name="ExportDialog_ResizeRawHint" xml:space="preserve">
+    <value>开启后仅处理照片导出，RAW 保持原文件复制。</value>
+  </data>
+  <data name="ExportDialog_InvalidPixel" xml:space="preserve">
+    <value>请输入有效的最长边像素。</value>
+  </data>
+  <data name="ExportDialog_InvalidPercent" xml:space="preserve">
+    <value>请输入有效的百分比。</value>
+  </data>
+  <data name="ExportDialog_NoPhotoMatches" xml:space="preserve">
+    <value>没有符合照片筛选条件的文件</value>
+  </data>
+  <data name="ExportDialog_Estimating" xml:space="preserve">
+    <value>估算中...</value>
+  </data>
+  <data name="ExportDialog_CannotEstimate" xml:space="preserve">
+    <value>无法估算</value>
+  </data>
+  <data name="DeleteConfirmDialog.PrimaryButtonText" xml:space="preserve">
+    <value>确认删除</value>
+  </data>
+  <data name="DeleteConfirmDialog.SecondaryButtonText" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="DeleteConfirmDialog_SelectionHint.Text" xml:space="preserve">
+    <value>选择要删除的文件类型：</value>
+  </data>
+  <data name="DeleteConfirmDialog_SelectionHintLabel" xml:space="preserve">
+    <value>选择要删除的文件类型：</value>
+  </data>
+  <data name="DeleteConfirmDialog_Close" xml:space="preserve">
+    <value>关闭</value>
+  </data>
+  <data name="DeleteConfirmDialog_All" xml:space="preserve">
+    <value>全部</value>
+  </data>
+  <data name="DeleteConfirmDialog_Title" xml:space="preserve">
+    <value>确认删除</value>
+  </data>
+  <data name="DeleteConfirmDialog_Content" xml:space="preserve">
+    <value>共 {0} 个文件标记为删除，请选择要删除的文件类型。</value>
+  </data>
+  <data name="DeleteConfirmDialog_BurstWarning" xml:space="preserve">
+    <value>当前预删除中包含 {0} 个连拍组，删除将作用于组内全部成员。</value>
+  </data>
+  <data name="DeleteConfirmDialog_DeletingTitle" xml:space="preserve">
+    <value>正在删除</value>
+  </data>
+  <data name="DeleteConfirmDialog_Progress" xml:space="preserve">
+    <value>正在删除: {0}/{1}</value>
+  </data>
+  <data name="DeleteConfirmDialog_CompleteTitle" xml:space="preserve">
+    <value>删除完成</value>
+  </data>
+  <data name="DeleteConfirmDialog_Failed" xml:space="preserve">
+    <value>删除失败: {0}</value>
+  </data>
+  <data name="ImageInfo_FileInfo.Text" xml:space="preserve">
+    <value>文件信息</value>
+  </data>
+  <data name="ImageInfo_Dimensions.Text" xml:space="preserve">
+    <value>尺寸</value>
+  </data>
+  <data name="ImageInfo_Size.Text" xml:space="preserve">
+    <value>大小</value>
+  </data>
+  <data name="ImageInfo_BitDepth.Text" xml:space="preserve">
+    <value>色深</value>
+  </data>
+  <data name="ImageInfo_RatingSource.Text" xml:space="preserve">
+    <value>评级来源</value>
+  </data>
+  <data name="ImageInfo_DeviceInfo.Text" xml:space="preserve">
+    <value>设备信息</value>
+  </data>
+  <data name="ImageInfo_Camera.Text" xml:space="preserve">
+    <value>相机</value>
+  </data>
+  <data name="ImageInfo_Lens.Text" xml:space="preserve">
+    <value>镜头</value>
+  </data>
+  <data name="ImageInfo_FocalLength.Text" xml:space="preserve">
+    <value>焦距</value>
+  </data>
+  <data name="ImageInfo_Shutter.Text" xml:space="preserve">
+    <value>快门</value>
+  </data>
+  <data name="ImageInfo_Aperture.Text" xml:space="preserve">
+    <value>光圈</value>
+  </data>
+  <data name="ImageInfo_FilePath.Text" xml:space="preserve">
+    <value>文件路径</value>
+  </data>
+  <data name="PreviewCanvas_Empty.Text" xml:space="preserve">
+    <value>选择一张图片</value>
+  </data>
 </root>

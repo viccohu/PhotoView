@@ -71,7 +71,7 @@
 
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE97C;" FontSize="16" VerticalAlignment="Center"/>
-                <TextBlock Text="文件信息" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <TextBlock x:Uid="ImageInfo_FileInfo" Text="文件信息" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
             </StackPanel>
 
             <Grid ColumnSpacing="0" RowSpacing="0" Margin="0,0,0,16">
@@ -86,7 +86,7 @@
                 </Grid.RowDefinitions>
                 <Border Grid.Row="0" Grid.Column="0" CornerRadius="4" Margin="1,0,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
                     <StackPanel Orientation="Vertical" Spacing="6">
-                        <TextBlock Text="尺寸" Opacity="0.7" HorizontalAlignment="Center" Style="{StaticResource BodyTextBlockStyle}"/>
+                        <TextBlock x:Uid="ImageInfo_Dimensions" Text="尺寸" Opacity="0.7" HorizontalAlignment="Center" Style="{StaticResource BodyTextBlockStyle}"/>
                         <TextBlock Text="{Binding Resolution, Mode=OneWay}" HorizontalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
                     </StackPanel>
                 </Border>
@@ -95,7 +95,7 @@
                         <controls:ShimmerControl.Content>
                             <Border CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
                                 <StackPanel Orientation="Vertical" Spacing="6">
-                                    <TextBlock Text="大小" Style="{StaticResource BodyTextBlockStyle}" Opacity="0.7" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Uid="ImageInfo_Size" Text="大小" Style="{StaticResource BodyTextBlockStyle}" Opacity="0.7" HorizontalAlignment="Center"/>
                                     <TextBlock Text="{Binding FileSize, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </Border>
@@ -119,7 +119,7 @@
                         <controls:ShimmerControl.Content>
                             <Border CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
                                 <StackPanel Orientation="Vertical" Spacing="6">
-                                    <TextBlock Text="色深" Style="{StaticResource BodyTextBlockStyle}" Opacity="0.7" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Uid="ImageInfo_BitDepth" Text="色深" Style="{StaticResource BodyTextBlockStyle}" Opacity="0.7" HorizontalAlignment="Center"/>
                                     <TextBlock Text="{Binding BitDepth, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </Border>
@@ -128,7 +128,7 @@
                 </Border>
                 <Border Grid.Row="1" Grid.Column="1" CornerRadius="4" Margin="1,1,0,0" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
                     <StackPanel Orientation="Vertical" Spacing="6">
-                        <TextBlock Text="评级来源" Style="{StaticResource BodyTextBlockStyle}" Opacity="0.7" HorizontalAlignment="Center"/>
+                        <TextBlock x:Uid="ImageInfo_RatingSource" Text="评级来源" Style="{StaticResource BodyTextBlockStyle}" Opacity="0.7" HorizontalAlignment="Center"/>
                         <TextBlock Text="{Binding RatingSource, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center"/>
                     </StackPanel>
                 </Border>
@@ -142,7 +142,7 @@
 
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE722;" FontSize="16" VerticalAlignment="Center"/>
-                <TextBlock Text="设备信息" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <TextBlock x:Uid="ImageInfo_DeviceInfo" Text="设备信息" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
             </StackPanel>
 
             <Grid ColumnSpacing="0" RowSpacing="0">
@@ -160,7 +160,7 @@
                         <controls:ShimmerControl.Content>
                             <Border CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
                                 <StackPanel Orientation="Vertical" Spacing="6">
-                                    <TextBlock Text="相机" FontSize="14" Opacity="0.7" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Uid="ImageInfo_Camera" Text="相机" FontSize="14" Opacity="0.7" HorizontalAlignment="Center"/>
                                     <ItemsControl ItemsSource="{Binding DeviceInfo, Mode=OneWay}" HorizontalAlignment="Center">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
@@ -183,7 +183,7 @@
                         <controls:ShimmerControl.Content>
                             <Border CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
                                 <StackPanel Orientation="Vertical" Spacing="6">
-                                    <TextBlock Text="镜头" FontSize="14" Opacity="0.7" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Uid="ImageInfo_Lens" Text="镜头" FontSize="14" Opacity="0.7" HorizontalAlignment="Center"/>
                                     <TextBlock Text="{Binding LensModel, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </Border>
@@ -195,7 +195,7 @@
                         <controls:ShimmerControl.Content>
                             <Border CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
                                 <StackPanel Orientation="Vertical" Spacing="6">
-                                    <TextBlock Text="焦距" FontSize="14" Opacity="0.7" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Uid="ImageInfo_FocalLength" Text="焦距" FontSize="14" Opacity="0.7" HorizontalAlignment="Center"/>
                                     <TextBlock Text="{Binding FocalLength, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </Border>
@@ -207,7 +207,7 @@
                         <controls:ShimmerControl.Content>
                             <Border CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
                                 <StackPanel Orientation="Vertical" Spacing="6">
-                                    <TextBlock Text="快门" FontSize="14" Opacity="0.7" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Uid="ImageInfo_Shutter" Text="快门" FontSize="14" Opacity="0.7" HorizontalAlignment="Center"/>
                                     <TextBlock Text="{Binding ExposureTime, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </Border>
@@ -219,7 +219,7 @@
                         <controls:ShimmerControl.Content>
                             <Border CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
                                 <StackPanel Orientation="Vertical" Spacing="6">
-                                    <TextBlock Text="光圈" FontSize="14" Opacity="0.7" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Uid="ImageInfo_Aperture" Text="光圈" FontSize="14" Opacity="0.7" HorizontalAlignment="Center"/>
                                     <TextBlock Text="{Binding FNumber, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </Border>
@@ -243,7 +243,7 @@
             <StackPanel Spacing="8">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE71B;" FontSize="16" VerticalAlignment="Center"/>
-                    <TextBlock Text="文件路径" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <TextBlock x:Uid="ImageInfo_FilePath" Text="文件路径" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                 </StackPanel>
                 <ItemsControl ItemsSource="{Binding FilePaths, Mode=OneWay}">
                     <ItemsControl.ItemsPanel>

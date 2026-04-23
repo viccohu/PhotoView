@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
+using PhotoView.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -47,9 +48,9 @@ public sealed partial class DeleteConfirmDialog : ContentDialog
         {
             IsDeleting = false;
             IsSecondaryButtonEnabled = true;
-            SecondaryButtonText = "关闭";
+            SecondaryButtonText = "DeleteConfirmDialog_Close".GetLocalized();
             ProgressPanel.Visibility = Visibility.Visible;
-            ProgressText.Text = $"删除失败: {ex.Message}";
+            ProgressText.Text = string.Format("DeleteConfirmDialog_Failed".GetLocalized(), ex.Message);
         }
         finally
         {
@@ -89,7 +90,7 @@ public sealed partial class DeleteConfirmDialog : ContentDialog
 
             _allButton = new ToggleButton
             {
-                Content = "全部",
+                Content = "DeleteConfirmDialog_All".GetLocalized(),
                 IsChecked = false
             };
             _allButton.Click += AllButton_Click;
@@ -160,16 +161,16 @@ public sealed partial class DeleteConfirmDialog : ContentDialog
 
     private void UpdateContent(int totalFileCount, int pendingBurstGroupCount)
     {
-        Title = "确认删除";
-        ContentText.Text = $"共 {totalFileCount} 个文件标记为删除，请选择要删除的文件类型。";
-        SelectionHintText.Text = "选择要删除的文件类型：";
+        Title = "DeleteConfirmDialog_Title".GetLocalized();
+        ContentText.Text = string.Format("DeleteConfirmDialog_Content".GetLocalized(), totalFileCount);
+        SelectionHintText.Text = "DeleteConfirmDialog_SelectionHintLabel".GetLocalized();
 
         if (pendingBurstGroupCount > 0)
         {
             BurstWarningHost.Visibility = Visibility.Visible;
             BurstWarningHost.Background = new SolidColorBrush(Color.FromArgb(0x1F, 0xFF, 0xB9, 0x00));
             BurstWarningText.Foreground = new SolidColorBrush(Color.FromArgb(0xFF, 0xFF, 0xB9, 0x00));
-            BurstWarningText.Text = $"当前预删除中包含 {pendingBurstGroupCount} 个连拍组，删除将作用于组内全部成员。";
+            BurstWarningText.Text = string.Format("DeleteConfirmDialog_BurstWarning".GetLocalized(), pendingBurstGroupCount);
         }
         else
         {
@@ -181,7 +182,7 @@ public sealed partial class DeleteConfirmDialog : ContentDialog
     public void StartProgress()
     {
         IsDeleting = true;
-        Title = "正在删除";
+        Title = "DeleteConfirmDialog_DeletingTitle".GetLocalized();
         SelectionHintText.Visibility = Visibility.Collapsed;
         BurstWarningHost.Visibility = Visibility.Collapsed;
         ToggleButtonsPanel.Visibility = Visibility.Collapsed;
@@ -194,14 +195,14 @@ public sealed partial class DeleteConfirmDialog : ContentDialog
     {
         DeleteProgressBar.Maximum = total;
         DeleteProgressBar.Value = current;
-        ProgressText.Text = $"正在删除: {current}/{total}";
+        ProgressText.Text = string.Format("DeleteConfirmDialog_Progress".GetLocalized(), current, total);
     }
 
     public void SetComplete()
     {
         IsDeleting = false;
-        Title = "删除完成";
-        ProgressText.Text = "删除完成";
+        Title = "DeleteConfirmDialog_CompleteTitle".GetLocalized();
+        ProgressText.Text = "DeleteConfirmDialog_CompleteTitle".GetLocalized();
         DeleteProgressBar.Value = DeleteProgressBar.Maximum;
         IsPrimaryButtonEnabled = false;
         IsSecondaryButtonEnabled = false;

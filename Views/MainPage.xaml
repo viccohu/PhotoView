@@ -1,4 +1,4 @@
-﻿<Page
+<Page
     x:Class="PhotoView.Views.MainPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -19,40 +19,7 @@
         <converters:IntToBoolConverter x:Key="IntToBoolConverter"/>
         <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
         <converters:StringToBrushConverter x:Key="StringToBrushConverter"/>
-
-        <DataTemplate x:Key="FoldIconTemplate">
-            <Viewbox Width="14" Height="14">
-                <Canvas x:Name="FoldIconRoot" Width="76.47" Height="76.47" Tag="{Binding Foreground, RelativeSource={RelativeSource Mode=TemplatedParent}}">
-                    <Path
-                        Fill="{Binding Tag, ElementName=FoldIconRoot}"
-                        Data="m64.01,23.92v27.16c0,2.31-1.87,4.17-4.17,4.17H14.92c-2.31,0-4.17-1.87-4.17-4.17v-1.29h43.63c2.31,0,4.17-1.87,4.17-4.17v-25.88h1.29c2.31,0,4.17,1.87,4.17,4.17Z"/>
-                    <Path
-                        Fill="{Binding Tag, ElementName=FoldIconRoot}"
-                        Data="m72.75,32.66v27.16c0,2.31-1.87,4.17-4.17,4.17H23.66c-2.31,0-4.17-1.87-4.17-4.17v-1.29h43.63c2.31,0,4.17-1.87,4.17-4.17v-25.88h1.29c2.31,0,4.17,1.87,4.17,4.17Z"/>
-                    <Path
-                        Fill="{Binding Tag, ElementName=FoldIconRoot}"
-                        Data="M6.17,11 H51.1 A4.17,4.17 0 0 1 55.27,15.17 V42.34 A4.17,4.17 0 0 1 51.1,46.51 H6.17 A4.17,4.17 0 0 1 2,42.34 V15.17 A4.17,4.17 0 0 1 6.17,11 Z"/>
-                </Canvas>
-            </Viewbox>
-        </DataTemplate>
-
-        <DataTemplate x:Key="ToolbarFoldIconTemplate">
-            <Viewbox Width="18" Height="18">
-                <Canvas Width="76.47" Height="76.47">
-                    <Path
-                        Fill="{ThemeResource TextFillColorPrimaryBrush}"
-                        Data="m64.01,23.92v27.16c0,2.31-1.87,4.17-4.17,4.17H14.92c-2.31,0-4.17-1.87-4.17-4.17v-1.29h43.63c2.31,0,4.17-1.87,4.17-4.17v-25.88h1.29c2.31,0,4.17,1.87,4.17,4.17Z"/>
-                    <Path
-                        Fill="{ThemeResource TextFillColorPrimaryBrush}"
-                        Data="m72.75,32.66v27.16c0,2.31-1.87,4.17-4.17,4.17H23.66c-2.31,0-4.17-1.87-4.17-4.17v-1.29h43.63c2.31,0,4.17-1.87,4.17-4.17v-25.88h1.29c2.31,0,4.17,1.87,4.17,4.17Z"/>
-                    <Path
-                        Fill="{ThemeResource TextFillColorPrimaryBrush}"
-                        Data="M6.17,11 H51.1 A4.17,4.17 0 0 1 55.27,15.17 V42.34 A4.17,4.17 0 0 1 51.1,46.51 H6.17 A4.17,4.17 0 0 1 2,42.34 V15.17 A4.17,4.17 0 0 1 6.17,11 Z"/>
-                </Canvas>
-            </Viewbox>
-        </DataTemplate>
-        
-        <Style x:Key="BreadcrumbButtonStyle" TargetType="Button">
+<Style x:Key="BreadcrumbButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="4"/>
@@ -243,7 +210,7 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                         <FontIcon Glyph="&#xE8F1;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
-                        <TextBlock Text="Library" Style="{ThemeResource BodyTextBlockStyle}"/>
+                        <TextBlock x:Uid="MainPage_Library" Text="相册" Style="{ThemeResource BodyTextBlockStyle}"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -276,13 +243,13 @@
                                     </Grid.ColumnDefinitions>
                                     <FlyoutBase.AttachedFlyout>
                                         <MenuFlyout Placement="Bottom" Opening="FolderTreeMenuFlyout_Opening">
-                                            <MenuFlyoutItem Text="Add to Preview" Icon="Add" Click="AddFolderToPreview_Click"/>
-                                            <MenuFlyoutItem Text="Open in Explorer" Icon="OpenFile" Click="OpenFolderInExplorer_Click"/>
+                                            <MenuFlyoutItem x:Uid="MainPage_AddFolderToPreview" Text="添加到预览" Icon="Add" Click="AddFolderToPreview_Click"/>
+                                            <MenuFlyoutItem x:Uid="MainPage_OpenFolderInExplorer" Text="在资源管理器中打开" Icon="OpenFile" Click="OpenFolderInExplorer_Click"/>
                                             <MenuFlyoutSeparator Tag="PinSectionSeparator"/>
-                                            <MenuFlyoutItem Tag="PinFolder" Text="Pin Folder" Icon="Pin" Click="PinFolder_Click"/>
-                                            <MenuFlyoutItem Tag="UnpinFolder" Text="Unpin Folder" Icon="UnPin" Click="UnpinFolder_Click"/>
+                                            <MenuFlyoutItem x:Uid="MainPage_PinRootFolder" Tag="PinFolder" Text="固定文件夹" Icon="Pin" Click="PinFolder_Click"/>
+                                            <MenuFlyoutItem x:Uid="MainPage_UnpinRootFolder" Tag="UnpinFolder" Text="取消固定文件夹" Icon="UnPin" Click="UnpinFolder_Click"/>
                                             <MenuFlyoutSeparator Tag="ExternalDeviceSectionSeparator"/>
-                                            <MenuFlyoutItem Tag="RefreshExternalDevices" Text="Refresh Devices" Icon="Refresh" Click="RefreshExternalDevices_Click"/>
+                                            <MenuFlyoutItem x:Uid="MainPage_RefreshRootDevices" Tag="RefreshExternalDevices" Text="刷新外接设备" Icon="Refresh" Click="RefreshExternalDevices_Click"/>
                                         </MenuFlyout>
                                     </FlyoutBase.AttachedFlyout>
                                     <FontIcon
@@ -348,9 +315,9 @@
                             Style="{ThemeResource CaptionTextBlockStyle}"
                             Opacity="0.75"
                             VerticalAlignment="Center">
-                            <Run Text="Selected "/>
+                            <Run Text="选中 "/>
                             <Run Text="{x:Bind ViewModel.SelectedCount, Mode=OneWay}"/>
-                            <Run Text=" / Total "/>
+                            <Run Text=" 张/总计 "/>
                             <Run Text="{x:Bind ViewModel.TotalPhotoCount, Mode=OneWay}"/>
                             <Run Text=""/>
                         </TextBlock>
@@ -368,9 +335,9 @@
                             Style="{ThemeResource CaptionTextBlockStyle}"
                             Opacity="0.8"
                             VerticalAlignment="Center">
-                            <Run Text="Filtered "/>
+                            <Run Text="筛选 "/>
                             <Run Text="{x:Bind ViewModel.FilteredPhotoCount, Mode=OneWay}"/>
-                            <Run Text=" files"/>
+                            <Run Text=" 张"/>
                         </TextBlock>
                     </Border>
                     <Border
@@ -390,7 +357,7 @@
                                 Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                                 VerticalAlignment="Center">
                                 <Run Text="{x:Bind ViewModel.PendingDeleteCount, Mode=OneWay}"/>
-                                <Run Text=" pending delete"/>
+                                <Run Text=" 张待删除"/>
                             </TextBlock>
                             <Button
                                 Click="ClearAllPendingDelete_Click"
@@ -437,7 +404,7 @@
                         Visibility="{x:Bind ViewModel.SubFolderCount, Mode=OneWay, Converter={StaticResource IntToVisibilityConverter}}">
                         <TextBlock Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7">
                             <Run Text="{x:Bind ViewModel.SubFolderCount, Mode=OneWay}"/>
-                            <Run Text=" folders"/>
+                            <Run Text=" 个文件夹"/>
                         </TextBlock>
                     </Border>
                     <Border
@@ -448,9 +415,9 @@
                         Margin="10,0,0,0"
                         CornerRadius="4">
                         <TextBlock Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7">
-                            <Run Text="Selected "/>
+                            <Run Text="选中 "/>
                             <Run Text="{x:Bind ViewModel.SelectedCount, Mode=OneWay}"/>
-                            <Run Text=" / Total "/>
+                            <Run Text=" 张/总计 "/>
                             <Run Text="{x:Bind ViewModel.TotalPhotoCount, Mode=OneWay}"/>
                             <Run Text=""/>
                         </TextBlock>
@@ -464,9 +431,9 @@
                         CornerRadius="4"
                         Visibility="{x:Bind ViewModel.IsFilterActive, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <TextBlock Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.8">
-                            <Run Text="Filtered "/>
+                            <Run Text="筛选 "/>
                             <Run Text="{x:Bind ViewModel.FilteredPhotoCount, Mode=OneWay}"/>
-                            <Run Text=" files"/>
+                            <Run Text=" 张"/>
                         </TextBlock>
                     </Border>
                     <Border
@@ -487,9 +454,9 @@
                                 Style="{ThemeResource CaptionTextBlockStyle}"
                                 Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                                 VerticalAlignment="Center">
-                                <Run Text="Pending delete: "/>
+                                <Run Text="待删除："/>
                                 <Run Text="{x:Bind ViewModel.PendingDeleteCount, Mode=OneWay}"/>
-                                <Run Text=" files"/>
+                                <Run Text=" 张"/>
                             </TextBlock>
                             <Button
                                 Grid.Column="1"
@@ -550,9 +517,9 @@
                     </DropDownButton.Content>
                     <DropDownButton.Flyout>
                         <MenuFlyout Placement="BottomEdgeAlignedRight">
-                            <MenuFlyoutItem Text="Small" Tag="Small" Click="ThumbnailSize_Click"/>
-                            <MenuFlyoutItem Text="Medium" Tag="Medium" Click="ThumbnailSize_Click"/>
-                            <MenuFlyoutItem Text="Large" Tag="Large" Click="ThumbnailSize_Click"/>
+                            <MenuFlyoutItem x:Uid="MainPage_SizeSmall" Text="小" Tag="Small" Click="ThumbnailSize_Click"/>
+                            <MenuFlyoutItem x:Uid="MainPage_SizeMedium" Text="中" Tag="Medium" Click="ThumbnailSize_Click"/>
+                            <MenuFlyoutItem x:Uid="MainPage_SizeLarge" Text="大" Tag="Large" Click="ThumbnailSize_Click"/>
                         </MenuFlyout>
                     </DropDownButton.Flyout>
                 </DropDownButton>
@@ -636,7 +603,8 @@
                             FontSize="14"
                             VerticalAlignment="Center"/>
                         <TextBlock
-                            Text="Folders"
+                            x:Uid="MainPage_Folders"
+                            Text="文件夹"
                             Style="{ThemeResource BodyTextBlockStyle}"
                             FontWeight="SemiBold"
                             VerticalAlignment="Center"/>
@@ -645,7 +613,7 @@
                             Opacity="0.7"
                             VerticalAlignment="Center">
                             <Run Text="{x:Bind ViewModel.SubFolderCount, Mode=OneWay}"/>
-                            <Run Text=" subfolders"/>
+                            <Run Text=" 个子文件夹"/>
                         </TextBlock>
                     </StackPanel>
                     <Button
@@ -658,21 +626,20 @@
                         CornerRadius="4"
                         Click="FolderDrawerToggleButton_Click">
                         <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                            <Grid Width="18" Height="14" VerticalAlignment="Center">
-                                <Path
+                            <Grid Width="20" Height="18" VerticalAlignment="Center">
+                                <ContentControl
                                     x:Name="FolderDrawerClosedIcon"
-                                    Data="m57.91,17.52H7.55c-3.18,0-5.76,2.17-5.76,4.84v15.81c0,2.67,2.59,4.84,5.76,4.84h50.36c3.18,0,5.76-2.17,5.76-4.84v-15.81c0-2.67-2.59-4.84-5.76-4.84Zm-18.2,14.48h-13.63c-1.39,0-2.51-1.12-2.51-2.5s1.12-2.5,2.51-2.5h13.63c1.39,0,2.51,1.12,2.51,2.5s-1.12,2.5-2.51,2.5Z M8.18,13.56h49.64c2.31,0,3.85-1.19,2.89-2.25l-6.71-7.38c-.52-.57-1.65-.93-2.89-.93H14.89c-1.25,0-2.38.36-2.89.93l-6.71,7.38c-.96,1.05.58,2.25,2.89,2.25Z"
-                                    Fill="#10B0FF"
-                                    Stretch="Uniform"/>
-                                <Path
+                                    Content="{ThemeResource TextFillColorPrimaryBrush}"
+                                    ContentTemplate="{StaticResource FolderDrawerClosedIconTemplate}"/>
+                                <ContentControl
                                     x:Name="FolderDrawerOpenIcon"
-                                    Data="m61.25,18.42l-5.33-5.86h1.89c2.31,0,3.85-1.19,2.89-2.25l-6.71-7.38c-.52-.57-1.65-.93-2.89-.93H14.89c-1.25,0-2.38.36-2.89.93l-6.71,7.38c-.96,1.05.58,2.25,2.89,2.25h1.89l-4.91,5.4c-1.99.76-3.38,2.45-3.38,4.4l1,15.81c0,2.67,2.59,4.84,5.76,4.84h48.36c3.18,0,5.76-2.17,5.76-4.84l1-15.81c0-1.62-.96-3.06-2.42-3.94Zm-8.05-5.86s.05.03.06.05l4.46,4.91H8.27l4.47-4.91s.05-.03.06-.05h40.4Zm-13.65,23.44h-13.63c-1.39,0-2.51-1.12-2.51-2.5s1.12-2.5,2.51-2.5h13.63c1.39,0,2.51,1.12,2.51,2.5s-1.12,2.5-2.51,2.5Z"
-                                    Fill="#10B0FF"
-                                    Stretch="Uniform"
+                                    Content="{ThemeResource TextFillColorPrimaryBrush}"
+                                    ContentTemplate="{StaticResource FolderDrawerOpenIconTemplate}"
                                     Visibility="Collapsed"/>
                             </Grid>
                             <TextBlock
-                                Text="Subfolders"
+                                x:Uid="MainPage_Subfolders"
+                                Text="子文件夹"
                                 Style="{ThemeResource BodyTextBlockStyle}"
                           
                                 VerticalAlignment="Center"/>
@@ -681,7 +648,7 @@
                                 Opacity="0.7"
                                 VerticalAlignment="Center">
                                 <Run Text="{x:Bind ViewModel.SubFolderCount, Mode=OneWay}"/>
-                                <Run Text=" subfolders"/>
+                                <Run Text=" 个子文件夹"/>
                             </TextBlock>
                             <FontIcon
                                 x:Name="FolderDrawerChevron"
@@ -725,14 +692,16 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock
                                     Grid.Column="0"
-                                    Text="Subfolders"
+                                    x:Uid="MainPage_SubfoldersHeader"
+                                    Text="子文件夹"
                                     Margin="36,0,0,0"
                                     VerticalAlignment="Center"
                                     Style="{ThemeResource CaptionTextBlockStyle}"
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                 <TextBlock
                                     Grid.Column="1"
-                                    Text="Items"
+                                    x:Uid="MainPage_Items"
+                                    Text="项目"
                                     VerticalAlignment="Center"
                                     Style="{ThemeResource CaptionTextBlockStyle}"
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
@@ -760,13 +729,13 @@
                                 RightTapped="SubFolderItem_RightTapped">
                                 <FlyoutBase.AttachedFlyout>
                                     <MenuFlyout Placement="Bottom" Opening="SubFolderMenuFlyout_Opening">
-                                                <MenuFlyoutItem Tag="PinFolder" Text="Pin Folder" Icon="Pin" Click="PinSubFolder_Click"/>
-                                                <MenuFlyoutItem Tag="UnpinFolder" Text="Unpin Folder" Icon="UnPin" Click="UnpinSubFolder_Click"/>
+                                                <MenuFlyoutItem x:Uid="MainPage_PinSubFolder" Tag="PinFolder" Text="固定文件夹" Icon="Pin" Click="PinSubFolder_Click"/>
+                                                <MenuFlyoutItem x:Uid="MainPage_UnpinSubFolder" Tag="UnpinFolder" Text="取消固定文件夹" Icon="UnPin" Click="UnpinSubFolder_Click"/>
                                         <MenuFlyoutSeparator Tag="PinSectionSeparator"/>
-                                                <MenuFlyoutItem Tag="RefreshExternalDevices" Text="Refresh Devices" Icon="Refresh" Click="RefreshExternalDevices_Click"/>
+                                                <MenuFlyoutItem x:Uid="MainPage_RefreshSubFolderDevices" Tag="RefreshExternalDevices" Text="刷新外接设备" Icon="Refresh" Click="RefreshExternalDevices_Click"/>
                                         <MenuFlyoutSeparator Tag="ExternalDeviceSectionSeparator"/>
-                                                <MenuFlyoutItem Text="Add to Preview" Icon="Add" Click="AddSubFolderToPreview_Click"/>
-                                                <MenuFlyoutItem Text="Open in Explorer" Icon="OpenFile" Click="OpenSubFolderInExplorer_Click"/>
+                                                <MenuFlyoutItem x:Uid="MainPage_AddSubFolderToPreview" Text="添加到预览" Icon="Add" Click="AddSubFolderToPreview_Click"/>
+                                                <MenuFlyoutItem x:Uid="MainPage_OpenSubFolderInExplorer" Text="在资源管理器中打开" Icon="OpenFile" Click="OpenSubFolderInExplorer_Click"/>
                                     </MenuFlyout>
                                 </FlyoutBase.AttachedFlyout>
                                     <Grid ColumnSpacing="8">
@@ -867,7 +836,7 @@
                         RightTapped="ImageItem_RightTapped">
                         <FlyoutBase.AttachedFlyout>
                             <MenuFlyout Placement="Bottom">
-                                <MenuFlyoutItem Text="Open in Explorer" Icon="OpenFile" Click="OpenImageInExplorer_Click"/>
+                                <MenuFlyoutItem x:Uid="MainPage_OpenImageInExplorer" Text="在资源管理器中打开" Icon="OpenFile" Click="OpenImageInExplorer_Click"/>
                             </MenuFlyout>
                         </FlyoutBase.AttachedFlyout>
                         <Border
@@ -924,7 +893,7 @@
                             Click="BurstToggleButton_Click"
                             Visibility="{x:Bind IsBurstFoldButtonVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                             <StackPanel Orientation="Horizontal" Spacing="4" Opacity=".8">
-                                <ContentControl Content="fold" ContentTemplate="{StaticResource FoldIconTemplate}" Foreground="{Binding Foreground, RelativeSource={RelativeSource Mode=TemplatedParent}}"/>
+                                <ContentControl Content="{ThemeResource TextFillColorPrimaryBrush}" ContentTemplate="{StaticResource BurstIconTemplate}"/>
                                 <TextBlock
                                     Text="{x:Bind BurstBadgeText, Mode=OneWay}"
                                     FontSize="12"
@@ -942,7 +911,7 @@
                             CornerRadius="6"
                             Visibility="{x:Bind IsBurstInlineBadgeVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                             <StackPanel Orientation="Horizontal" Spacing="4" Opacity=".8">
-                                <ContentControl Content="fold" ContentTemplate="{StaticResource FoldIconTemplate}" Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                                <ContentControl Content="{ThemeResource TextFillColorPrimaryBrush}" ContentTemplate="{StaticResource BurstIconTemplate}"/>
                                 <TextBlock
                                     Text="{x:Bind BurstOrdinalText, Mode=OneWay}"
                                     FontSize="12"
@@ -1145,3 +1114,4 @@
             Grid.RowSpan="3"/>
     </Grid>
 </Page>
+

@@ -2,6 +2,7 @@
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
+using PhotoView.Helpers;
 using PhotoView.ViewModels;
 using System;
 
@@ -154,12 +155,12 @@ public sealed partial class FilterFlyout : UserControl
         if (_filterViewModel == null)
             return;
 
-        _ratingHasButton = CreateRatingModeButton("HasRatingIconTemplate", "有评级", showText: false, _filterViewModel.RatingMode == RatingFilterMode.HasRating);
+        _ratingHasButton = CreateRatingModeButton("HasRatingIconTemplate", "FilterFlyout_HasRating".GetLocalized(), showText: false, _filterViewModel.RatingMode == RatingFilterMode.HasRating);
         _ratingHasButton.Checked += RatingHasButton_Checked;
         _ratingHasButton.Unchecked += RatingHasButton_Unchecked;
         RatingModeButtonsPanel.Children.Add(_ratingHasButton);
 
-        _ratingNoButton = CreateRatingModeButton("NoRatingIconTemplate", "无评级", showText: false, _filterViewModel.RatingMode == RatingFilterMode.NoRating);
+        _ratingNoButton = CreateRatingModeButton("NoRatingIconTemplate", "FilterFlyout_NoRating".GetLocalized(), showText: false, _filterViewModel.RatingMode == RatingFilterMode.NoRating);
         _ratingNoButton.Checked += RatingNoButton_Checked;
         _ratingNoButton.Unchecked += RatingNoButton_Unchecked;
         RatingModeButtonsPanel.Children.Add(_ratingNoButton);
@@ -514,7 +515,7 @@ public sealed partial class FilterFlyout : UserControl
 
         panel.Children.Add(new ContentControl
         {
-            ContentTemplate = (DataTemplate)Resources[iconTemplateKey]
+            ContentTemplate = (DataTemplate)Application.Current.Resources[iconTemplateKey]
         });
 
         if (showText)

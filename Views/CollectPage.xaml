@@ -18,23 +18,8 @@
         <converters:IntToBoolConverter x:Key="IntToBoolConverter"/>
         <converters:NodeTypeToIconConverter x:Key="NodeTypeToIconConverter"/>
         <converters:StringToBrushConverter x:Key="StringToBrushConverter"/>
-
-        <DataTemplate x:Key="FoldIconTemplate">
-            <Viewbox Width="14" Height="14">
-                <Canvas Width="76.47" Height="76.47">
-                    <Path
-                        Fill="{ThemeResource TextFillColorPrimaryBrush}"
-                        Data="m64.01,23.92v27.16c0,2.31-1.87,4.17-4.17,4.17H14.92c-2.31,0-4.17-1.87-4.17-4.17v-1.29h43.63c2.31,0,4.17-1.87,4.17-4.17v-25.88h1.29c2.31,0,4.17,1.87,4.17,4.17Z"/>
-                    <Path
-                        Fill="{ThemeResource TextFillColorPrimaryBrush}"
-                        Data="m72.75,32.66v27.16c0,2.31-1.87,4.17-4.17,4.17H23.66c-2.31,0-4.17-1.87-4.17-4.17v-1.29h43.63c2.31,0,4.17-1.87,4.17-4.17v-25.88h1.29c2.31,0,4.17,1.87,4.17,4.17Z"/>
-                    <Path
-                        Fill="{ThemeResource TextFillColorPrimaryBrush}"
-                        Data="M6.17,11 H51.1 A4.17,4.17 0 0 1 55.27,15.17 V42.34 A4.17,4.17 0 0 1 51.1,46.51 H6.17 A4.17,4.17 0 0 1 2,42.34 V15.17 A4.17,4.17 0 0 1 6.17,11 Z"/>
-                </Canvas>
-            </Viewbox>
-        </DataTemplate>
-
+        <SolidColorBrush x:Key="CollectToggleUncheckedForegroundBrush" Color="{ThemeResource TextFillColorPrimary}"/>
+        <SolidColorBrush x:Key="CollectToggleCheckedForegroundBrush" Color="{ThemeResource TextOnAccentFillColorPrimary}"/>
         <Style x:Key="DualModeToggleStyle" TargetType="ToggleButton">
             <Setter Property="MinWidth" Value="54"/>
             <Setter Property="Padding" Value="12,4"/>
@@ -125,7 +110,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                             <FontIcon Glyph="&#xE74C;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
-                            <TextBlock Text="载入区" Style="{ThemeResource BodyTextBlockStyle}"/>
+                            <TextBlock x:Uid="CollectPage_LoadArea" Text="载入区" Style="{ThemeResource BodyTextBlockStyle}"/>
                         </StackPanel>
                         <InfoBadge
                             Grid.Column="1"
@@ -176,21 +161,21 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <ToggleButton
+                            x:Name="IncludeSubfoldersToggleButton"
                             Grid.Column="0"
                             Padding="6"
                             MinHeight="28"
                             MinWidth="28"
                             VerticalAlignment="Center"
-                            IsChecked="{x:Bind ViewModel.IncludeSubfolders, Mode=TwoWay}">
+                            IsChecked="{x:Bind ViewModel.IncludeSubfolders, Mode=TwoWay}"
+                            Checked="CustomIconToggleButton_CheckedChanged"
+                            Unchecked="CustomIconToggleButton_CheckedChanged">
                             <ToolTipService.ToolTip>
                                 遍历子文件夹
                             </ToolTipService.ToolTip>
-                            <Path
-                                Width="16"
-                                Height="16"
-                                Data="m65.91,41.74c-.02-.21-.05-.41-.08-.62-.05-.36-.1-.72-.16-1.08-.05-.25-.11-.5-.16-.75-.07-.29-.14-.58-.22-.86-.08-.28-.16-.56-.26-.83-.08-.23-.16-.46-.25-.69-.12-.31-.24-.61-.37-.91-.07-.15-.14-.29-.21-.43-.6-1.26-1.33-2.45-2.19-3.53-1.14-1.44-2.49-2.71-4-3.76-.23-.16-.47-.3-.71-.45-.21-.13-.42-.26-.64-.39-.24-.14-.48-.27-.73-.39-.24-.12-.49-.24-.74-.36-.23-.1-.45-.21-.69-.31-.46-.19-.93-.36-1.41-.52-.15-.05-.31-.08-.47-.13-.38-.11-.76-.21-1.15-.29-.19-.04-.39-.08-.59-.12-.38-.07-.76-.13-1.14-.17-.18-.02-.36-.05-.54-.06-.56-.05-1.13-.09-1.7-.09-5.11,0-9.73,2.07-13.08,5.42-1.67,1.67-3.03,3.67-3.96,5.88-.23.55-.44,1.12-.62,1.7-.54,1.74-.83,3.59-.83,5.5,0,.62.03,1.23.09,1.83.03.27.08.54.12.81.05.32.08.64.15.95.07.36.17.71.26,1.07.05.21.1.42.16.62.12.42.27.82.42,1.22.05.13.09.26.14.38.18.45.38.89.6,1.32.03.07.06.14.1.21.24.47.5.92.78,1.36.02.03.03.05.05.08.29.46.61.91.94,1.35,0,0,0,0,.01.01.34.44.7.87,1.07,1.28,1.5,1.63,3.28,2.99,5.28,4,.57.29,1.15.54,1.74.77.16.06.31.12.47.17.36.13.73.25,1.11.35.31.09.62.17.94.24.19.04.39.09.58.12.48.09.96.17,1.45.22.12.01.24.02.36.03.55.05,1.11.08,1.67.08,10.22,0,18.5-8.28,18.5-18.5,0-.59-.03-1.18-.09-1.76Zm-8.01,3.38l-14.78,7.44c-.29.15-.6.21-.9.21-.73,0-1.44-.4-1.79-1.1-.5-.99-.1-2.19.89-2.69l11.31-5.69-11.34-5.95c-.98-.51-1.35-1.72-.84-2.7.51-.98,1.72-1.35,2.7-.84l14.78,7.75c.66.35,1.08,1.04,1.07,1.79,0,.75-.43,1.43-1.1,1.77Z M31.29,56H11.82c-3.76,0-6.82-3.06-6.82-6.82v-27.18h20.01c1.29,0,2.54-.45,3.53-1.28l4.47-3.72h18.18c3.76,0,6.82,3.06,6.82,6.82v2.11c1.46.87,2.81,1.9,4,3.1v-5.2c0-5.97-4.85-10.82-10.82-10.82h-19.18l-4.38-4.38c-1.04-1.04-2.45-1.62-3.92-1.62h-11.88C5.84,7,1,11.84,1,17.82v31.36c0,5.97,4.85,10.82,10.82,10.82h23.57c-1.55-1.14-2.92-2.48-4.1-4ZM5,17.82c0-3.77,3.05-6.82,6.82-6.82h9.59c1.39,0,2.73.52,3.75,1.47l3.24,2.98-1.93,1.45c-.95.72-2.11,1.1-3.31,1.1H5v-.18Z"
-                                Fill="{ThemeResource TextFillColorPrimaryBrush}"
-                                Stretch="Uniform"/>
+                            <ContentControl
+                                Content="{ThemeResource TextFillColorPrimaryBrush}"
+                                ContentTemplate="{StaticResource SubFolderIconTemplate}"/>
                         </ToggleButton>
                         <TextBlock
                             Grid.Column="1"
@@ -220,7 +205,7 @@
                     <Button Click="LoadPreview_Click" HorizontalAlignment="Stretch">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon Glyph="&#xF103;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16" />
-                            <TextBlock Text="载入" Style="{ThemeResource BodyTextBlockStyle}" />
+                            <TextBlock x:Uid="CollectPage_Load" Text="载入" Style="{ThemeResource BodyTextBlockStyle}" />
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -255,12 +240,12 @@
                                     </Grid.ColumnDefinitions>
                                     <FlyoutBase.AttachedFlyout>
                                         <MenuFlyout Placement="Bottom" Opening="FolderTreeMenuFlyout_Opening">
-                                            <MenuFlyoutItem Text="添加到载入区" Icon="Add" Click="AddFolderToPreviewSource_Click"/>
+                                            <MenuFlyoutItem x:Uid="CollectPage_AddToLoadArea" Text="添加到载入区" Icon="Add" Click="AddFolderToPreviewSource_Click"/>
                                             <MenuFlyoutSeparator Tag="PinSectionSeparator"/>
-                                            <MenuFlyoutItem Tag="PinFolder" Text="固定到常用文件夹" Icon="Pin" Click="PinFolder_Click"/>
-                                            <MenuFlyoutItem Tag="UnpinFolder" Text="取消固定" Icon="UnPin" Click="UnpinFolder_Click"/>
+                                            <MenuFlyoutItem x:Uid="CollectPage_PinFolder" Tag="PinFolder" Text="固定到常用文件夹" Icon="Pin" Click="PinFolder_Click"/>
+                                            <MenuFlyoutItem x:Uid="CollectPage_UnpinFolder" Tag="UnpinFolder" Text="取消固定" Icon="UnPin" Click="UnpinFolder_Click"/>
                                             <MenuFlyoutSeparator Tag="ExternalDeviceSectionSeparator"/>
-                                            <MenuFlyoutItem Tag="RefreshExternalDevices" Text="刷新外接设备" Icon="Refresh" Click="RefreshExternalDevices_Click"/>
+                                            <MenuFlyoutItem x:Uid="CollectPage_RefreshDevices" Tag="RefreshExternalDevices" Text="刷新外接设备" Icon="Refresh" Click="RefreshExternalDevices_Click"/>
                                         </MenuFlyout>
                                     </FlyoutBase.AttachedFlyout>
                                     <FontIcon
@@ -383,9 +368,14 @@
 
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Left">
                         <ToggleButton
+                            x:Name="ThumbnailSizeToggleButton"
                             IsChecked="{x:Bind ViewModel.IsThumbnailStripCollapsed, Mode=TwoWay}"
+                            Checked="CustomIconToggleButton_CheckedChanged"
+                            Unchecked="CustomIconToggleButton_CheckedChanged"
                             ToolTipService.ToolTip="折叠缩略图">
-                            <FontIcon Glyph="&#xE75B;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
+                            <ContentControl
+                                Content="{ThemeResource TextFillColorPrimaryBrush}"
+                                ContentTemplate="{StaticResource ThumbnailSizeIconTemplate}"/>
                         </ToggleButton>
                         <ToggleButton
                             x:Name="InfoDrawerToggleButton"
@@ -397,10 +387,14 @@
                             x:Name="DualPageToggleButton"
                             IsChecked="{x:Bind ViewModel.IsDualPageMode, Mode=TwoWay}"
                             Click="DualPageToggleButton_Click"
+                            Checked="CustomIconToggleButton_CheckedChanged"
+                            Unchecked="CustomIconToggleButton_CheckedChanged"
                             ToolTipService.ToolTip="双页浏览">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                <FontIcon Glyph="&#xE14C;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
-                                <TextBlock Text="双页"/>
+                                <ContentControl
+                                    Content="{ThemeResource TextFillColorPrimaryBrush}"
+                                    ContentTemplate="{StaticResource DualPageIconTemplate}"/>
+                                <TextBlock x:Uid="CollectPage_DualPage" Text="双页"/>
                             </StackPanel>
                         </ToggleButton>
                         <Border
@@ -414,14 +408,28 @@
                                 <ToggleButton
                                     x:Name="CompareModeToggleButton"
                                     Style="{StaticResource DualModeToggleStyle}"
-                                    Click="CompareModeToggleButton_Click">
-                                    <TextBlock Text="对照"/>
+                                    Click="CompareModeToggleButton_Click"
+                                    Checked="CustomIconToggleButton_CheckedChanged"
+                                    Unchecked="CustomIconToggleButton_CheckedChanged">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <ContentControl
+                                            Content="{ThemeResource TextFillColorPrimaryBrush}"
+                                            ContentTemplate="{StaticResource CompareIconTemplate}"/>
+                                        <TextBlock x:Uid="CollectPage_Compare" Text="对照"/>
+                                    </StackPanel>
                                 </ToggleButton>
                                 <ToggleButton
                                     x:Name="ContinuousModeToggleButton"
                                     Style="{StaticResource DualModeToggleStyle}"
-                                    Click="ContinuousModeToggleButton_Click">
-                                    <TextBlock Text="连续"/>
+                                    Click="ContinuousModeToggleButton_Click"
+                                    Checked="CustomIconToggleButton_CheckedChanged"
+                                    Unchecked="CustomIconToggleButton_CheckedChanged">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <ContentControl
+                                            Content="{ThemeResource TextFillColorPrimaryBrush}"
+                                            ContentTemplate="{StaticResource ContinuousIconTemplate}"/>
+                                        <TextBlock x:Uid="CollectPage_Continuous" Text="连续"/>
+                                    </StackPanel>
                                 </ToggleButton>
                             </StackPanel>
                         </Border>
@@ -429,29 +437,18 @@
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
                         
-                        <Button Click="FlipPreviewHorizontal_Click" ToolTipService.ToolTip="左右镜像">
-                            <Path
-                                Width="16"
-                                Height="16"
-                                Data="m8.75,34.13V12.54c0-4.09,3.32-7.41,7.41-7.41h48.21c4.08,0,7.41,3.32,7.41,7.41v21.59H8.75Zm59.02-21.59c0-1.88-1.53-3.41-3.41-3.41H16.16c-1.88,0-3.41,1.53-3.41,3.41v17.59h55.02V12.54Z M8.75,68.37v-21.59h63.02v21.59c0,4.09-3.32,7.41-7.41,7.41H16.16c-4.08,0-7.41-3.32-7.41-7.41Zm4-17.59v17.59c0,1.88,1.53,3.41,3.41,3.41h48.21c1.88,0,3.41-1.53,3.41-3.41v-17.59H12.75Z M75.75,38.45h-2.5c-1.1,0-2,.9-2,2s.9,2,2,2h2.5c1.1,0,2-.9,2-2s-.9-2-2-2Z M35.87,38.45h-5.5c-1.1,0-2,.9-2,2.01s.9,1.99,2,1.99h5.5c1.1,0,2-.89,2-1.99s-.9-2.01-2-2.01Z M21.58,38.45h-5.5c-1.1,0-2,.9-2,2.01s.9,1.99,2,1.99h5.5c1.1,0,2-.89,2-1.99s-.9-2.01-2-2.01Z M64.46,38.45h-5.5c-1.1,0-2,.9-2,2.01s.9,1.99,2,1.99h5.5c1.1,0,2-.89,2-1.99s-.9-2.01-2-2.01Z M50.17,38.45h-5.5c-1.11,0-2,.9-2,2.01s.89,1.99,2,1.99h5.5c1.1,0,2-.89,2-1.99s-.9-2.01-2-2.01Z M8.69,39.04c-.36-.36-.86-.59-1.41-.59-.01,0-.03,0-.04,0h-2.46c-1.1,0-2,.9-2,2s.9,2,2,2h2.5c.77,0,1.43-.44,1.77-1.08.14-.27.23-.58.23-.91,0,0,0,0,0,0s0,0,0,0c0-.55-.22-1.05-.59-1.41Z"
-                                Fill="{ThemeResource TextFillColorPrimaryBrush}"
-                                Stretch="Uniform"
-                                RenderTransformOrigin="0.5,0.5">
-                                <Path.RenderTransform>
-                                    <RotateTransform Angle="90"/>
-                                </Path.RenderTransform>
-                            </Path>
+                        <Button x:Name="FlipHorizontalButton" Click="FlipPreviewHorizontal_Click" ToolTipService.ToolTip="左右镜像">
+                            <ContentControl
+                                Content="{ThemeResource TextFillColorPrimaryBrush}"
+                                ContentTemplate="{StaticResource FlipHorizontalIconTemplate}"/>
                         </Button>
                         <Button Click="RotatePreview_Click" ToolTipService.ToolTip="旋转">
                             <FontIcon Glyph="&#xE7AD;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
                         </Button>
-                        <Button Click="FlipPreviewVertical_Click" ToolTipService.ToolTip="上下镜像">
-                            <Path
-                                Width="16"
-                                Height="16"
-                                Data="m8.75,34.13V12.54c0-4.09,3.32-7.41,7.41-7.41h48.21c4.08,0,7.41,3.32,7.41,7.41v21.59H8.75Zm59.02-21.59c0-1.88-1.53-3.41-3.41-3.41H16.16c-1.88,0-3.41,1.53-3.41,3.41v17.59h55.02V12.54Z M8.75,68.37v-21.59h63.02v21.59c0,4.09-3.32,7.41-7.41,7.41H16.16c-4.08,0-7.41-3.32-7.41-7.41Zm4-17.59v17.59c0,1.88,1.53,3.41,3.41,3.41h48.21c1.88,0,3.41-1.53,3.41-3.41v-17.59H12.75Z M75.75,38.45h-2.5c-1.1,0-2,.9-2,2s.9,2,2,2h2.5c1.1,0,2-.9,2-2s-.9-2-2-2Z M35.87,38.45h-5.5c-1.1,0-2,.9-2,2.01s.9,1.99,2,1.99h5.5c1.1,0,2-.89,2-1.99s-.9-2.01-2-2.01Z M21.58,38.45h-5.5c-1.1,0-2,.9-2,2.01s.9,1.99,2,1.99h5.5c1.1,0,2-.89,2-1.99s-.9-2.01-2-2.01Z M64.46,38.45h-5.5c-1.1,0-2,.9-2,2.01s.9,1.99,2,1.99h5.5c1.1,0,2-.89,2-1.99s-.9-2.01-2-2.01Z M50.17,38.45h-5.5c-1.11,0-2,.9-2,2.01s.89,1.99,2,1.99h5.5c1.1,0,2-.89,2-1.99s-.9-2.01-2-2.01Z M8.69,39.04c-.36-.36-.86-.59-1.41-.59-.01,0-.03,0-.04,0h-2.46c-1.1,0-2,.9-2,2s.9,2,2,2h2.5c.77,0,1.43-.44,1.77-1.08.14-.27.23-.58.23-.91,0,0,0,0,0,0s0,0,0,0c0-.55-.22-1.05-.59-1.41Z"
-                                Fill="{ThemeResource TextFillColorPrimaryBrush}"
-                                Stretch="Uniform"/>
+                        <Button x:Name="FlipVerticalButton" Click="FlipPreviewVertical_Click" ToolTipService.ToolTip="上下镜像">
+                            <ContentControl
+                                Content="{ThemeResource TextFillColorPrimaryBrush}"
+                                ContentTemplate="{StaticResource FlipVerticalIconTemplate}"/>
                         </Button>
                     </StackPanel>
 
@@ -726,7 +723,7 @@
                                         CornerRadius="6"
                                         Visibility="{Binding DataContext.IsThumbnailStripCollapsed, ElementName=PreviewThumbnailGridView, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
                                         <StackPanel Orientation="Horizontal" Spacing="4" Opacity=".8">
-                                            <ContentControl Content="fold" ContentTemplate="{StaticResource FoldIconTemplate}"/>
+                                            <ContentControl Content="{ThemeResource TextFillColorPrimaryBrush}" ContentTemplate="{StaticResource BurstIconTemplate}"/>
                                             <TextBlock
                                                 Text="{x:Bind BurstOrdinalText, Mode=OneWay}"
                                                 FontSize="12"
@@ -744,7 +741,7 @@
                                         CornerRadius="6"
                                         Visibility="{Binding DataContext.IsThumbnailStripCollapsed, ElementName=PreviewThumbnailGridView, Converter={StaticResource BooleanToVisibilityConverter}}">
                                         <StackPanel Orientation="Horizontal" Spacing="4" Opacity=".8">
-                                            <ContentControl Content="fold" ContentTemplate="{StaticResource FoldIconTemplate}"/>
+                                            <ContentControl Content="{ThemeResource TextFillColorPrimaryBrush}" ContentTemplate="{StaticResource BurstIconTemplate}"/>
                                             <TextBlock
                                                 Text="{x:Bind BurstOrdinalText, Mode=OneWay}"
                                                 FontSize="12"
@@ -860,3 +857,6 @@
         </Grid>
     </Grid>
 </Page>
+
+
+

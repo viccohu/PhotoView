@@ -9,6 +9,7 @@
                 <ResourceDictionary Source="ms-appx:///Styles/FontSizes.xaml" />
                 <ResourceDictionary Source="ms-appx:///Styles/Thickness.xaml" />
                 <ResourceDictionary Source="ms-appx:///Styles/TextBlock.xaml" />
+                <ResourceDictionary Source="ms-appx:///Assets/IconPath.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Default">
