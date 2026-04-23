@@ -9,6 +9,7 @@ internal static class Program
             FilterViewModelChecks.Run();
             GroupRatingSyncHelperChecks.Run();
             ImageFormatRegistryChecks.Run();
+            MainPageLocalizationChecks.Run();
             PreviewSourceChecks.Run();
             PreviewWorkspaceServiceChecks.Run();
             ThumbnailRangeHelperChecks.Run();

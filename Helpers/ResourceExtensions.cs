@@ -8,14 +8,27 @@ public static class ResourceExtensions
 
     public static string GetLocalized(this string resourceKey)
     {
+        foreach (var candidate in ResourceKeyHelper.GetLookupCandidates(resourceKey))
+        {
+            var value = TryGetString(candidate);
+            if (!string.IsNullOrEmpty(value))
+            {
+                return value;
+            }
+        }
+
+        return resourceKey;
+    }
+
+    private static string TryGetString(string resourceKey)
+    {
         try
         {
-            var value = _resourceLoader.GetString(resourceKey);
-            return string.IsNullOrEmpty(value) ? resourceKey : value;
+            return _resourceLoader.GetString(resourceKey);
         }
         catch
         {
-            return resourceKey;
+            return string.Empty;
         }
     }
 }

@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using PhotoView.Helpers;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
@@ -92,6 +93,11 @@ public partial class FolderNode : ObservableObject
         if (ListIcon != null || _isListIconLoading || Folder == null)
             return;
 
+        if (!RuntimeHelper.IsMSIX)
+        {
+            return;
+        }
+
         _isListIconLoading = true;
         try
         {
@@ -115,7 +121,7 @@ public partial class FolderNode : ObservableObject
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[FolderNode] Load folder icon failed for {Name}: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[FolderNode] Load folder icon failed for {Name} ({FullPath ?? "<no path>"}): {ex}");
         }
         finally
         {
