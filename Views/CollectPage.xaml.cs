@@ -48,6 +48,7 @@ public sealed partial class CollectPage : Page
     private bool _isUpdatingZoomSlider;
     private bool _isLoadDrawerPinnedCollapsed;
     private bool _isLoadDrawerTemporarilyExpanded;
+    private bool _preserveLoadProgressPanelDuringCollapse;
     private bool _suppressNextThumbnailDragStart;
     private Button? _shellDeleteButton;
     private SplitButton? _shellFilterSplitButton;
@@ -83,6 +84,7 @@ public sealed partial class CollectPage : Page
         NavigationCacheMode = NavigationCacheMode.Disabled;
         InitializeComponent();
         DataContext = ViewModel;
+        ApplyLocalizedToolTips();
         ActualThemeChanged += CollectPage_ActualThemeChanged;
         UpdateInfoDrawerState(animate: false);
         UpdateZoomValueButtonContent(100d, isFitZoomActive: false);
@@ -212,7 +214,7 @@ public sealed partial class CollectPage : Page
         var result = await ViewModel.LoadPreviewAsync();
         if (result.AutoCollapseDrawer)
         {
-            CollapseLoadDrawer();
+            CollapseLoadDrawer(preserveLoadProgressPanel: result.StartedLoading);
         }
         QueueVisibleThumbnailLoad("load-preview");
     }
@@ -332,6 +334,9 @@ public sealed partial class CollectPage : Page
 
     private void PreviewThumbnailGridView_SelectionChanged(object sender, Microsoft.UI.Xaml.Controls.SelectionChangedEventArgs e)
     {
+        if (_isUpdatingSelectedImageFromPreview)
+            return;
+
         if (PreviewThumbnailGridView.SelectedItem is ImageFileInfo imageInfo)
         {
             UpdateSelectedImage(imageInfo, syncThumbnailSelection: false);
@@ -370,8 +375,23 @@ public sealed partial class CollectPage : Page
         e.Data.Properties.ApplicationName = "PhotoView";
         e.Data.Properties.Title = storageFiles.Count == 1
             ? storageFiles[0].Name
-            : $"{storageFiles.Count} files";
+            : string.Format("Common_FileCount".GetLocalized(), storageFiles.Count);
         e.Data.SetStorageItems(storageFiles);
+    }
+
+    private void ApplyLocalizedToolTips()
+    {
+        ToolTipService.SetToolTip(IncludeSubfoldersToggleButton, "CollectPage_Tooltip_IncludeSubfolders".GetLocalized());
+        ToolTipService.SetToolTip(ThumbnailSizeToggleButton, "CollectPage_Tooltip_CollapseThumbnails".GetLocalized());
+        ToolTipService.SetToolTip(InfoDrawerToggleButton, "CollectPage_Tooltip_ImageInfo".GetLocalized());
+        ToolTipService.SetToolTip(DualPageToggleButton, "CollectPage_Tooltip_DualPage".GetLocalized());
+        ToolTipService.SetToolTip(CompareModeToggleButton, "CollectPage_Tooltip_Compare".GetLocalized());
+        ToolTipService.SetToolTip(ContinuousModeToggleButton, "CollectPage_Tooltip_Continuous".GetLocalized());
+        ToolTipService.SetToolTip(FlipHorizontalButton, "CollectPage_Tooltip_FlipHorizontal".GetLocalized());
+        ToolTipService.SetToolTip(RotatePreviewButton, "CollectPage_Tooltip_Rotate".GetLocalized());
+        ToolTipService.SetToolTip(FlipVerticalButton, "CollectPage_Tooltip_FlipVertical".GetLocalized());
+        ToolTipService.SetToolTip(ZoomOutButton, "CollectPage_Tooltip_ZoomOut".GetLocalized());
+        ToolTipService.SetToolTip(ZoomInButton, "CollectPage_Tooltip_ZoomIn".GetLocalized());
     }
 
     private IEnumerable<ImageFileInfo> GetDragImagesFromItems(IList<object> dragItems)
@@ -467,6 +487,10 @@ public sealed partial class CollectPage : Page
         {
             UpdatePreviewHostVisuals();
             SyncZoomControlsFromActiveCanvas();
+        }
+        else if (e.PropertyName == nameof(CollectViewModel.IsLoading) && !_preserveLoadProgressPanelDuringCollapse)
+        {
+            SyncLoadProgressPanelVisibility();
         }
     }
 
@@ -915,8 +939,14 @@ public sealed partial class CollectPage : Page
 
     private bool IsLoadDrawerExpanded => !_isLoadDrawerPinnedCollapsed || _isLoadDrawerTemporarilyExpanded;
 
-    private void CollapseLoadDrawer()
+    private void CollapseLoadDrawer(bool preserveLoadProgressPanel = false)
     {
+        if (preserveLoadProgressPanel)
+        {
+            _preserveLoadProgressPanelDuringCollapse = true;
+            LoadProgressPanel.Visibility = Visibility.Visible;
+        }
+
         _isLoadDrawerPinnedCollapsed = true;
         _isLoadDrawerTemporarilyExpanded = false;
         UpdateLoadDrawerState();
@@ -930,6 +960,8 @@ public sealed partial class CollectPage : Page
 
         if (isExpanded)
         {
+            _preserveLoadProgressPanelDuringCollapse = false;
+            SyncLoadProgressPanelVisibility();
             SetLoadDrawerContentVisibility(Visibility.Visible);
         }
 
@@ -941,6 +973,7 @@ public sealed partial class CollectPage : Page
             if (!isExpanded)
             {
                 SetLoadDrawerContentVisibility(Visibility.Collapsed);
+                FinishLoadDrawerCollapsePresentation();
             }
             return;
         }
@@ -967,6 +1000,7 @@ public sealed partial class CollectPage : Page
             if (!IsLoadDrawerExpanded)
             {
                 SetLoadDrawerContentVisibility(Visibility.Collapsed);
+                FinishLoadDrawerCollapsePresentation();
             }
             return;
         }
@@ -1014,6 +1048,7 @@ public sealed partial class CollectPage : Page
             if (!IsLoadDrawerExpanded)
             {
                 SetLoadDrawerContentVisibility(Visibility.Collapsed);
+                FinishLoadDrawerCollapsePresentation();
             }
             _loadDrawerStoryboard = null;
         };
@@ -1033,6 +1068,20 @@ public sealed partial class CollectPage : Page
     {
         LoadDrawerHeader.Visibility = visibility;
         LoadDrawerTree.Visibility = visibility;
+    }
+
+    private void FinishLoadDrawerCollapsePresentation()
+    {
+        if (!_preserveLoadProgressPanelDuringCollapse)
+            return;
+
+        _preserveLoadProgressPanelDuringCollapse = false;
+        SyncLoadProgressPanelVisibility();
+    }
+
+    private void SyncLoadProgressPanelVisibility()
+    {
+        LoadProgressPanel.Visibility = ViewModel.IsLoading ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void UpdateInfoDrawerState(bool animate = true)
@@ -2014,6 +2063,9 @@ public sealed partial class CollectPage : Page
         if (ViewModel.Images.Count == 0)
             return;
 
+        if (TryMoveWithinSelectedImages(delta))
+            return;
+
         if (!ViewModel.IsDualPageMode)
         {
             var currentIndex = ViewModel.SelectedImage != null
@@ -2054,6 +2106,90 @@ public sealed partial class CollectPage : Page
         UpdateSelectedImage(compareNextImage, syncThumbnailSelection: true);
         UpdatePreviewHostVisuals();
         SyncZoomControlsFromActiveCanvas();
+    }
+
+    private bool TryMoveWithinSelectedImages(int delta)
+    {
+        var selectedImages = GetOrderedSelectedThumbnailImages();
+        if (selectedImages.Count <= 1)
+            return false;
+
+        var currentImage = GetFocusedPreviewImage() ?? ViewModel.SelectedImage;
+        var currentIndex = currentImage != null
+            ? selectedImages.IndexOf(currentImage)
+            : -1;
+        if (currentIndex < 0)
+        {
+            currentIndex = delta > 0 ? -1 : selectedImages.Count;
+        }
+
+        var nextIndex = Math.Clamp(currentIndex + delta, 0, selectedImages.Count - 1);
+        var nextImage = selectedImages[nextIndex];
+        ApplyPreviewSelectionWithinMultiSelect(nextImage, selectedImages);
+        return true;
+    }
+
+    private List<ImageFileInfo> GetOrderedSelectedThumbnailImages()
+    {
+        var selectedSet = PreviewThumbnailGridView.SelectedItems
+            .OfType<ImageFileInfo>()
+            .ToHashSet();
+
+        if (selectedSet.Count == 0)
+            return new List<ImageFileInfo>();
+
+        return ViewModel.Images
+            .Where(selectedSet.Contains)
+            .ToList();
+    }
+
+    private void ApplyPreviewSelectionWithinMultiSelect(ImageFileInfo image, IReadOnlyList<ImageFileInfo> selectedImages)
+    {
+        if (ViewModel.IsDualPageMode && ViewModel.DualPageMode == DualPageMode.Compare)
+        {
+            if (ViewModel.FocusedPageSlot == PreviewPageSlot.Left)
+            {
+                ViewModel.LeftPageImage = image;
+            }
+            else
+            {
+                ViewModel.RightPageImage = image;
+            }
+        }
+
+        _isUpdatingSelectedImageFromPreview = true;
+        ViewModel.SelectedImage = image;
+        RestoreThumbnailSelection(selectedImages);
+        PreviewThumbnailGridView.ScrollIntoView(image, ScrollIntoViewAlignment.Default);
+        _isUpdatingSelectedImageFromPreview = false;
+        RefreshDualPageLayout(forceRebuild: false);
+        UpdateSelectedImageUi();
+        UpdatePreviewHostVisuals();
+        SyncZoomControlsFromActiveCanvas();
+    }
+
+    private void RestoreThumbnailSelection(IReadOnlyList<ImageFileInfo> selectedImages)
+    {
+        var selectedSet = selectedImages.ToHashSet();
+        var currentSelection = PreviewThumbnailGridView.SelectedItems
+            .OfType<ImageFileInfo>()
+            .ToList();
+
+        foreach (var image in currentSelection)
+        {
+            if (!selectedSet.Contains(image))
+            {
+                PreviewThumbnailGridView.SelectedItems.Remove(image);
+            }
+        }
+
+        foreach (var image in selectedImages)
+        {
+            if (!PreviewThumbnailGridView.SelectedItems.Contains(image))
+            {
+                PreviewThumbnailGridView.SelectedItems.Add(image);
+            }
+        }
     }
 
     private ImageFileInfo? GetClampedAdjacentImage(ImageFileInfo image, int delta)

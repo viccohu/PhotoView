@@ -118,7 +118,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     private bool _isLoadProgressIndeterminate;
 
     [ObservableProperty]
-    private string _statusText = "添加最多 5 个文件夹后载入";
+    private string _statusText = string.Format("CollectPage_Status_AddUpToFolders".GetLocalized(), PreviewWorkspaceService.MaxSourceCount);
 
     [ObservableProperty]
     private ImageFileInfo? _selectedImage;
@@ -180,7 +180,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         var added = _workspaceService.AddSource(path);
         if (!added)
         {
-            StatusText = $"最多只能放入 {MaxSourceCount} 个文件夹";
+            StatusText = string.Format("CollectPage_Status_MaxSources".GetLocalized(), MaxSourceCount);
         }
         return added;
     }
@@ -252,7 +252,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
             ClearBurstGroups();
             UpdateFilteredPhotoCount();
             _loadedSourcePaths.Clear();
-            StatusText = "添加文件夹后载入";
+            StatusText = "CollectPage_Status_AddFolder".GetLocalized();
             return new LoadPreviewResult(false, false, false, false);
         }
 
@@ -266,7 +266,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
 
         if (pathsToLoad.Length == 0)
         {
-            StatusText = "当前预览列表已是最新";
+            StatusText = "CollectPage_Status_UpToDate".GetLocalized();
             return new LoadPreviewResult(false, false, false, false);
         }
 
@@ -280,7 +280,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         IsLoading = true;
         IsLoadProgressIndeterminate = true;
         LoadProgressValue = 10d;
-        StatusText = canAppend ? "正在追加载入..." : "正在载入...";
+        StatusText = (canAppend ? "CollectPage_Status_Appending" : "CollectPage_Status_Loading").GetLocalized();
 
         if (!canAppend)
         {
@@ -313,22 +313,22 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
             _loadedIncludeSubfolders = IncludeSubfolders;
             SelectedImage ??= Images.FirstOrDefault();
             UpdateLoadProgress(100d, isIndeterminate: false);
-            StatusText = $"已载入 {_allImages.Count} 张图片";
+            StatusText = string.Format("CollectPage_Status_LoadedImages".GetLocalized(), _allImages.Count);
             if (loadedCount == 0 && _allImages.Count == 0)
             {
-                StatusText = "没有找到可预览图片";
+                StatusText = "CollectPage_Status_NoPreviewImages".GetLocalized();
             }
 
             return new LoadPreviewResult(true, true, loadedCount > 0, true);
         }
         catch (OperationCanceledException)
         {
-            StatusText = "载入已取消";
+            StatusText = "CollectPage_Status_Canceled".GetLocalized();
             return new LoadPreviewResult(true, false, false, false);
         }
         catch (Exception ex)
         {
-            StatusText = $"载入失败: {ex.Message}";
+            StatusText = string.Format("CollectPage_Status_Failed".GetLocalized(), ex.Message);
             System.Diagnostics.Debug.WriteLine($"[CollectViewModel] LoadPreviewAsync failed: {ex}");
             return new LoadPreviewResult(true, false, false, false);
         }
@@ -1147,7 +1147,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
             return;
 
         _lastLoadStatusUpdateUtc = now;
-        StatusText = $"已载入 {_allImages.Count} 张图片";
+        StatusText = string.Format("CollectPage_Status_LoadedImages".GetLocalized(), _allImages.Count);
     }
 
     private void UpdateSourceInitializationProgress(int initializedCount, int totalCount)

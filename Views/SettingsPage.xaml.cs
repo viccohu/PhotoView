@@ -2,8 +2,11 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 
+using PhotoView.Helpers;
 using PhotoView.Models;
 using PhotoView.ViewModels;
+
+using System.Diagnostics;
 
 namespace PhotoView.Views;
 
@@ -286,7 +289,7 @@ public sealed partial class SettingsPage : Page
         ViewModel.SetAutoSyncGroupRatingsCommand.Execute(AutoSyncGroupRatingsToggleSwitch.IsOn);
     }
 
-    private void languageComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private async void languageComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!_isInitialized)
             return;
@@ -294,7 +297,59 @@ public sealed partial class SettingsPage : Page
         if (languageComboBox.SelectedItem is ComboBoxItem item &&
             item.Tag?.ToString() is string languageCode)
         {
-            ViewModel.SetLanguageCommand.Execute(languageCode);
+            if (await ViewModel.SetLanguageAsync(languageCode))
+            {
+                await ShowRestartRequiredDialogAsync();
+            }
+        }
+    }
+
+    private async Task ShowRestartRequiredDialogAsync()
+    {
+        var dialog = new ContentDialog
+        {
+            Title = "Settings_LanguageRestart_Title".GetLocalized(),
+            Content = "Settings_LanguageRestart_Content".GetLocalized(),
+            PrimaryButtonText = "Settings_LanguageRestart_RestartNow".GetLocalized(),
+            CloseButtonText = "Settings_LanguageRestart_Later".GetLocalized(),
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot
+        };
+
+        var result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.Primary)
+        {
+            RestartApplication();
+        }
+    }
+
+    private static void RestartApplication()
+    {
+        try
+        {
+            var executablePath = Environment.ProcessPath;
+            if (string.IsNullOrWhiteSpace(executablePath))
+            {
+                executablePath = Process.GetCurrentProcess().MainModule?.FileName;
+            }
+
+            if (!string.IsNullOrWhiteSpace(executablePath))
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = executablePath,
+                    UseShellExecute = true
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[SettingsPage] Restart application failed: {ex}");
+        }
+        finally
+        {
+            AppLifetime.BeginShutdown();
+            App.Current.Exit();
         }
     }
 }

@@ -383,14 +383,19 @@ public class SettingsViewModel : ObservableRecipient
             });
 
         SetLanguageCommand = new RelayCommand<string>(
-            async (param) =>
-            {
-                if (!string.IsNullOrWhiteSpace(param) && CurrentLanguage != param)
-                {
-                    CurrentLanguage = param;
-                    await _languageService.SetLanguageAsync(param);
-                }
-            });
+            async (param) => await SetLanguageAsync(param));
+    }
+
+    public async Task<bool> SetLanguageAsync(string? languageCode)
+    {
+        if (string.IsNullOrWhiteSpace(languageCode) || CurrentLanguage == languageCode)
+        {
+            return false;
+        }
+
+        CurrentLanguage = languageCode;
+        await _languageService.SetLanguageAsync(languageCode);
+        return true;
     }
 
     private static string GetVersionDescription()

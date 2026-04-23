@@ -189,6 +189,18 @@
   <data name="Settings_Language.Description" xml:space="preserve">
     <value>选择应用程序显示语言（需要重启）</value>
   </data>
+  <data name="Settings_LanguageRestart_Title" xml:space="preserve">
+    <value>需要重启</value>
+  </data>
+  <data name="Settings_LanguageRestart_Content" xml:space="preserve">
+    <value>是否立即重启 PhotoView 以应用新的显示语言？</value>
+  </data>
+  <data name="Settings_LanguageRestart_RestartNow" xml:space="preserve">
+    <value>立即重启</value>
+  </data>
+  <data name="Settings_LanguageRestart_Later" xml:space="preserve">
+    <value>稍后</value>
+  </data>
   <data name="Settings_NavigationStyle.Header" xml:space="preserve">
     <value>导航样式</value>
   </data>
@@ -275,6 +287,18 @@
   </data>
   <data name="Common_Ok" xml:space="preserve">
     <value>确定</value>
+  </data>
+  <data name="Common_Back" xml:space="preserve">
+    <value>返回</value>
+  </data>
+  <data name="Common_Filter" xml:space="preserve">
+    <value>筛选</value>
+  </data>
+  <data name="Common_Refresh" xml:space="preserve">
+    <value>刷新</value>
+  </data>
+  <data name="Common_ThumbnailSize" xml:space="preserve">
+    <value>缩略图大小</value>
   </data>
   <data name="MainPage_Library.Text" xml:space="preserve">
     <value>相册</value>
@@ -411,6 +435,12 @@
   <data name="MainPage_NoDeletableFilesContent" xml:space="preserve">
     <value>没有文件符合当前删除选项。</value>
   </data>
+  <data name="MainPage_Tooltip_AutoExpandBurst" xml:space="preserve">
+    <value>方向键浏览时自动展开连拍组</value>
+  </data>
+  <data name="MainPage_Tooltip_GoUp" xml:space="preserve">
+    <value>返回上一级</value>
+  </data>
   <data name="CollectPage_LoadArea.Text" xml:space="preserve">
     <value>载入区</value>
   </data>
@@ -431,6 +461,66 @@
   </data>
   <data name="CollectPage_Tooltip_IncludeSubfolders" xml:space="preserve">
     <value>遍历子文件夹</value>
+  </data>
+  <data name="CollectPage_Tooltip_CollapseThumbnails" xml:space="preserve">
+    <value>折叠缩略图</value>
+  </data>
+  <data name="CollectPage_Tooltip_ImageInfo" xml:space="preserve">
+    <value>文件信息</value>
+  </data>
+  <data name="CollectPage_Tooltip_DualPage" xml:space="preserve">
+    <value>双页浏览</value>
+  </data>
+  <data name="CollectPage_Tooltip_Compare" xml:space="preserve">
+    <value>对照模式</value>
+  </data>
+  <data name="CollectPage_Tooltip_Continuous" xml:space="preserve">
+    <value>连续模式</value>
+  </data>
+  <data name="CollectPage_Tooltip_FlipHorizontal" xml:space="preserve">
+    <value>左右镜像</value>
+  </data>
+  <data name="CollectPage_Tooltip_Rotate" xml:space="preserve">
+    <value>旋转</value>
+  </data>
+  <data name="CollectPage_Tooltip_FlipVertical" xml:space="preserve">
+    <value>上下镜像</value>
+  </data>
+  <data name="CollectPage_Tooltip_ZoomOut" xml:space="preserve">
+    <value>缩小 10%</value>
+  </data>
+  <data name="CollectPage_Tooltip_ZoomIn" xml:space="preserve">
+    <value>放大 10%</value>
+  </data>
+  <data name="CollectPage_Status_AddUpToFolders" xml:space="preserve">
+    <value>添加最多 {0} 个文件夹后载入</value>
+  </data>
+  <data name="CollectPage_Status_MaxSources" xml:space="preserve">
+    <value>最多只能放入 {0} 个文件夹</value>
+  </data>
+  <data name="CollectPage_Status_AddFolder" xml:space="preserve">
+    <value>添加文件夹后载入</value>
+  </data>
+  <data name="CollectPage_Status_UpToDate" xml:space="preserve">
+    <value>当前预览列表已是最新</value>
+  </data>
+  <data name="CollectPage_Status_Appending" xml:space="preserve">
+    <value>正在追加载入...</value>
+  </data>
+  <data name="CollectPage_Status_Loading" xml:space="preserve">
+    <value>正在载入...</value>
+  </data>
+  <data name="CollectPage_Status_LoadedImages" xml:space="preserve">
+    <value>已载入 {0} 张图片</value>
+  </data>
+  <data name="CollectPage_Status_NoPreviewImages" xml:space="preserve">
+    <value>没有找到可预览图片</value>
+  </data>
+  <data name="CollectPage_Status_Canceled" xml:space="preserve">
+    <value>载入已取消</value>
+  </data>
+  <data name="CollectPage_Status_Failed" xml:space="preserve">
+    <value>载入失败: {0}</value>
   </data>
   <data name="CollectPage_DualPage.Text" xml:space="preserve">
     <value>双页</value>

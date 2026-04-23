@@ -102,6 +102,7 @@ public sealed partial class MainPage : Page
         
         NavigationCacheMode = NavigationCacheMode.Enabled;
         InitializeComponent();
+        ApplyLocalizedToolTips();
         _imageGridPointerWheelHandler = ImageGridView_PointerWheelChanged;
         _imageGridKeyDownHandler = ImageGridView_KeyDown;
         FolderTreeView.DataContext = ViewModel;
@@ -135,6 +136,13 @@ public sealed partial class MainPage : Page
         {
             _ = TryRestoreLastFolderAsync();
         }
+    }
+
+    private void ApplyLocalizedToolTips()
+    {
+        ToolTipService.SetToolTip(BackButton, "Common_Back".GetLocalized());
+        ToolTipService.SetToolTip(UpButton, "MainPage_Tooltip_GoUp".GetLocalized());
+        ToolTipService.SetToolTip(RefreshButton, "Common_Refresh".GetLocalized());
     }
 
     private void MainPage_Loaded(object sender, RoutedEventArgs e)

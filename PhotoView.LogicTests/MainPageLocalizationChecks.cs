@@ -55,9 +55,9 @@ internal static class MainPageLocalizationChecks
     {
         var candidates = ResourceKeyHelper.GetLookupCandidates("MainPage_SizeSmall.Text").ToArray();
 
-        TestAssert.Equal(2, candidates.Length, "Property resource keys should produce original and PRI path candidates.");
-        TestAssert.Equal("MainPage_SizeSmall.Text", candidates[0], "The original resource key should be tried first.");
-        TestAssert.Equal("MainPage_SizeSmall/Text", candidates[1], "The PRI path candidate should replace dots with slashes.");
+        TestAssert.Equal(2, candidates.Length, "Property resource keys should produce PRI path and original candidates.");
+        TestAssert.Equal("MainPage_SizeSmall/Text", candidates[0], "The PRI path candidate should be tried first.");
+        TestAssert.Equal("MainPage_SizeSmall.Text", candidates[1], "The original resource key should remain as a fallback.");
     }
 
     private static void AssertKeysExistInAllResourceDictionaries(string root, IReadOnlyCollection<string> expectedKeys, string scenario)
@@ -93,6 +93,7 @@ internal static class MainPageLocalizationChecks
         return elementName switch
         {
             "MenuFlyoutItem" => "Text",
+            "Run" => "Text",
             "TextBlock" => "Text",
             _ => throw new InvalidOperationException($"MainPage x:Uid element '{elementName}' needs an explicit localization property mapping.")
         };

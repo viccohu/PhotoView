@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
+using PhotoView.Contracts.Services;
 using PhotoView.Helpers;
 using PhotoView.Models;
 
@@ -24,11 +25,11 @@ public sealed partial class MainPage
             VerticalAlignment = VerticalAlignment.Center
         };
 
-        var exportButton = CreateToolbarButton("\uE72D", "Export");
+        var exportButton = CreateToolbarButton("\uE72D", "Common_Export".GetLocalized());
         exportButton.Click += ExportButton_Click;
         toolbar.Children.Add(exportButton);
 
-        _shellDeleteButton = CreateToolbarButton("\uE74D", "Delete");
+        _shellDeleteButton = CreateToolbarButton("\uE74D", "Common_Delete".GetLocalized());
         _shellDeleteButton.Click += DeleteButton_Click;
         toolbar.Children.Add(_shellDeleteButton);
 
@@ -42,6 +43,7 @@ public sealed partial class MainPage
             out _shellFilterActiveIndicator);
         ApplyToolbarButtonChrome(_shellFilterSplitButton);
         _shellFilterSplitButton.Click += FilterSplitButton_Click;
+        ToolTipService.SetToolTip(_shellFilterSplitButton, "Common_Filter".GetLocalized());
         toolbar.Children.Add(_shellFilterSplitButton);
 
         _shellAutoExpandBurstToggleButton = new ToggleButton
@@ -49,13 +51,13 @@ public sealed partial class MainPage
             Padding = new Thickness(8),
             IsChecked = _settingsService.AutoExpandBurstOnDirectionalNavigation,
         };
-        _shellAutoExpandBurstToggleButton.Content = CreateToolbarActiveIndicatorContent(
-            CreateToolbarFoldIcon(),
-            out _shellAutoExpandBurstActiveIndicator);
         ApplyToolbarButtonChrome(_shellAutoExpandBurstToggleButton);
         ApplyToolbarToggleButtonCheckedChrome(_shellAutoExpandBurstToggleButton);
+        _shellAutoExpandBurstToggleButton.Content = CreateToolbarActiveIndicatorContent(
+            CreateToolbarFoldIcon(GetToolbarTemplateIconBrush()),
+            out _shellAutoExpandBurstActiveIndicator);
         UpdateToolbarActiveIndicator(_shellAutoExpandBurstActiveIndicator, _shellAutoExpandBurstToggleButton.IsChecked == true);
-        ToolTipService.SetToolTip(_shellAutoExpandBurstToggleButton, "Auto-expand burst stacks during directional navigation");
+        ToolTipService.SetToolTip(_shellAutoExpandBurstToggleButton, "MainPage_Tooltip_AutoExpandBurst".GetLocalized());
         _shellAutoExpandBurstToggleButton.Checked += AutoExpandBurstToggleButton_CheckedChanged;
         _shellAutoExpandBurstToggleButton.Unchecked += AutoExpandBurstToggleButton_CheckedChanged;
         toolbar.Children.Add(_shellAutoExpandBurstToggleButton);
@@ -67,7 +69,7 @@ public sealed partial class MainPage
             Flyout = CreateThumbnailSizeFlyout()
         };
         ApplyToolbarButtonChrome(sizeButton);
-        ToolTipService.SetToolTip(sizeButton, "Thumbnail size");
+        ToolTipService.SetToolTip(sizeButton, "Common_ThumbnailSize".GetLocalized());
         toolbar.Children.Add(sizeButton);
 
         UpdateShellToolbarState();
@@ -132,6 +134,18 @@ public sealed partial class MainPage
     private static Brush GetToolbarActiveIndicatorBrush()
     {
         return GetThemeBrush("AccentFillColorDefaultBrush", Windows.UI.Color.FromArgb(0xFF, 0x00, 0x78, 0xD4));
+    }
+
+    private static Brush GetToolbarTemplateIconBrush()
+    {
+        var themeSelectorService = App.GetService<IThemeSelectorService>();
+        var isDarkTheme = themeSelectorService.Theme == ElementTheme.Dark ||
+                          (themeSelectorService.Theme == ElementTheme.Default &&
+                           Application.Current.RequestedTheme == ApplicationTheme.Dark);
+
+        return new SolidColorBrush(isDarkTheme
+            ? Microsoft.UI.Colors.White
+            : Microsoft.UI.Colors.Black);
     }
 
     private static Brush GetThemeBrush(string resourceKey, Windows.UI.Color fallbackColor)
@@ -199,12 +213,12 @@ public sealed partial class MainPage
         }
     }
 
-    private FrameworkElement CreateToolbarFoldIcon()
+    private FrameworkElement CreateToolbarFoldIcon(Brush foregroundBrush)
     {
         return Application.Current.Resources["BurstIconTemplate"] is DataTemplate template
             ? new ContentControl
             {
-                Content = GetThemeBrush("TextFillColorPrimaryBrush", Windows.UI.Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF)),
+                Content = foregroundBrush,
                 ContentTemplate = template
             }
             : CreateToolbarIcon("\uE8B9");

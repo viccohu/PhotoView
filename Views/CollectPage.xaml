@@ -170,9 +170,6 @@
                             IsChecked="{x:Bind ViewModel.IncludeSubfolders, Mode=TwoWay}"
                             Checked="CustomIconToggleButton_CheckedChanged"
                             Unchecked="CustomIconToggleButton_CheckedChanged">
-                            <ToolTipService.ToolTip>
-                                遍历子文件夹
-                            </ToolTipService.ToolTip>
                             <ContentControl
                                 Content="{ThemeResource TextFillColorPrimaryBrush}"
                                 ContentTemplate="{StaticResource SubFolderIconTemplate}"/>
@@ -187,6 +184,7 @@
                     </Grid>
 
                     <StackPanel
+                        x:Name="LoadProgressPanel"
                         Spacing="4"
                         Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <ProgressBar
@@ -371,16 +369,14 @@
                             x:Name="ThumbnailSizeToggleButton"
                             IsChecked="{x:Bind ViewModel.IsThumbnailStripCollapsed, Mode=TwoWay}"
                             Checked="CustomIconToggleButton_CheckedChanged"
-                            Unchecked="CustomIconToggleButton_CheckedChanged"
-                            ToolTipService.ToolTip="折叠缩略图">
+                            Unchecked="CustomIconToggleButton_CheckedChanged">
                             <ContentControl
                                 Content="{ThemeResource TextFillColorPrimaryBrush}"
                                 ContentTemplate="{StaticResource ThumbnailSizeIconTemplate}"/>
                         </ToggleButton>
                         <ToggleButton
                             x:Name="InfoDrawerToggleButton"
-                            IsChecked="{x:Bind ViewModel.IsInfoDrawerOpen, Mode=TwoWay}"
-                            ToolTipService.ToolTip="文件信息">
+                            IsChecked="{x:Bind ViewModel.IsInfoDrawerOpen, Mode=TwoWay}">
                             <FontIcon Glyph="&#xE946;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
                         </ToggleButton>
                         <ToggleButton
@@ -388,8 +384,7 @@
                             IsChecked="{x:Bind ViewModel.IsDualPageMode, Mode=TwoWay}"
                             Click="DualPageToggleButton_Click"
                             Checked="CustomIconToggleButton_CheckedChanged"
-                            Unchecked="CustomIconToggleButton_CheckedChanged"
-                            ToolTipService.ToolTip="双页浏览">
+                            Unchecked="CustomIconToggleButton_CheckedChanged">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <ContentControl
                                     Content="{ThemeResource TextFillColorPrimaryBrush}"
@@ -437,15 +432,15 @@
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
                         
-                        <Button x:Name="FlipHorizontalButton" Click="FlipPreviewHorizontal_Click" ToolTipService.ToolTip="左右镜像">
+                        <Button x:Name="FlipHorizontalButton" Click="FlipPreviewHorizontal_Click">
                             <ContentControl
                                 Content="{ThemeResource TextFillColorPrimaryBrush}"
                                 ContentTemplate="{StaticResource FlipHorizontalIconTemplate}"/>
                         </Button>
-                        <Button Click="RotatePreview_Click" ToolTipService.ToolTip="旋转">
+                        <Button x:Name="RotatePreviewButton" Click="RotatePreview_Click">
                             <FontIcon Glyph="&#xE7AD;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
                         </Button>
-                        <Button x:Name="FlipVerticalButton" Click="FlipPreviewVertical_Click" ToolTipService.ToolTip="上下镜像">
+                        <Button x:Name="FlipVerticalButton" Click="FlipPreviewVertical_Click">
                             <ContentControl
                                 Content="{ThemeResource TextFillColorPrimaryBrush}"
                                 ContentTemplate="{StaticResource FlipVerticalIconTemplate}"/>
@@ -471,7 +466,7 @@
                             Height="28"
                             Padding="0"
                             Click="ZoomOutButton_Click"
-                            ToolTipService.ToolTip="缩小 10%">
+                            x:Name="ZoomOutButton">
                             <FontIcon Glyph="&#xE71F;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="14"/>
                         </Button>
 
@@ -489,7 +484,7 @@
                             Height="28"
                             Padding="0"
                             Click="ZoomInButton_Click"
-                            ToolTipService.ToolTip="放大 10%">
+                            x:Name="ZoomInButton">
                             <FontIcon Glyph="&#xE8A3;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="14"/>
                         </Button>
                     </Grid>
