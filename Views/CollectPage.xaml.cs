@@ -60,6 +60,7 @@ public sealed partial class CollectPage : Page
     private bool _isUpdatingSelectedImageFromPreview;
     private bool _isUpdatingDualPageZoom;
     private bool _isSyncingPreviewViewportState;
+    private ImageFileInfo? _secondaryFocusedThumbnail;
     private PointerEventHandler? _previewWheelHandler;
     private PointerEventHandler? _previewPointerPressedHandler;
 
@@ -339,6 +340,8 @@ public sealed partial class CollectPage : Page
         if (_isUpdatingSelectedImageFromPreview)
             return;
 
+        ClearSecondaryThumbnailFocus();
+
         if (PreviewThumbnailGridView.SelectedItem is ImageFileInfo imageInfo)
         {
             UpdateSelectedImage(imageInfo, syncThumbnailSelection: false);
@@ -428,6 +431,27 @@ public sealed partial class CollectPage : Page
     private void PreviewThumbnailItem_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
         _suppressNextThumbnailDragStart = IsWithinRatingControl(e.OriginalSource as DependencyObject);
+
+        if (_suppressNextThumbnailDragStart)
+            return;
+
+        if (sender is not FrameworkElement element || element.Tag is not ImageFileInfo clickedImage)
+            return;
+
+        if (e.GetCurrentPoint(element).Properties.PointerUpdateKind != PointerUpdateKind.LeftButtonPressed)
+            return;
+
+        if (IsRangeSelectionModifierActive())
+            return;
+
+        var selectedImages = GetOrderedSelectedThumbnailImages();
+        if (selectedImages.Count <= 1 || !selectedImages.Contains(clickedImage))
+            return;
+
+        e.Handled = true;
+        UpdateSelectedImage(clickedImage, syncThumbnailSelection: false);
+        RestoreThumbnailSelection(selectedImages);
+        PreviewThumbnailGridView.ScrollIntoView(clickedImage, ScrollIntoViewAlignment.Default);
     }
 
     private static bool IsWithinRatingControl(DependencyObject? source)
@@ -442,6 +466,15 @@ public sealed partial class CollectPage : Page
         }
 
         return false;
+    }
+
+    private static bool IsRangeSelectionModifierActive()
+    {
+        var controlDown = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
+            .HasFlag(CoreVirtualKeyStates.Down);
+        var shiftDown = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift)
+            .HasFlag(CoreVirtualKeyStates.Down);
+        return controlDown || shiftDown;
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -615,6 +648,8 @@ public sealed partial class CollectPage : Page
 
     private void UpdateSelectedImage(ImageFileInfo? image, bool syncThumbnailSelection)
     {
+        ClearSecondaryThumbnailFocus();
+
         if (ReferenceEquals(ViewModel.SelectedImage, image))
         {
             if (syncThumbnailSelection && image != null)
@@ -1915,27 +1950,26 @@ public sealed partial class CollectPage : Page
         if (_isDisposed || _isUnloaded)
             return false;
 
-        if (e.Key == VirtualKey.Space && ViewModel.SelectedImage != null)
+        if (e.Key == VirtualKey.Space)
         {
-            if (ShouldSyncDualPreviewInteractions())
-            {
-                if (ViewModel.LeftPageImage != null)
-                {
-                    LeftPreviewCanvas.ToggleOriginalOrFitZoom();
-                }
+            var selectedImages = PreviewThumbnailGridView.SelectedItems
+                .OfType<ImageFileInfo>()
+                .ToList();
 
-                if (ViewModel.RightPageImage != null)
-                {
-                    RightPreviewCanvas.ToggleOriginalOrFitZoom();
-                }
-            }
-            else
+            if (selectedImages.Count > 1)
             {
-                GetActivePreviewCanvas().ToggleOriginalOrFitZoom();
+                var retainedImage = ViewModel.SelectedImage
+                    ?? PreviewThumbnailGridView.SelectedItem as ImageFileInfo
+                    ?? selectedImages[0];
+
+                PreviewThumbnailGridView.SelectedItems.Clear();
+                PreviewThumbnailGridView.SelectedItem = retainedImage;
+                UpdateSelectedImage(retainedImage, syncThumbnailSelection: false);
+                PreviewThumbnailGridView.ScrollIntoView(retainedImage, ScrollIntoViewAlignment.Default);
+                return true;
             }
 
-            SyncZoomControlsFromActiveCanvas();
-            return true;
+            return false;
         }
         else if (e.Key == VirtualKey.Escape && ViewModel.SelectedImage != null)
         {
@@ -2067,6 +2101,8 @@ public sealed partial class CollectPage : Page
         if (ViewModel.Images.Count == 0)
             return;
 
+        ClearSecondaryThumbnailFocus();
+
         if (TryMoveWithinSelectedImages(delta))
             return;
 
@@ -2163,6 +2199,7 @@ public sealed partial class CollectPage : Page
 
         _isUpdatingSelectedImageFromPreview = true;
         ViewModel.SelectedImage = image;
+        SetSecondaryThumbnailFocus(image);
         RestoreThumbnailSelection(selectedImages);
         PreviewThumbnailGridView.ScrollIntoView(image, ScrollIntoViewAlignment.Default);
         _isUpdatingSelectedImageFromPreview = false;
@@ -2194,6 +2231,40 @@ public sealed partial class CollectPage : Page
                 PreviewThumbnailGridView.SelectedItems.Add(image);
             }
         }
+    }
+
+    private void SetSecondaryThumbnailFocus(ImageFileInfo? image)
+    {
+        if (ReferenceEquals(_secondaryFocusedThumbnail, image))
+        {
+            if (image != null && !image.IsSecondaryFocused)
+            {
+                image.IsSecondaryFocused = true;
+            }
+
+            return;
+        }
+
+        if (_secondaryFocusedThumbnail != null)
+        {
+            _secondaryFocusedThumbnail.IsSecondaryFocused = false;
+        }
+
+        _secondaryFocusedThumbnail = image;
+
+        if (_secondaryFocusedThumbnail != null)
+        {
+            _secondaryFocusedThumbnail.IsSecondaryFocused = true;
+        }
+    }
+
+    private void ClearSecondaryThumbnailFocus()
+    {
+        if (_secondaryFocusedThumbnail == null)
+            return;
+
+        _secondaryFocusedThumbnail.IsSecondaryFocused = false;
+        _secondaryFocusedThumbnail = null;
     }
 
     private ImageFileInfo? GetClampedAdjacentImage(ImageFileInfo image, int delta)

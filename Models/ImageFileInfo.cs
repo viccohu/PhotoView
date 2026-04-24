@@ -23,6 +23,7 @@ public partial class ImageFileInfo : INotifyPropertyChanged
 {
     private bool _isSelected;
     private bool _isPendingDelete;
+    private bool _isSecondaryFocused;
     private int _width;
     private int _height;
     private string _imageTitle = string.Empty;
@@ -89,6 +90,12 @@ public partial class ImageFileInfo : INotifyPropertyChanged
     {
         get => _isPendingDelete;
         set => SetProperty(ref _isPendingDelete, value);
+    }
+
+    public bool IsSecondaryFocused
+    {
+        get => _isSecondaryFocused;
+        set => SetProperty(ref _isSecondaryFocused, value);
     }
 
     public double DisplayWidth

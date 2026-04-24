@@ -114,10 +114,10 @@ public sealed partial class FilterFlyout : UserControl
             DualFormatInverseFilterButton.IsChecked = _filterViewModel.IsDualFormatInverseFilter;
             ImageSingleOnlyFilterButton.IsEnabled = _filterViewModel.IsImageFilter;
             RawSingleOnlyFilterButton.IsEnabled = _filterViewModel.IsRawFilter;
-            DualFormatInverseFilterButton.IsEnabled = _filterViewModel.IsDualFormatFilter;
             ImageSingleOnlyFilterButton.Opacity = ImageSingleOnlyFilterButton.IsEnabled ? 1d : 0.55d;
             RawSingleOnlyFilterButton.Opacity = RawSingleOnlyFilterButton.IsEnabled ? 1d : 0.55d;
-            DualFormatInverseFilterButton.Opacity = DualFormatInverseFilterButton.IsEnabled ? 1d : 0.55d;
+            DualFormatInverseFilterButton.IsEnabled = true;
+            DualFormatInverseFilterButton.Opacity = 1d;
         }
         finally
         {

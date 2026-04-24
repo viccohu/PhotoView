@@ -79,6 +79,11 @@ public partial class FilterViewModel : ObservableObject
 
     partial void OnIsImageFilterChanged(bool value)
     {
+        if (value)
+        {
+            ClearDualFormatFilters();
+        }
+
         if (!value && IsImageSingleOnlyFilter)
         {
             IsImageSingleOnlyFilter = false;
@@ -89,6 +94,11 @@ public partial class FilterViewModel : ObservableObject
 
     partial void OnIsRawFilterChanged(bool value)
     {
+        if (value)
+        {
+            ClearDualFormatFilters();
+        }
+
         if (!value && IsRawSingleOnlyFilter)
         {
             IsRawSingleOnlyFilter = false;
@@ -121,9 +131,14 @@ public partial class FilterViewModel : ObservableObject
 
     partial void OnIsDualFormatFilterChanged(bool value)
     {
-        if (!value && IsDualFormatInverseFilter)
+        if (value)
         {
-            IsDualFormatInverseFilter = false;
+            ClearSingleFormatFilters();
+            if (IsDualFormatInverseFilter)
+            {
+                IsDualFormatInverseFilter = false;
+                return;
+            }
         }
 
         OnFilterChanged();
@@ -131,13 +146,43 @@ public partial class FilterViewModel : ObservableObject
 
     partial void OnIsDualFormatInverseFilterChanged(bool value)
     {
-        if (value && !IsDualFormatFilter)
+        if (value)
         {
-            IsDualFormatFilter = true;
-            return;
+            ClearSingleFormatFilters();
+            if (IsDualFormatFilter)
+            {
+                IsDualFormatFilter = false;
+                return;
+            }
         }
 
         OnFilterChanged();
+    }
+
+    private void ClearSingleFormatFilters()
+    {
+        if (IsImageFilter)
+        {
+            IsImageFilter = false;
+        }
+
+        if (IsRawFilter)
+        {
+            IsRawFilter = false;
+        }
+    }
+
+    private void ClearDualFormatFilters()
+    {
+        if (IsDualFormatFilter)
+        {
+            IsDualFormatFilter = false;
+        }
+
+        if (IsDualFormatInverseFilter)
+        {
+            IsDualFormatInverseFilter = false;
+        }
     }
 
     partial void OnRatingModeChanged(RatingFilterMode value)

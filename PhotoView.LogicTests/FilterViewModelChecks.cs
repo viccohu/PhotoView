@@ -8,6 +8,9 @@ internal static class FilterViewModelChecks
     {
         IsFilterActive_IsFalseByDefault();
         RatingMode_HasRating_SetsDefaultThreshold();
+        DualFormatFilter_ClearsOtherFormatFilters();
+        DualFormatInverseFilter_ClearsOtherFormatFilters();
+        StandardFormatFilter_ClearsDualFormatFilters();
         Reset_ClearsAllFilterFlags();
     }
 
@@ -31,6 +34,60 @@ internal static class FilterViewModelChecks
         TestAssert.Equal(RatingCondition.GreaterOrEqual, viewModel.RatingCondition, "HasRating should reset condition.");
         TestAssert.Equal(1, viewModel.RatingStars, "HasRating should reset stars to 1.");
         TestAssert.True(viewModel.IsFilterActive, "HasRating should activate filter.");
+    }
+
+    private static void DualFormatFilter_ClearsOtherFormatFilters()
+    {
+        var viewModel = new FilterViewModel
+        {
+            IsImageFilter = true,
+            IsImageSingleOnlyFilter = true,
+            IsRawFilter = true,
+            IsRawSingleOnlyFilter = true
+        };
+
+        viewModel.IsDualFormatFilter = true;
+
+        TestAssert.True(viewModel.IsDualFormatFilter, "Dual format filter should be enabled.");
+        TestAssert.False(viewModel.IsDualFormatInverseFilter, "Dual format inverse filter should be cleared.");
+        TestAssert.False(viewModel.IsImageFilter, "Dual format filter should clear image filter.");
+        TestAssert.False(viewModel.IsImageSingleOnlyFilter, "Dual format filter should clear image solo filter.");
+        TestAssert.False(viewModel.IsRawFilter, "Dual format filter should clear raw filter.");
+        TestAssert.False(viewModel.IsRawSingleOnlyFilter, "Dual format filter should clear raw solo filter.");
+    }
+
+    private static void DualFormatInverseFilter_ClearsOtherFormatFilters()
+    {
+        var viewModel = new FilterViewModel
+        {
+            IsImageFilter = true,
+            IsImageSingleOnlyFilter = true,
+            IsRawFilter = true,
+            IsRawSingleOnlyFilter = true
+        };
+
+        viewModel.IsDualFormatInverseFilter = true;
+
+        TestAssert.True(viewModel.IsDualFormatInverseFilter, "Single format filter should be enabled.");
+        TestAssert.False(viewModel.IsDualFormatFilter, "Single format filter should clear dual format filter.");
+        TestAssert.False(viewModel.IsImageFilter, "Single format filter should clear image filter.");
+        TestAssert.False(viewModel.IsImageSingleOnlyFilter, "Single format filter should clear image solo filter.");
+        TestAssert.False(viewModel.IsRawFilter, "Single format filter should clear raw filter.");
+        TestAssert.False(viewModel.IsRawSingleOnlyFilter, "Single format filter should clear raw solo filter.");
+    }
+
+    private static void StandardFormatFilter_ClearsDualFormatFilters()
+    {
+        var viewModel = new FilterViewModel
+        {
+            IsDualFormatInverseFilter = true
+        };
+
+        viewModel.IsImageFilter = true;
+
+        TestAssert.True(viewModel.IsImageFilter, "Image filter should stay enabled.");
+        TestAssert.False(viewModel.IsDualFormatFilter, "Image filter should clear dual format filter.");
+        TestAssert.False(viewModel.IsDualFormatInverseFilter, "Image filter should clear single format filter.");
     }
 
     private static void Reset_ClearsAllFilterFlags()
