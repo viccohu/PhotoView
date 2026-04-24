@@ -219,9 +219,6 @@ public sealed partial class MainPage
         }
         else if (TryGetDirectionalNavigationDelta(e.Key, out var direction))
         {
-            if (IsKeyboardFocusWithin(FolderTreeView))
-                return false;
-
             if (ShouldProcessDirectionalNavigation(e.KeyStatus.WasKeyDown, direction, DirectionalNavigationScopeGrid))
             {
                 _ = NavigateImageGridDirectionAsync(e.Key, direction);

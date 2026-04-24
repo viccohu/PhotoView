@@ -249,134 +249,32 @@ public sealed partial class MainPage
 
     private void NavigationDrawerToggleButton_Click(object sender, RoutedEventArgs e)
     {
-        _isNavigationDrawerPinnedCollapsed = !_isNavigationDrawerPinnedCollapsed;
-        _isNavigationDrawerTemporarilyExpanded = false;
-        UpdateNavigationDrawerState();
     }
 
     private void NavigationDrawerRoot_PointerEntered(object sender, PointerRoutedEventArgs e)
     {
-        if (!_isNavigationDrawerPinnedCollapsed || _isNavigationDrawerTemporarilyExpanded)
-            return;
-
-        _isNavigationDrawerTemporarilyExpanded = true;
-        UpdateNavigationDrawerState();
     }
 
     private void NavigationDrawerRoot_PointerExited(object sender, PointerRoutedEventArgs e)
     {
-        if (!_isNavigationDrawerPinnedCollapsed || !_isNavigationDrawerTemporarilyExpanded)
-            return;
-
-        _isNavigationDrawerTemporarilyExpanded = false;
-        UpdateNavigationDrawerState();
     }
 
-    private bool IsNavigationDrawerExpanded => !_isNavigationDrawerPinnedCollapsed || _isNavigationDrawerTemporarilyExpanded;
+    private bool IsNavigationDrawerExpanded => true;
 
     private void UpdateNavigationDrawerState(bool animate = true)
     {
-        var isExpanded = IsNavigationDrawerExpanded;
-        var targetWidth = isExpanded ? NavigationDrawerExpandedWidth : NavigationDrawerCollapsedWidth;
-        var targetChevronAngle = isExpanded ? 180d : 0d;
-
-        if (isExpanded)
-        {
-            SetNavigationDrawerContentVisibility(Visibility.Visible);
-        }
-
-        if (!animate)
-        {
-            StopNavigationDrawerAnimation();
-            NavigationDrawerRoot.Width = targetWidth;
-            NavigationDrawerChevronTransform.Angle = targetChevronAngle;
-            if (!isExpanded)
-            {
-                SetNavigationDrawerContentVisibility(Visibility.Collapsed);
-            }
-            return;
-        }
-
-        AnimateNavigationDrawer(targetWidth, targetChevronAngle, isExpanded);
     }
 
     private void AnimateNavigationDrawer(double targetWidth, double targetChevronAngle, bool isExpanding)
     {
-        StopNavigationDrawerAnimation();
-
-        var currentWidth = NavigationDrawerRoot.ActualWidth > 0
-            ? NavigationDrawerRoot.ActualWidth
-            : NavigationDrawerRoot.Width;
-        if (double.IsNaN(currentWidth) || currentWidth <= 0)
-        {
-            currentWidth = isExpanding ? NavigationDrawerCollapsedWidth : NavigationDrawerExpandedWidth;
-        }
-
-        if (Math.Abs(currentWidth - targetWidth) < 0.5)
-        {
-            NavigationDrawerRoot.Width = targetWidth;
-            NavigationDrawerChevronTransform.Angle = targetChevronAngle;
-            if (!IsNavigationDrawerExpanded)
-            {
-                SetNavigationDrawerContentVisibility(Visibility.Collapsed);
-            }
-            return;
-        }
-
-        var widthAnimation = new DoubleAnimation
-        {
-            From = currentWidth,
-            To = targetWidth,
-            Duration = new Duration(TimeSpan.FromMilliseconds(FolderDrawerAnimationDurationMs)),
-            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
-            EnableDependentAnimation = true
-        };
-        Storyboard.SetTarget(widthAnimation, NavigationDrawerRoot);
-        Storyboard.SetTargetProperty(widthAnimation, "Width");
-
-        var chevronAnimation = new DoubleAnimation
-        {
-            From = NavigationDrawerChevronTransform.Angle,
-            To = targetChevronAngle,
-            Duration = new Duration(TimeSpan.FromMilliseconds(FolderDrawerAnimationDurationMs)),
-            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
-            EnableDependentAnimation = true
-        };
-        Storyboard.SetTarget(chevronAnimation, NavigationDrawerChevronTransform);
-        Storyboard.SetTargetProperty(chevronAnimation, "Angle");
-
-        var storyboard = new Storyboard();
-        storyboard.Children.Add(widthAnimation);
-        storyboard.Children.Add(chevronAnimation);
-        storyboard.Completed += (_, _) =>
-        {
-            if (!ReferenceEquals(_navigationDrawerStoryboard, storyboard))
-                return;
-
-            NavigationDrawerRoot.Width = targetWidth;
-            NavigationDrawerChevronTransform.Angle = targetChevronAngle;
-            if (!IsNavigationDrawerExpanded)
-            {
-                SetNavigationDrawerContentVisibility(Visibility.Collapsed);
-            }
-            _navigationDrawerStoryboard = null;
-        };
-
-        _navigationDrawerStoryboard = storyboard;
-        storyboard.Begin();
     }
 
     private void StopNavigationDrawerAnimation()
     {
-        var storyboard = _navigationDrawerStoryboard;
-        _navigationDrawerStoryboard = null;
-        storyboard?.Stop();
     }
 
     private void SetNavigationDrawerContentVisibility(Visibility visibility)
     {
-        NavigationDrawerHeader.Visibility = visibility;
-        NavigationDrawerTree.Visibility = visibility;
     }
 
     private void UpdateFolderDrawerState(bool animate = true)
@@ -451,26 +349,10 @@ public sealed partial class MainPage
 
     private void AutoCollapseNavigationDrawer(string reason)
     {
-        if (!_settingsService.MainPageAutoCollapseSidebar ||
-            ViewModel.Images.Count == 0 ||
-            _isNavigationDrawerPinnedCollapsed)
-            return;
-
-        _isNavigationDrawerPinnedCollapsed = true;
-        _isNavigationDrawerTemporarilyExpanded = false;
-        UpdateNavigationDrawerState();
     }
 
     private void AutoExpandNavigationDrawer(string reason)
     {
-        if (!_settingsService.MainPageAutoCollapseSidebar ||
-            ViewModel.Images.Count == 0 ||
-            !_isNavigationDrawerPinnedCollapsed)
-            return;
-
-        _isNavigationDrawerPinnedCollapsed = false;
-        _isNavigationDrawerTemporarilyExpanded = false;
-        UpdateNavigationDrawerState();
     }
 
     private void AutoCollapseFolderDrawer(string reason)

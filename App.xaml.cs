@@ -67,6 +67,7 @@ public partial class App : Application
             services.AddSingleton<PreviewWorkspaceService>();
             services.AddSingleton<FolderTreeService>();
             services.AddSingleton<ShellToolbarService>();
+            services.AddSingleton<INavigationPaneService, NavigationPaneService>();
 
             services.AddSingleton<IActivationService, ActivationService>();
             services.AddSingleton<IPageService, PageService>();

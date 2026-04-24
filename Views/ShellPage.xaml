@@ -3,6 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:behaviors="using:PhotoView.Behaviors"
+    xmlns:controls="using:PhotoView.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:helpers="using:PhotoView.Helpers"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -40,7 +41,7 @@
             ItemInvoked="NavigationViewControl_ItemInvoked"
             CompactPaneLength="48"
             OpenPaneLength="320"
-            PaneDisplayMode="Top"
+            PaneDisplayMode="Left"
             SelectedItem="{x:Bind ViewModel.Selected, Mode=TwoWay}">
             <NavigationView.MenuItems>
 
@@ -54,6 +55,47 @@
                     helpers:NavigationHelper.NavigateTo="PhotoView.ViewModels.CollectViewModel" />
 
             </NavigationView.MenuItems>
+
+            <NavigationView.PaneCustomContent>
+                <controls:NavigationPaneExplorer
+                    x:Name="NavigationPaneHost"
+                    Visibility="Collapsed" />
+            </NavigationView.PaneCustomContent>
+
+            <NavigationView.PaneFooter>
+                <Button
+                    x:Name="CompactNavigationPaneButton"
+                    Margin="4,8,4,8"
+                    Padding="8"
+                    HorizontalAlignment="Stretch"
+                    Click="CompactNavigationPaneButton_Click"
+                    Visibility="Collapsed">
+                    <Button.Flyout>
+                        <Flyout x:Name="CompactNavigationPaneFlyout" Placement="Right">
+                            <Border
+                                Width="360"
+                                MaxHeight="720"
+                                Padding="0"
+                                Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1"
+                                CornerRadius="12">
+                                <controls:NavigationPaneExplorer x:Name="CompactNavigationPaneHost" />
+                            </Border>
+                        </Flyout>
+                    </Button.Flyout>
+                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left">
+                        <FontIcon
+                            Glyph="&#xF0E8;"
+                            FontFamily="{StaticResource SymbolThemeFontFamily}"
+                            FontSize="16" />
+                        <TextBlock
+                            x:Name="CompactNavigationPaneButtonText"
+                            Text="目录"
+                            TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Button>
+            </NavigationView.PaneFooter>
 
             <Grid Margin="0,0,0,0">
                 <Frame x:Name="NavigationFrame" CacheSize="2" />

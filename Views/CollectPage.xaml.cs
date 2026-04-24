@@ -12,6 +12,7 @@ using PhotoView.Helpers;
 using PhotoView.Models;
 using PhotoView.Services;
 using PhotoView.ViewModels;
+using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IO;
@@ -25,8 +26,6 @@ namespace PhotoView.Views;
 
 public sealed partial class CollectPage : Page
 {
-    private const double LoadDrawerExpandedWidth = 292;
-    private const double LoadDrawerCollapsedWidth = 25;
     private const double InfoDrawerExpandedWidth = 340;
     private const double InfoDrawerCollapsedWidth = 0;
     private const int VisibleThumbnailStartBudgetPerTick = 16;
@@ -36,19 +35,17 @@ public sealed partial class CollectPage : Page
     private readonly IKeyboardShortcutService _shortcutService;
     private readonly CollectPageThumbnailCoordinator _thumbnailCoordinator;
     private readonly Dictionary<RatingControl, bool> _ratingControlEventMap = new();
+    private readonly INavigationPaneService _navigationPaneService;
     private readonly ISettingsService _settingsService;
     private readonly ShellToolbarService _shellToolbarService;
+    private readonly NavigationPaneContext _navigationPaneContext;
     private FolderNode? _rightClickedFolderNode;
     private PointerEventHandler? _thumbnailWheelHandler;
     private KeyEventHandler? _thumbnailPreviewKeyDownHandler;
-    private Storyboard? _loadDrawerStoryboard;
     private Storyboard? _infoDrawerStoryboard;
     private bool _isUnloaded;
     private bool _isDisposed;
     private bool _isUpdatingZoomSlider;
-    private bool _isLoadDrawerPinnedCollapsed;
-    private bool _isLoadDrawerTemporarilyExpanded;
-    private bool _preserveLoadProgressPanelDuringCollapse;
     private bool _suppressNextThumbnailDragStart;
     private Button? _shellDeleteButton;
     private SplitButton? _shellFilterSplitButton;
@@ -81,6 +78,8 @@ public sealed partial class CollectPage : Page
         _settingsService = App.GetService<ISettingsService>();
         _shellToolbarService = App.GetService<ShellToolbarService>();
         _shortcutService = App.GetService<IKeyboardShortcutService>();
+        _navigationPaneService = App.GetService<INavigationPaneService>();
+        _navigationPaneContext = CreateNavigationPaneContext();
         
         NavigationCacheMode = NavigationCacheMode.Disabled;
         InitializeComponent();
@@ -98,6 +97,7 @@ public sealed partial class CollectPage : Page
         };
         _ratingDebounceTimer.Tick += RatingDebounceTimer_Tick;
         ViewModel.Images.CollectionChanged += Images_CollectionChanged;
+        ViewModel.SelectedSources.CollectionChanged += SelectedSources_CollectionChanged;
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         ViewModel.Filter.FilterChanged += Filter_FilterChanged;
         PreviewInfoViewModel.RatingUpdated += PreviewInfoViewModel_RatingUpdated;
@@ -133,13 +133,12 @@ public sealed partial class CollectPage : Page
             return;
 
         _isUnloaded = false;
-        _isLoadDrawerPinnedCollapsed = await _settingsService.LoadCollectPageLoadDrawerCollapsedAsync();
-        _isLoadDrawerTemporarilyExpanded = false;
         RegisterShellToolbar();
         EnsurePreviewSelectionInitialized();
         RefreshDualPageLayout(forceRebuild: true);
         UpdateSelectedImageUi();
-        UpdateLoadDrawerState(animate: false);
+        UpdateNavigationPaneContextState();
+        RegisterNavigationPane();
         RefreshCustomIconForegrounds();
         QueueVisibleThumbnailLoad("page-loaded");
     }
@@ -148,12 +147,14 @@ public sealed partial class CollectPage : Page
     {
         base.OnNavigatedTo(e);
         _shortcutService.SetCurrentPage("CollectPage");
+        RegisterNavigationPane();
     }
 
     protected override void OnNavigatedFrom(NavigationEventArgs e)
     {
         base.OnNavigatedFrom(e);
         _shortcutService.SetCurrentPage("");
+        _navigationPaneService.ClearContext(this);
     }
 
     private void CollectPage_Unloaded(object sender, RoutedEventArgs e)
@@ -170,6 +171,7 @@ public sealed partial class CollectPage : Page
             return;
 
         _isDisposed = true;
+        _navigationPaneService.ClearContext(this);
         _shellToolbarService.ClearToolbar(this);
         _shellDeleteButton = null;
         _shellFilterSplitButton = null;
@@ -177,6 +179,7 @@ public sealed partial class CollectPage : Page
         _thumbnailCoordinator.VisibleThumbnailLoadTimer.Tick -= VisibleThumbnailLoadTimer_Tick;
         _ratingDebounceTimer.Tick -= RatingDebounceTimer_Tick;
         ViewModel.Images.CollectionChanged -= Images_CollectionChanged;
+        ViewModel.SelectedSources.CollectionChanged -= SelectedSources_CollectionChanged;
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         ViewModel.Filter.FilterChanged -= Filter_FilterChanged;
         PreviewInfoViewModel.RatingUpdated -= PreviewInfoViewModel_RatingUpdated;
@@ -214,12 +217,7 @@ public sealed partial class CollectPage : Page
 
     private async void LoadPreview_Click(object sender, RoutedEventArgs e)
     {
-        var result = await ViewModel.LoadPreviewAsync();
-        if (result.AutoCollapseDrawer)
-        {
-            CollapseLoadDrawer(preserveLoadProgressPanel: result.StartedLoading);
-        }
-        QueueVisibleThumbnailLoad("load-preview");
+        await LoadPreviewFromPaneAsync();
     }
 
     private void RemoveSource_Click(object sender, RoutedEventArgs e)
@@ -227,6 +225,7 @@ public sealed partial class CollectPage : Page
         if (sender is FrameworkElement { Tag: PreviewSource source })
         {
             ViewModel.RemoveSource(source);
+            UpdateNavigationPaneContextState();
         }
     }
 
@@ -386,7 +385,6 @@ public sealed partial class CollectPage : Page
 
     private void ApplyLocalizedToolTips()
     {
-        ToolTipService.SetToolTip(IncludeSubfoldersToggleButton, "CollectPage_Tooltip_IncludeSubfolders".GetLocalized());
         ToolTipService.SetToolTip(ThumbnailSizeToggleButton, "CollectPage_Tooltip_CollapseThumbnails".GetLocalized());
         ToolTipService.SetToolTip(InfoDrawerToggleButton, "CollectPage_Tooltip_ImageInfo".GetLocalized());
         ToolTipService.SetToolTip(DualPageToggleButton, "CollectPage_Tooltip_DualPage".GetLocalized());
@@ -517,16 +515,172 @@ public sealed partial class CollectPage : Page
         else if (e.PropertyName == nameof(CollectViewModel.IncludeSubfolders))
         {
             RefreshCustomIconForegrounds();
+            UpdateNavigationPaneContextState();
         }
         else if (e.PropertyName == nameof(CollectViewModel.FocusedPageSlot))
         {
             UpdatePreviewHostVisuals();
             SyncZoomControlsFromActiveCanvas();
         }
-        else if (e.PropertyName == nameof(CollectViewModel.IsLoading) && !_preserveLoadProgressPanelDuringCollapse)
+        else if (e.PropertyName is nameof(CollectViewModel.IsLoading)
+            or nameof(CollectViewModel.StatusText)
+            or nameof(CollectViewModel.LoadProgressValue)
+            or nameof(CollectViewModel.IsLoadProgressIndeterminate))
         {
-            SyncLoadProgressPanelVisibility();
+            UpdateNavigationPaneContextState();
         }
+    }
+
+    private NavigationPaneContext CreateNavigationPaneContext()
+    {
+        return new NavigationPaneContext
+        {
+            Title = "载入区",
+            RootNodes = ViewModel.FolderTree,
+            ActivateOnSingleClick = false,
+            ActivateOnDoubleTap = true,
+            ExpandNodeHandler = async node => await ViewModel.LoadChildrenAsync(node),
+            SelectNodeHandler = node =>
+            {
+                _rightClickedFolderNode = node;
+                return Task.CompletedTask;
+            },
+            ActivateNodeSecondaryHandler = node =>
+            {
+                ViewModel.AddSource(node);
+                UpdateNavigationPaneContextState();
+                return Task.CompletedTask;
+            },
+            NodeActionsProvider = GetNavigationPaneNodeActions,
+            RemoveSourceHandler = RemoveSourceFromPaneAsync,
+            PrimaryAction = new NavigationPaneHeaderAction
+            {
+                Text = "载入",
+                Glyph = "\uF103"
+            },
+            PrimaryActionHandler = LoadPreviewFromPaneAsync,
+            ToggleOptionText = "包含子文件夹",
+            IsToggleOptionVisible = true,
+            ToggleOptionHandler = value =>
+            {
+                ViewModel.IncludeSubfolders = value;
+                UpdateNavigationPaneContextState();
+                return Task.CompletedTask;
+            }
+        };
+    }
+
+    private void RegisterNavigationPane()
+    {
+        _navigationPaneService.SetContext(this, _navigationPaneContext);
+    }
+
+    private void UpdateNavigationPaneContextState()
+    {
+        _navigationPaneContext.Subtitle = $"{ViewModel.SelectedSourceCount} / {ViewModel.MaxSourceCount}";
+        _navigationPaneContext.ToggleOptionValue = ViewModel.IncludeSubfolders;
+        _navigationPaneContext.StatusText = ViewModel.StatusText;
+        _navigationPaneContext.IsProgressVisible = ViewModel.IsLoading;
+        _navigationPaneContext.IsProgressIndeterminate = ViewModel.IsLoadProgressIndeterminate;
+        _navigationPaneContext.ProgressValue = ViewModel.LoadProgressValue;
+
+        _navigationPaneContext.SourceItems.Clear();
+        foreach (var source in ViewModel.SelectedSources)
+        {
+            _navigationPaneContext.SourceItems.Add(new NavigationPaneSourceItem
+            {
+                Id = source.Path,
+                DisplayName = source.DisplayName,
+                Payload = source
+            });
+        }
+    }
+
+    private async Task RemoveSourceFromPaneAsync(NavigationPaneSourceItem item)
+    {
+        if (item.Payload is PreviewSource source)
+        {
+            ViewModel.RemoveSource(source);
+            UpdateNavigationPaneContextState();
+        }
+
+        await Task.CompletedTask;
+    }
+
+    private async Task LoadPreviewFromPaneAsync()
+    {
+        await ViewModel.LoadPreviewAsync();
+        UpdateNavigationPaneContextState();
+        QueueVisibleThumbnailLoad("load-preview");
+    }
+
+    private IReadOnlyList<NavigationPaneNodeAction> GetNavigationPaneNodeActions(FolderNode node)
+    {
+        var actions = new List<NavigationPaneNodeAction>
+        {
+            new NavigationPaneNodeAction
+            {
+                Text = "添加到载入区",
+                Glyph = "\uE710",
+                ExecuteAsync = folderNode =>
+                {
+                    ViewModel.AddSource(folderNode);
+                    UpdateNavigationPaneContextState();
+                    return Task.CompletedTask;
+                }
+            }
+        };
+
+        var hasFolderPath = !string.IsNullOrWhiteSpace(node.FullPath);
+        var isPinned = hasFolderPath && ViewModel.IsFolderPinned(node);
+        var isExternalDeviceNode = IsNodeUnderExternalDevices(node);
+
+        if (hasFolderPath)
+        {
+            actions.Add(new NavigationPaneNodeAction { IsSeparator = true });
+            actions.Add(new NavigationPaneNodeAction
+            {
+                Text = isPinned
+                    ? "取消固定"
+                    : "固定到常用文件夹",
+                Glyph = isPinned ? "\uE77A" : "\uE718",
+                ExecuteAsync = async folderNode =>
+                {
+                    if (isPinned)
+                    {
+                        await ViewModel.UnpinFolderAsync(folderNode);
+                    }
+                    else
+                    {
+                        await ViewModel.PinFolderAsync(folderNode);
+                    }
+
+                    UpdateNavigationPaneContextState();
+                }
+            });
+        }
+
+        if (isExternalDeviceNode)
+        {
+            actions.Add(new NavigationPaneNodeAction { IsSeparator = true });
+            actions.Add(new NavigationPaneNodeAction
+            {
+                Text = "刷新外接设备",
+                Glyph = "\uE72C",
+                ExecuteAsync = async _ =>
+                {
+                    await ViewModel.RefreshExternalDevicesAsync();
+                    UpdateNavigationPaneContextState();
+                }
+            });
+        }
+
+        return actions;
+    }
+
+    private void SelectedSources_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        UpdateNavigationPaneContextState();
     }
 
     private void EnsurePreviewSelectionInitialized()
@@ -751,7 +905,6 @@ public sealed partial class CollectPage : Page
 
     private void RefreshCustomIconForegrounds()
     {
-        UpdateToggleContentForeground(IncludeSubfoldersToggleButton);
         UpdateToggleContentForeground(ThumbnailSizeToggleButton);
         UpdateToggleContentForeground(DualPageToggleButton);
         UpdateToggleContentForeground(CompareModeToggleButton);
@@ -951,176 +1104,44 @@ public sealed partial class CollectPage : Page
 
     private void LoadDrawerToggleButton_Click(object sender, RoutedEventArgs e)
     {
-        _isLoadDrawerPinnedCollapsed = !_isLoadDrawerPinnedCollapsed;
-        _isLoadDrawerTemporarilyExpanded = false;
-        _ = _settingsService.SaveCollectPageLoadDrawerCollapsedAsync(_isLoadDrawerPinnedCollapsed);
-        UpdateLoadDrawerState();
     }
 
     private void LoadDrawerRoot_PointerEntered(object sender, PointerRoutedEventArgs e)
     {
-        if (!_isLoadDrawerPinnedCollapsed || _isLoadDrawerTemporarilyExpanded)
-            return;
-
-        _isLoadDrawerTemporarilyExpanded = true;
-        UpdateLoadDrawerState();
     }
 
     private void LoadDrawerRoot_PointerExited(object sender, PointerRoutedEventArgs e)
     {
-        if (!_isLoadDrawerPinnedCollapsed || !_isLoadDrawerTemporarilyExpanded)
-            return;
-
-        _isLoadDrawerTemporarilyExpanded = false;
-        UpdateLoadDrawerState();
     }
 
-    private bool IsLoadDrawerExpanded => !_isLoadDrawerPinnedCollapsed || _isLoadDrawerTemporarilyExpanded;
+    private bool IsLoadDrawerExpanded => false;
 
     private void CollapseLoadDrawer(bool preserveLoadProgressPanel = false)
     {
-        if (preserveLoadProgressPanel)
-        {
-            _preserveLoadProgressPanelDuringCollapse = true;
-            LoadProgressPanel.Visibility = Visibility.Visible;
-        }
-
-        _isLoadDrawerPinnedCollapsed = true;
-        _isLoadDrawerTemporarilyExpanded = false;
-        _ = _settingsService.SaveCollectPageLoadDrawerCollapsedAsync(_isLoadDrawerPinnedCollapsed);
-        UpdateLoadDrawerState();
     }
 
     private void UpdateLoadDrawerState(bool animate = true)
     {
-        var isExpanded = IsLoadDrawerExpanded;
-        var targetWidth = isExpanded ? LoadDrawerExpandedWidth : LoadDrawerCollapsedWidth;
-        var targetChevronAngle = isExpanded ? 180 : 0;
-
-        if (isExpanded)
-        {
-            _preserveLoadProgressPanelDuringCollapse = false;
-            SyncLoadProgressPanelVisibility();
-            SetLoadDrawerContentVisibility(Visibility.Visible);
-        }
-
-        if (!animate)
-        {
-            StopLoadDrawerAnimation();
-            LoadDrawerRoot.Width = targetWidth;
-            LoadDrawerChevronTransform.Angle = targetChevronAngle;
-            if (!isExpanded)
-            {
-                SetLoadDrawerContentVisibility(Visibility.Collapsed);
-                FinishLoadDrawerCollapsePresentation();
-            }
-            return;
-        }
-
-        AnimateLoadDrawer(targetWidth, targetChevronAngle, isExpanded);
     }
 
     private void AnimateLoadDrawer(double targetWidth, double targetChevronAngle, bool isExpanding)
     {
-        StopLoadDrawerAnimation();
-
-        var currentWidth = LoadDrawerRoot.ActualWidth > 0
-            ? LoadDrawerRoot.ActualWidth
-            : LoadDrawerRoot.Width;
-        if (double.IsNaN(currentWidth) || currentWidth <= 0)
-        {
-            currentWidth = isExpanding ? LoadDrawerCollapsedWidth : LoadDrawerExpandedWidth;
-        }
-
-        if (Math.Abs(currentWidth - targetWidth) < 0.5)
-        {
-            LoadDrawerRoot.Width = targetWidth;
-            LoadDrawerChevronTransform.Angle = targetChevronAngle;
-            if (!IsLoadDrawerExpanded)
-            {
-                SetLoadDrawerContentVisibility(Visibility.Collapsed);
-                FinishLoadDrawerCollapsePresentation();
-            }
-            return;
-        }
-
-        var animation = new DoubleAnimation
-        {
-            From = currentWidth,
-            To = targetWidth,
-            Duration = new Duration(TimeSpan.FromMilliseconds(180)),
-            EnableDependentAnimation = true,
-            EasingFunction = new QuadraticEase
-            {
-                EasingMode = EasingMode.EaseOut
-            }
-        };
-
-        Storyboard.SetTarget(animation, LoadDrawerRoot);
-        Storyboard.SetTargetProperty(animation, "Width");
-
-        var chevronAnimation = new DoubleAnimation
-        {
-            From = LoadDrawerChevronTransform.Angle,
-            To = targetChevronAngle,
-            Duration = new Duration(TimeSpan.FromMilliseconds(180)),
-            EnableDependentAnimation = true,
-            EasingFunction = new QuadraticEase
-            {
-                EasingMode = EasingMode.EaseOut
-            }
-        };
-
-        Storyboard.SetTarget(chevronAnimation, LoadDrawerChevronTransform);
-        Storyboard.SetTargetProperty(chevronAnimation, "Angle");
-
-        var storyboard = new Storyboard();
-        storyboard.Children.Add(animation);
-        storyboard.Children.Add(chevronAnimation);
-        storyboard.Completed += (_, _) =>
-        {
-            if (!ReferenceEquals(_loadDrawerStoryboard, storyboard))
-                return;
-
-            LoadDrawerRoot.Width = targetWidth;
-            LoadDrawerChevronTransform.Angle = targetChevronAngle;
-            if (!IsLoadDrawerExpanded)
-            {
-                SetLoadDrawerContentVisibility(Visibility.Collapsed);
-                FinishLoadDrawerCollapsePresentation();
-            }
-            _loadDrawerStoryboard = null;
-        };
-
-        _loadDrawerStoryboard = storyboard;
-        storyboard.Begin();
     }
 
     private void StopLoadDrawerAnimation()
     {
-        var storyboard = _loadDrawerStoryboard;
-        _loadDrawerStoryboard = null;
-        storyboard?.Stop();
     }
 
     private void SetLoadDrawerContentVisibility(Visibility visibility)
     {
-        LoadDrawerHeader.Visibility = visibility;
-        LoadDrawerTree.Visibility = visibility;
     }
 
     private void FinishLoadDrawerCollapsePresentation()
     {
-        if (!_preserveLoadProgressPanelDuringCollapse)
-            return;
-
-        _preserveLoadProgressPanelDuringCollapse = false;
-        SyncLoadProgressPanelVisibility();
     }
 
     private void SyncLoadProgressPanelVisibility()
     {
-        LoadProgressPanel.Visibility = ViewModel.IsLoading ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void UpdateInfoDrawerState(bool animate = true)

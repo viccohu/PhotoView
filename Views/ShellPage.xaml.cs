@@ -18,7 +18,7 @@ namespace PhotoView.Views;
 
 public sealed partial class ShellPage : Page
 {
-    private const double LeftNavigationOpenPaneLength = 120d;
+    private const double LeftNavigationOpenPaneLength = 360d;
     private const double DefaultNavigationOpenPaneLength = 320d;
 
     public ShellViewModel ViewModel
@@ -30,6 +30,7 @@ public sealed partial class ShellPage : Page
     private readonly INavigationService _navigationService;
     private readonly ISettingsService _settingsService;
     private readonly ShellToolbarService _shellToolbarService;
+    private readonly INavigationPaneService _navigationPaneService;
     private string? _lastPageKey;
     private bool _isOnSettingsPage;
     private int _shellToolbarUpdateVersion;
@@ -39,6 +40,7 @@ public sealed partial class ShellPage : Page
         ViewModel = viewModel;
         _settingsService = settingsService;
         _shellToolbarService = App.GetService<ShellToolbarService>();
+        _navigationPaneService = App.GetService<INavigationPaneService>();
         InitializeComponent();
 
         ViewModel.NavigationService.Frame = NavigationFrame;
@@ -57,6 +59,7 @@ public sealed partial class ShellPage : Page
         _navigationService = App.GetService<INavigationService>();
         _navigationService.Navigated += OnNavigationServiceNavigated;
         _shellToolbarService.ToolbarChanged += OnShellToolbarChanged;
+        _navigationPaneService.CurrentContextChanged += OnNavigationPaneContextChanged;
 
         // 浣跨敤瀹樻柟 TitleBar
         App.MainWindow.ExtendsContentIntoTitleBar = true;
@@ -137,6 +140,8 @@ public sealed partial class ShellPage : Page
                 _lastPageKey = selectedItemKey;
             }
         }
+
+        UpdateNavigationPaneState();
     }
 
     private void UpdateTitleBarColor(bool isDeactivated = false)
@@ -193,14 +198,19 @@ public sealed partial class ShellPage : Page
 
     private void ApplyNavigationViewMode(NavigationViewPaneDisplayMode mode)
     {
-        var useLeftNavigation = mode == NavigationViewPaneDisplayMode.Left;
+        var useLeftNavigation = mode == NavigationViewPaneDisplayMode.Left ||
+            mode == NavigationViewPaneDisplayMode.LeftCompact;
+        var useCompactPopup = mode == NavigationViewPaneDisplayMode.LeftCompact;
 
         NavigationViewControl.PaneDisplayMode = mode;
-        NavigationViewControl.IsPaneToggleButtonVisible = useLeftNavigation;
+        NavigationViewControl.IsPaneToggleButtonVisible = mode == NavigationViewPaneDisplayMode.Left;
+        NavigationViewControl.IsPaneOpen = mode == NavigationViewPaneDisplayMode.Left;
         NavigationViewControl.OpenPaneLength = useLeftNavigation
             ? LeftNavigationOpenPaneLength
             : DefaultNavigationOpenPaneLength;
+        CompactNavigationPaneFlyout.Hide();
 
+        UpdateNavigationPaneState();
         UpdateTitleBarLayout(useLeftNavigation);
     }
 
@@ -279,6 +289,37 @@ public sealed partial class ShellPage : Page
                     _navigationService.NavigateTo(navItemTag);
                 }
             }
+        }
+    }
+
+    private void OnNavigationPaneContextChanged(object? sender, EventArgs e)
+    {
+        DispatcherQueue.TryEnqueue(UpdateNavigationPaneState);
+    }
+
+    private void UpdateNavigationPaneState()
+    {
+        var mode = NavigationViewControl.PaneDisplayMode;
+        var context = !_isOnSettingsPage &&
+            (mode == NavigationViewPaneDisplayMode.Left || mode == NavigationViewPaneDisplayMode.LeftCompact)
+            ? _navigationPaneService.CurrentContext
+            : null;
+        var useInlinePane = mode == NavigationViewPaneDisplayMode.Left;
+        var useCompactPopup = mode == NavigationViewPaneDisplayMode.LeftCompact;
+
+        NavigationPaneHost.Context = useInlinePane ? context : null;
+        NavigationPaneHost.Visibility = useInlinePane && context != null ? Visibility.Visible : Visibility.Collapsed;
+
+        CompactNavigationPaneHost.Context = useCompactPopup ? context : null;
+        CompactNavigationPaneButton.Visibility = useCompactPopup && context != null ? Visibility.Visible : Visibility.Collapsed;
+        CompactNavigationPaneButtonText.Text = context?.Title ?? "目录";
+    }
+
+    private void CompactNavigationPaneButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (CompactNavigationPaneButton.Flyout is Flyout flyout)
+        {
+            flyout.ShowAt(CompactNavigationPaneButton);
         }
     }
 }

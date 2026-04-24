@@ -33,13 +33,13 @@ public sealed partial class MainPage : Page
     private readonly ISettingsService _settingsService;
     private readonly ShellToolbarService _shellToolbarService;
     private readonly IThumbnailService _thumbnailService;
+    private readonly INavigationPaneService _navigationPaneService;
     private readonly MainPageThumbnailCoordinator _thumbnailCoordinator;
+    private readonly NavigationPaneContext _navigationPaneContext;
     private readonly HashSet<ImageFileInfo> _selectedImageState = new();
     private readonly Dictionary<ImageFileInfo, int> _imageIndexMap = new();
     private const double GridViewItemMargin = 4d;
     private const double GridViewItemGap = GridViewItemMargin * 2d;
-    private const double NavigationDrawerExpandedWidth = 265d;
-    private const double NavigationDrawerCollapsedWidth = 25d;
     private const double FolderDrawerExpandedMaxHeight = 260d;
     private const double FolderDrawerCollapsedOffsetY = -8d;
     private const double ImageGridTopScrollTolerance = 1d;
@@ -69,8 +69,6 @@ public sealed partial class MainPage : Page
     private bool _hasAttemptedRestoreLastFolder;
     private bool _isFolderDrawerExpanded = true;
     private bool _isFolderDrawerContentVisible;
-    private bool _isNavigationDrawerPinnedCollapsed;
-    private bool _isNavigationDrawerTemporarilyExpanded;
     private bool _isImageGridPointerWheelHandlerAttached;
     private bool _isImageGridKeyDownHandlerAttached;
     private bool _isHandlingDirectionalBurstNavigation;
@@ -81,7 +79,6 @@ public sealed partial class MainPage : Page
     private int _lastDirectionalNavigationScope;
     private int _lastDirectionalNavigationDirection;
     private long _lastDirectionalNavigationTick;
-    private Storyboard? _navigationDrawerStoryboard;
     private Storyboard? _folderDrawerStoryboard;
     private (ImageFileInfo Image, uint Rating)? _pendingRatingUpdate;
     private ImageFileInfo? _storedImageFileInfo;
@@ -98,14 +95,15 @@ public sealed partial class MainPage : Page
         _settingsService = App.GetService<ISettingsService>();
         _shellToolbarService = App.GetService<ShellToolbarService>();
         _thumbnailService = App.GetService<IThumbnailService>();
+        _navigationPaneService = App.GetService<INavigationPaneService>();
         _shortcutService = App.GetService<IKeyboardShortcutService>();
+        _navigationPaneContext = CreateNavigationPaneContext();
         
         NavigationCacheMode = NavigationCacheMode.Enabled;
         InitializeComponent();
         ApplyLocalizedToolTips();
         _imageGridPointerWheelHandler = ImageGridView_PointerWheelChanged;
         _imageGridKeyDownHandler = ImageGridView_KeyDown;
-        FolderTreeView.DataContext = ViewModel;
 
         _loadImagesThrottleTimer = new DispatcherTimer
         {
@@ -160,8 +158,9 @@ public sealed partial class MainPage : Page
         RebuildImageIndexMap();
         QueueVisibleThumbnailLoad("page-loaded");
         UpdateFilterButtonState();
-        UpdateNavigationDrawerState(animate: false);
         UpdateFolderDrawerState(animate: false);
+        UpdateNavigationPaneContextState();
+        RegisterNavigationPane();
         ReattachActiveViewerAfterNavigation();
     }
 
@@ -169,12 +168,14 @@ public sealed partial class MainPage : Page
     {
         base.OnNavigatedTo(e);
         _shortcutService.SetCurrentPage("MainPage");
+        RegisterNavigationPane();
     }
 
     protected override void OnNavigatedFrom(NavigationEventArgs e)
     {
         base.OnNavigatedFrom(e);
         _shortcutService.SetCurrentPage("");
+        _navigationPaneService.ClearContext(this);
     }
 
     private async void ImageViewer_Closed(object? sender, EventArgs e)
@@ -554,6 +555,7 @@ public sealed partial class MainPage : Page
     private async void ViewModel_FolderTreeLoaded(object? sender, EventArgs e)
     {
         // System.Diagnostics.Debug.WriteLine($"[MainPage] FolderTreeLoaded 濞存粌顑勫▎銏㈡喆閿曗偓瑜?);
+        UpdateNavigationPaneContextState();
         await TryRestoreLastFolderAsync();
     }
 
@@ -564,6 +566,7 @@ public sealed partial class MainPage : Page
 
         // System.Diagnostics.Debug.WriteLine($"[MainPage] SelectedFolderChanged 濞存粌顑勫▎銏㈡喆閿曗偓瑜? 闁煎搫鍊婚崑? {node.Name}");
         await ExpandTreeViewPathAsync(node);
+        UpdateNavigationPaneContextState();
     }
 
     private async System.Threading.Tasks.Task TryRestoreLastFolderAsync()
@@ -715,6 +718,7 @@ public sealed partial class MainPage : Page
     private void MainPage_Unloaded(object sender, RoutedEventArgs e)
     {
         _isUnloaded = true;
+        _navigationPaneService.ClearContext(this);
         _shellToolbarService.ClearToolbar(this);
         _shellDeleteButton = null;
         _shellAutoExpandBurstToggleButton = null;
@@ -736,7 +740,6 @@ public sealed partial class MainPage : Page
         _loadImagesThrottleTimer.Stop();
         _ratingDebounceTimer.Stop();
         _thumbnailCoordinator.ResetState();
-        StopNavigationDrawerAnimation();
         _pendingRatingUpdate = null;
         _isSwitchingViewerImage = false;
         _lastDirectionalNavigationScope = 0;
@@ -790,6 +793,111 @@ public sealed partial class MainPage : Page
     private void ImageGridView_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         UpdateImageGridTileSize();
+    }
+
+    private NavigationPaneContext CreateNavigationPaneContext()
+    {
+        return new NavigationPaneContext
+        {
+            Title = "相册",
+            RootNodes = ViewModel.FolderTree,
+            ActivateOnSingleClick = true,
+            ActivateOnDoubleTap = false,
+            ExpandNodeHandler = async node => await ViewModel.LoadChildrenAsync(node),
+            SelectNodeHandler = async node => await ExpandTreeViewPathAsync(node),
+            ActivateNodeHandler = async node =>
+            {
+                await ExpandTreeViewPathAsync(node);
+                if (_isUnloaded || AppLifetime.IsShuttingDown)
+                {
+                    return;
+                }
+
+                ThrottleLoadImages(node);
+            },
+            NodeActionsProvider = GetNavigationPaneNodeActions
+        };
+    }
+
+    private void RegisterNavigationPane()
+    {
+        _navigationPaneService.SetContext(this, _navigationPaneContext);
+    }
+
+    private void UpdateNavigationPaneContextState()
+    {
+        _navigationPaneContext.Subtitle = ViewModel.SelectedFolder?.Name;
+        _navigationPaneContext.SelectedNode = ViewModel.SelectedFolder;
+    }
+
+    private IReadOnlyList<NavigationPaneNodeAction> GetNavigationPaneNodeActions(FolderNode node)
+    {
+        var actions = new List<NavigationPaneNodeAction>();
+        var hasFolderPath = !string.IsNullOrWhiteSpace(node.FullPath);
+        var isPinned = hasFolderPath && ViewModel.IsFolderPinned(node);
+        var isExternalDeviceNode = IsNodeUnderExternalDevices(node);
+
+        if (hasFolderPath)
+        {
+            actions.Add(new NavigationPaneNodeAction
+            {
+                Text = "添加到预览",
+                Glyph = "\uE710",
+                ExecuteAsync = folderNode =>
+                {
+                    AddFolderToPreview(folderNode);
+                    return Task.CompletedTask;
+                }
+            });
+            actions.Add(new NavigationPaneNodeAction
+            {
+                Text = "在资源管理器中打开",
+                Glyph = "\uE838",
+                ExecuteAsync = folderNode =>
+                {
+                    OpenFolderInExplorer(folderNode);
+                    return Task.CompletedTask;
+                }
+            });
+            actions.Add(new NavigationPaneNodeAction { IsSeparator = true });
+            actions.Add(new NavigationPaneNodeAction
+            {
+                Text = isPinned
+                    ? "取消固定文件夹"
+                    : "固定文件夹",
+                Glyph = isPinned ? "\uE77A" : "\uE718",
+                ExecuteAsync = async folderNode =>
+                {
+                    if (isPinned)
+                    {
+                        await ViewModel.UnpinFolderAsync(folderNode);
+                    }
+                    else
+                    {
+                        await ViewModel.PinFolderAsync(folderNode);
+                    }
+
+                    UpdateNavigationPaneContextState();
+                }
+            });
+        }
+
+        if (isExternalDeviceNode)
+        {
+            actions.Add(new NavigationPaneNodeAction { IsSeparator = true });
+            actions.Add(new NavigationPaneNodeAction
+            {
+                Text = "刷新外接设备",
+                Glyph = "\uE72C",
+                ExecuteAsync = async _ =>
+                {
+                    await ViewModel.RefreshExternalDevicesAsync();
+                    UpdateNavigationPaneContextState();
+                }
+            });
+        }
+
+        return actions;
     }
 
     private void UpdateImageGridTileSize()
@@ -905,36 +1013,6 @@ public sealed partial class MainPage : Page
             {
                 ViewModel.ThumbnailSize = size;
             }
-        }
-    }
-
-    private async void FolderTreeView_Expanding(TreeView sender, TreeViewExpandingEventArgs args)
-    {
-        if (args.Item is FolderNode node)
-        {
-            FolderTreeView.SelectedItem = node;
-            await ViewModel.LoadChildrenAsync(node);
-            if (_isUnloaded || AppLifetime.IsShuttingDown)
-            {
-                return;
-            }
-
-            ThrottleLoadImages(node);
-        }
-    }
-
-    private void FolderTreeView_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
-    {
-        if (args.InvokedItem is FolderNode node)
-        {
-            if (sender.ContainerFromItem(node) is TreeViewItem treeViewItem
-                && node.HasExpandableChildren
-                && !treeViewItem.IsExpanded)
-            {
-                treeViewItem.IsExpanded = true;
-            }
-
-            ThrottleLoadImages(node);
         }
     }
 
@@ -1079,41 +1157,16 @@ public sealed partial class MainPage : Page
                     }
                 }
 
-                var treeViewItem = FolderTreeView.ContainerFromItem(node) as TreeViewItem;
-                // System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] TreeViewItem for {node.Name}: {(treeViewItem != null ? "found" : "null")}");
             }
 
             if (lastNode != null)
             {
-                // System.Diagnostics.Debug.WriteLine($"[ExpandTreeViewPathAsync] 閻犱礁澧介悿鍡涙焻婢跺鍘柤鍝勫€婚崑? {lastNode.Name}");
-                FolderTreeView.SelectedItem = lastNode;
-                await System.Threading.Tasks.Task.Delay(100);
-                if (_isUnloaded || AppLifetime.IsShuttingDown)
-                {
-                    return;
-                }
-
-                ScrollToTreeViewItem(lastNode);
+                _navigationPaneContext.SelectedNode = lastNode;
             }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"ExpandTreeViewPathAsync error: {ex}");
-        }
-    }
-
-    private void ScrollToTreeViewItem(FolderNode node)
-    {
-        try
-        {
-            if (FolderTreeView.ContainerFromItem(node) is TreeViewItem container)
-            {
-                container.StartBringIntoView();
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"ScrollToTreeViewItem error: {ex}");
         }
     }
 
@@ -1413,34 +1466,12 @@ public sealed partial class MainPage : Page
 
     private void OpenFolderInExplorer_Click(object sender, RoutedEventArgs e)
     {
-        if (_rightClickedFolderNode == null || string.IsNullOrEmpty(_rightClickedFolderNode.FullPath))
-        {
-            return;
-        }
-
-        try
-        {
-            var processInfo = new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = "explorer.exe",
-                Arguments = _rightClickedFolderNode.FullPath,
-                UseShellExecute = true
-            };
-            System.Diagnostics.Process.Start(processInfo);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"OpenFolderInExplorer_Click error: {ex}");
-        }
+        OpenFolderInExplorer(_rightClickedFolderNode);
     }
 
     private void AddFolderToPreview_Click(object sender, RoutedEventArgs e)
     {
-        if (_rightClickedFolderNode == null || string.IsNullOrEmpty(_rightClickedFolderNode.FullPath))
-            return;
-
-        var previewWorkspace = App.GetService<PreviewWorkspaceService>();
-        previewWorkspace.AddSource(_rightClickedFolderNode.FullPath);
+        AddFolderToPreview(_rightClickedFolderNode);
     }
 
     private void OpenSubFolderInExplorer_Click(object sender, RoutedEventArgs e)
@@ -1473,6 +1504,40 @@ public sealed partial class MainPage : Page
 
         var previewWorkspace = App.GetService<PreviewWorkspaceService>();
         previewWorkspace.AddSource(_rightClickedSubFolderNode.FullPath);
+    }
+
+    private void OpenFolderInExplorer(FolderNode? node)
+    {
+        if (node == null || string.IsNullOrEmpty(node.FullPath))
+        {
+            return;
+        }
+
+        try
+        {
+            var processInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = node.FullPath,
+                UseShellExecute = true
+            };
+            System.Diagnostics.Process.Start(processInfo);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"OpenFolderInExplorer error: {ex}");
+        }
+    }
+
+    private void AddFolderToPreview(FolderNode? node)
+    {
+        if (node == null || string.IsNullOrEmpty(node.FullPath))
+        {
+            return;
+        }
+
+        var previewWorkspace = App.GetService<PreviewWorkspaceService>();
+        previewWorkspace.AddSource(node.FullPath);
     }
 
     private ImageFileInfo? _rightClickedImageInfo;
