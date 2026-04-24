@@ -24,6 +24,7 @@ public class SettingsService : ISettingsService
     private double _decodeScaleFactor = 2.0;
     private bool _alwaysDecodeRaw = false;
     private bool _mainPageAutoCollapseSidebar = false;
+    private bool _collectPageLoadDrawerCollapsed = false;
     private bool _preferPsdAsPrimaryPreview = false;
     private bool _autoExpandBurstOnDirectionalNavigation = true;
     private bool _collapseBurstGroups = true;
@@ -37,6 +38,7 @@ public class SettingsService : ISettingsService
     public event EventHandler<bool>? DeleteToRecycleBinChanged;
     public event EventHandler<bool>? AlwaysDecodeRawChanged;
     public event EventHandler<bool>? MainPageAutoCollapseSidebarChanged;
+    public event EventHandler<bool>? CollectPageLoadDrawerCollapsedChanged;
     public event EventHandler<bool>? PreferPsdAsPrimaryPreviewChanged;
     public event EventHandler<bool>? AutoExpandBurstOnDirectionalNavigationChanged;
     public event EventHandler<bool>? CollapseBurstGroupsChanged;
@@ -250,6 +252,19 @@ public class SettingsService : ISettingsService
             {
                 _mainPageAutoCollapseSidebar = value;
                 MainPageAutoCollapseSidebarChanged?.Invoke(this, value);
+            }
+        }
+    }
+
+    public bool CollectPageLoadDrawerCollapsed
+    {
+        get => _collectPageLoadDrawerCollapsed;
+        set
+        {
+            if (_collectPageLoadDrawerCollapsed != value)
+            {
+                _collectPageLoadDrawerCollapsed = value;
+                CollectPageLoadDrawerCollapsedChanged?.Invoke(this, value);
             }
         }
     }
@@ -595,6 +610,23 @@ public class SettingsService : ISettingsService
         return _mainPageAutoCollapseSidebar;
     }
 
+    public async Task SaveCollectPageLoadDrawerCollapsedAsync(bool collapsed)
+    {
+        await _localSettingsService.SaveSettingAsync("CollectPageLoadDrawerCollapsed", collapsed);
+    }
+
+    public async Task<bool> LoadCollectPageLoadDrawerCollapsedAsync()
+    {
+        var collapsed = await _localSettingsService.ReadSettingAsync<bool?>("CollectPageLoadDrawerCollapsed");
+        if (collapsed.HasValue)
+        {
+            _collectPageLoadDrawerCollapsed = collapsed.Value;
+            return collapsed.Value;
+        }
+
+        return _collectPageLoadDrawerCollapsed;
+    }
+
     public async Task SavePreferPsdAsPrimaryPreviewAsync(bool enabled)
     {
         await _localSettingsService.SaveSettingAsync("PreferPsdAsPrimaryPreview", enabled);
@@ -692,6 +724,7 @@ public class SettingsService : ISettingsService
         await LoadDecodeScaleFactorAsync();
         await LoadAlwaysDecodeRawAsync();
         await LoadMainPageAutoCollapseSidebarAsync();
+        await LoadCollectPageLoadDrawerCollapsedAsync();
         await LoadPreferPsdAsPrimaryPreviewAsync();
         await LoadAutoExpandBurstOnDirectionalNavigationAsync();
         await LoadCollapseBurstGroupsAsync();

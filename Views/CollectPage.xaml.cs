@@ -126,12 +126,14 @@ public sealed partial class CollectPage : Page
         RefreshCustomIconForegrounds();
     }
 
-    private void CollectPage_Loaded(object sender, RoutedEventArgs e)
+    private async void CollectPage_Loaded(object sender, RoutedEventArgs e)
     {
         if (_isDisposed)
             return;
 
         _isUnloaded = false;
+        _isLoadDrawerPinnedCollapsed = await _settingsService.LoadCollectPageLoadDrawerCollapsedAsync();
+        _isLoadDrawerTemporarilyExpanded = false;
         RegisterShellToolbar();
         EnsurePreviewSelectionInitialized();
         RefreshDualPageLayout(forceRebuild: true);
@@ -916,6 +918,7 @@ public sealed partial class CollectPage : Page
     {
         _isLoadDrawerPinnedCollapsed = !_isLoadDrawerPinnedCollapsed;
         _isLoadDrawerTemporarilyExpanded = false;
+        _ = _settingsService.SaveCollectPageLoadDrawerCollapsedAsync(_isLoadDrawerPinnedCollapsed);
         UpdateLoadDrawerState();
     }
 
@@ -949,6 +952,7 @@ public sealed partial class CollectPage : Page
 
         _isLoadDrawerPinnedCollapsed = true;
         _isLoadDrawerTemporarilyExpanded = false;
+        _ = _settingsService.SaveCollectPageLoadDrawerCollapsedAsync(_isLoadDrawerPinnedCollapsed);
         UpdateLoadDrawerState();
     }
 

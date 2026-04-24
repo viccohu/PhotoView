@@ -90,6 +90,11 @@ public interface ISettingsService
         set;
     }
 
+    bool CollectPageLoadDrawerCollapsed {
+        get;
+        set;
+    }
+
     bool PreferPsdAsPrimaryPreview {
         get;
         set;
@@ -118,6 +123,7 @@ public interface ISettingsService
     event EventHandler<bool>? DeleteToRecycleBinChanged;
     event EventHandler<bool>? AlwaysDecodeRawChanged;
     event EventHandler<bool>? MainPageAutoCollapseSidebarChanged;
+    event EventHandler<bool>? CollectPageLoadDrawerCollapsedChanged;
     event EventHandler<bool>? PreferPsdAsPrimaryPreviewChanged;
     event EventHandler<bool>? AutoExpandBurstOnDirectionalNavigationChanged;
     event EventHandler<bool>? CollapseBurstGroupsChanged;
@@ -159,6 +165,8 @@ public interface ISettingsService
     Task<bool> LoadAlwaysDecodeRawAsync();
     Task SaveMainPageAutoCollapseSidebarAsync(bool enabled);
     Task<bool> LoadMainPageAutoCollapseSidebarAsync();
+    Task SaveCollectPageLoadDrawerCollapsedAsync(bool collapsed);
+    Task<bool> LoadCollectPageLoadDrawerCollapsedAsync();
     Task SavePreferPsdAsPrimaryPreviewAsync(bool enabled);
     Task<bool> LoadPreferPsdAsPrimaryPreviewAsync();
     Task SaveAutoExpandBurstOnDirectionalNavigationAsync(bool enabled);
