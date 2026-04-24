@@ -18,6 +18,9 @@ namespace PhotoView.Views;
 
 public sealed partial class ShellPage : Page
 {
+    private const double LeftNavigationOpenPaneLength = 120d;
+    private const double DefaultNavigationOpenPaneLength = 320d;
+
     public ShellViewModel ViewModel
     {
         get;
@@ -74,8 +77,7 @@ public sealed partial class ShellPage : Page
         // 鍦?UI 绾跨▼涓婃洿鏂?
         DispatcherQueue.TryEnqueue(() =>
         {
-            NavigationViewControl.PaneDisplayMode = mode;
-            NavigationViewControl.IsPaneToggleButtonVisible = mode == NavigationViewPaneDisplayMode.Left;
+            ApplyNavigationViewMode(mode);
         });
     }
 
@@ -84,10 +86,7 @@ public sealed partial class ShellPage : Page
         // 鍦?UI 绾跨▼涓婃洿鏂?
         DispatcherQueue.TryEnqueue(() =>
         {
-            var useLeftNavigation = mode == NavigationViewPaneDisplayMode.Left;
-            
-            NavigationViewControl.PaneDisplayMode = mode;
-            NavigationViewControl.IsPaneToggleButtonVisible = useLeftNavigation;
+            ApplyNavigationViewMode(mode);
         });
     }
 
@@ -190,6 +189,34 @@ public sealed partial class ShellPage : Page
                 }
             }
         }
+    }
+
+    private void ApplyNavigationViewMode(NavigationViewPaneDisplayMode mode)
+    {
+        var useLeftNavigation = mode == NavigationViewPaneDisplayMode.Left;
+
+        NavigationViewControl.PaneDisplayMode = mode;
+        NavigationViewControl.IsPaneToggleButtonVisible = useLeftNavigation;
+        NavigationViewControl.OpenPaneLength = useLeftNavigation
+            ? LeftNavigationOpenPaneLength
+            : DefaultNavigationOpenPaneLength;
+
+        UpdateTitleBarLayout(useLeftNavigation);
+    }
+
+    private void UpdateTitleBarLayout(bool useLeftNavigation)
+    {
+        var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+        var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hWnd);
+        var appWindow = AppWindow.GetFromWindowId(windowId);
+        if (appWindow?.TitleBar == null)
+        {
+            return;
+        }
+
+        appWindow.TitleBar.PreferredHeightOption = useLeftNavigation
+            ? TitleBarHeightOption.Standard
+            : TitleBarHeightOption.Tall;
     }
 
     private void UpdateNavigationIcons()

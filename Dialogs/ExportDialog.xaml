@@ -1,4 +1,4 @@
-﻿<ContentDialog
+<ContentDialog
     x:Class="PhotoView.Dialogs.ExportDialog"
     x:Uid="ExportDialog"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -70,7 +70,16 @@
     </ContentDialog.CloseButtonStyle>
 
     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-        <StackPanel Width="600" MaxWidth="650" Spacing="14">
+        <StackPanel Width="580" MaxWidth="600" Spacing="14">
+            <ProgressBar x:Name="ExportProgressBar" Minimum="0" Maximum="100" Value="0" Visibility="Collapsed"/>
+
+            <TextBlock
+                x:Name="StatusTextBlock"
+                Style="{ThemeResource CaptionTextBlockStyle}"
+                Opacity="0.7"
+                Text=" "
+                TextWrapping="Wrap"
+                Visibility="Collapsed"/>
 
             <StackPanel Spacing="14">
                 <TextBlock
@@ -84,7 +93,7 @@
                 <Grid ColumnSpacing="6" RowSpacing="12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="150"/>
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -96,7 +105,7 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="160"/>
                             <ColumnDefinition Width="110"/>
-                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
                         <ToggleButton x:Name="ImageToggleButton" HorizontalAlignment="Stretch">
@@ -119,7 +128,7 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="160"/>
                             <ColumnDefinition Width="110"/>
-                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
                         <ToggleButton x:Name="RawToggleButton" HorizontalAlignment="Stretch">
@@ -203,20 +212,12 @@
                     </Border>
                 </Grid>
 
-                <ProgressBar x:Name="ExportProgressBar" Minimum="0" Maximum="100" Value="0" Visibility="Collapsed"/>
-
-                <TextBlock
-                    x:Name="StatusTextBlock"
-                    Style="{ThemeResource CaptionTextBlockStyle}"
-                    Opacity="0.7"
-                    Text=" "
-                    TextWrapping="Wrap"/>
             </StackPanel>
 
             <Border
-                Padding="26,10"
+                Padding="0,0,0,0"
                 CornerRadius="12"
-                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                Background="Transparent"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                 BorderThickness="1">
                 <StackPanel Spacing="0">
@@ -235,10 +236,13 @@
                             OffContent=""
                             OnContent=""/>
                     </Grid>
-                    <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+                    
 
 
-                    <StackPanel x:Name="ResizeOptionsPanel" Spacing="14" Visibility="Collapsed" Margin="0,12,0,0">
+                    <StackPanel x:Name="ResizeOptionsPanel" Spacing="14" Visibility="Collapsed" Margin="0,12,0,0" Opacity="0">
+                        <StackPanel.RenderTransform>
+                            <TranslateTransform x:Name="ResizeOptionsPanelTransform" Y="-8"/>
+                        </StackPanel.RenderTransform>
                         <Grid ColumnSpacing="12" RowSpacing="12">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
@@ -252,7 +256,6 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            
                             <TextBlock x:Uid="ExportDialog_ResizeOptions" Text="缩放选项" VerticalAlignment="Center" Opacity="0.7"/>
                             <ComboBox x:Name="ResizeModeComboBox" Grid.Column="1" SelectedIndex="0" HorizontalAlignment="Stretch">
                                 <ComboBoxItem x:Uid="ExportDialog_Pixel" Content="像素" Tag="Pixel"/>
@@ -297,7 +300,7 @@
 
                         <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}"/>
 
-                        <Grid ColumnSpacing="8" RowSpacing="6">
+                        <Grid ColumnSpacing="8" RowSpacing="6" Margin="0,0,10,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>

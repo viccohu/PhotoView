@@ -234,6 +234,12 @@
   <data name="Settings_PreferPsdAsPrimaryPreview.Description" xml:space="preserve">
     <value>同名文件中优先使用 PSD/PSB 作为预览主图</value>
   </data>
+  <data name="Settings_AdvancedPerformance.Header" xml:space="preserve">
+    <value>高级性能</value>
+  </data>
+  <data name="Settings_AdvancedPerformance.Description" xml:space="preserve">
+    <value>为高负载浏览场景提供额外性能控制。</value>
+  </data>
   <data name="Settings_RememberLastFolder.Header" xml:space="preserve">
     <value>记住上次文件夹</value>
   </data>
@@ -255,6 +261,18 @@
   <data name="Settings_ThumbnailSize_Large.Content" xml:space="preserve">
     <value>大</value>
   </data>
+  <data name="Settings_BurstCollapse.Header" xml:space="preserve">
+    <value>连拍折叠</value>
+  </data>
+  <data name="Settings_BurstCollapse.Description" xml:space="preserve">
+    <value>在缩略图页将同一连拍组的照片折叠为更紧凑的分组。</value>
+  </data>
+  <data name="Settings_AutoSyncGroupRatings.Header" xml:space="preserve">
+    <value>组内评级自动同步</value>
+  </data>
+  <data name="Settings_AutoSyncGroupRatings.Description" xml:space="preserve">
+    <value>保持同组 JPG 与 RAW 的评级一致，并在不一致时采用更高评级。</value>
+  </data>
   <data name="Settings_DeleteToRecycleBin.Header" xml:space="preserve">
     <value>删除到回收站</value>
   </data>
@@ -263,6 +281,9 @@
   </data>
   <data name="Settings_PrivacyStatement.Header" xml:space="preserve">
     <value>隐私声明</value>
+  </data>
+  <data name="Settings_ProductInfo.Header" xml:space="preserve">
+    <value>PhotoView</value>
   </data>
   <data name="Common_FileCount" xml:space="preserve">
     <value>{0} 个文件</value>

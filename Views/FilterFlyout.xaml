@@ -41,17 +41,7 @@
             CornerRadius="6">
             <StackPanel Spacing="12">
                 <TextBlock x:Uid="FilterFlyout_Actions" Style="{ThemeResource BodyTextBlockStyle}" />
-                <ToggleButton
-                    x:Name="BurstFilterButton"
-                    Style="{StaticResource FilterChipToggleButtonStyle}"
-                    Checked="BurstFilterButton_Checked"
-                    Unchecked="BurstFilterButton_Unchecked"
-                    Visibility="Collapsed">
-                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="2,0,0,0">
-                        <ContentControl Content="{ThemeResource TextFillColorPrimaryBrush}" ContentTemplate="{StaticResource BurstFileIconTemplate}" />
-                        <TextBlock x:Uid="FilterFlyout_Burst" VerticalAlignment="Center" />
-                    </StackPanel>
-                </ToggleButton>
+             
                 <ToggleButton
                     x:Name="PendingDeleteFilterButton"
                     Style="{StaticResource FilterChipToggleButtonStyle}"
@@ -62,6 +52,19 @@
                         <TextBlock x:Uid="FilterFlyout_PendingDelete" VerticalAlignment="Center" />
                     </StackPanel>
                 </ToggleButton>
+                
+                <ToggleButton
+                   x:Name="BurstFilterButton"
+                   Style="{StaticResource FilterChipToggleButtonStyle}"
+                   Checked="BurstFilterButton_Checked"
+                   Unchecked="BurstFilterButton_Unchecked"
+                   Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal" Spacing="8" >
+                        <ContentControl Content="{ThemeResource TextFillColorPrimaryBrush}" ContentTemplate="{StaticResource BurstFileIconTemplate}" />
+                        <TextBlock x:Uid="FilterFlyout_Burst" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ToggleButton>
+
             </StackPanel>
         </Border>
 

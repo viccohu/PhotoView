@@ -38,6 +38,8 @@
             IsSettingsVisible="True"
             IsBackButtonVisible="Collapsed"
             ItemInvoked="NavigationViewControl_ItemInvoked"
+            CompactPaneLength="48"
+            OpenPaneLength="320"
             PaneDisplayMode="Top"
             SelectedItem="{x:Bind ViewModel.Selected, Mode=TwoWay}">
             <NavigationView.MenuItems>

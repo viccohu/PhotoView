@@ -246,6 +246,12 @@
   <data name="Settings_PreferPsdAsPrimaryPreview.Description" xml:space="preserve">
     <value>Use PSD/PSB as the primary preview for files with the same name</value>
   </data>
+  <data name="Settings_AdvancedPerformance.Header" xml:space="preserve">
+    <value>Advanced Performance</value>
+  </data>
+  <data name="Settings_AdvancedPerformance.Description" xml:space="preserve">
+    <value>Extra controls for heavier browsing workloads.</value>
+  </data>
   <data name="Settings_RememberLastFolder.Header" xml:space="preserve">
     <value>Remember last folder</value>
   </data>
@@ -267,6 +273,18 @@
   <data name="Settings_ThumbnailSize_Large.Content" xml:space="preserve">
     <value>Large</value>
   </data>
+  <data name="Settings_BurstCollapse.Header" xml:space="preserve">
+    <value>Burst Collapse</value>
+  </data>
+  <data name="Settings_BurstCollapse.Description" xml:space="preserve">
+    <value>Collapse photos from the same burst into a tighter group on the thumbnail page.</value>
+  </data>
+  <data name="Settings_AutoSyncGroupRatings.Header" xml:space="preserve">
+    <value>Auto Sync Ratings</value>
+  </data>
+  <data name="Settings_AutoSyncGroupRatings.Description" xml:space="preserve">
+    <value>Keep JPG and RAW ratings aligned inside the same group, and resolve mismatches to the higher rating.</value>
+  </data>
   <data name="Settings_DeleteToRecycleBin.Header" xml:space="preserve">
     <value>Delete to recycle bin</value>
   </data>
@@ -275,6 +293,9 @@
   </data>
   <data name="Settings_PrivacyStatement.Header" xml:space="preserve">
     <value>Privacy Statement</value>
+  </data>
+  <data name="Settings_ProductInfo.Header" xml:space="preserve">
+    <value>PhotoView</value>
   </data>
   <data name="Common_FileCount" xml:space="preserve">
     <value>{0} files</value>

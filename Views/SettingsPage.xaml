@@ -114,7 +114,7 @@
                         <ToggleSwitch x:Name="PreferPsdAsPrimaryPreviewToggleSwitch" Toggled="PreferPsdAsPrimaryPreviewToggleSwitch_Toggled" />
                     </toolkit:SettingsCard>
 
-                    <toolkit:SettingsExpander Header="Advanced Performance" Description="Extra controls for heavier browsing workloads.">
+                    <toolkit:SettingsExpander x:Uid="Settings_AdvancedPerformance">
                         <toolkit:SettingsExpander.HeaderIcon>
                             <FontIcon Glyph="&#xE9D9;" />
                         </toolkit:SettingsExpander.HeaderIcon>
@@ -153,14 +153,14 @@
                         </ComboBox>
                     </toolkit:SettingsCard>
 
-                    <toolkit:SettingsCard Header="Burst Collapse" Description="Collapse photos from the same burst into a tighter group in the thumbnail page.">
+                    <toolkit:SettingsCard x:Uid="Settings_BurstCollapse">
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE8B7;" />
                         </toolkit:SettingsCard.HeaderIcon>
                         <ToggleSwitch x:Name="CollapseBurstGroupsToggleSwitch" Toggled="CollapseBurstGroupsToggleSwitch_Toggled" />
                     </toolkit:SettingsCard>
 
-                    <toolkit:SettingsCard Header="Auto Sync Ratings" Description="Keep JPG and RAW ratings aligned inside the same group, and resolve mismatches to the higher rating.">
+                    <toolkit:SettingsCard x:Uid="Settings_AutoSyncGroupRatings">
                         <toolkit:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE1D3;" />
                         </toolkit:SettingsCard.HeaderIcon>
@@ -178,7 +178,7 @@
 
                     <TextBlock x:Uid="Settings_Section_About" Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" />
 
-                    <toolkit:SettingsExpander Margin="0,0,0,36" Header="PhotoView">
+                    <toolkit:SettingsExpander x:Uid="Settings_ProductInfo" Margin="0,0,0,36">
                         <toolkit:SettingsExpander.HeaderIcon>
                             <BitmapIcon ShowAsMonochrome="False" UriSource="/Assets/WindowIcon.png" />
                         </toolkit:SettingsExpander.HeaderIcon>

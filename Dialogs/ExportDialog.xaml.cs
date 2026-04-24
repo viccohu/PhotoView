@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media;
 using ImageMagick;
 using PhotoView.Contracts.Services;
@@ -30,8 +31,10 @@ public sealed partial class ExportDialog : ContentDialog
     private readonly DispatcherTimer _previewDebounceTimer;
     private CancellationTokenSource? _cancellationTokenSource;
     private CancellationTokenSource? _previewCancellationTokenSource;
+    private Storyboard? _resizeOptionsExpandStoryboard;
     private bool _isExporting = false;
     private bool _isExportComplete = false;
+    private bool _hasOpened;
     private string? _exportedFolderPath;
 
     public ExportDialog(
@@ -181,11 +184,13 @@ public sealed partial class ExportDialog : ContentDialog
         _isExporting = false;
         _isExportComplete = false;
         _exportedFolderPath = null;
+        _hasOpened = false;
         PrimaryButtonText = "ExportDialog_StartExport".GetLocalized();
         ExportProgressBar.Visibility = Visibility.Collapsed;
         StatusTextBlock.Text = "ExportDialog_Ready".GetLocalized();
         UpdateResizeControlStates();
         QueuePreviewUpdate();
+        _hasOpened = true;
     }
 
     private void ApplyCurrentAppTheme()
@@ -581,7 +586,7 @@ public sealed partial class ExportDialog : ContentDialog
     private void UpdateResizeControlStates()
     {
         var enabled = ResizeEnabledSwitch.IsOn;
-        ResizeOptionsPanel.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+        UpdateResizeOptionsPanelVisibility(enabled);
         SetResizeInputControlsEnabled(enabled);
 
         var usePercent = IsPercentResizeModeSelected();
@@ -613,6 +618,86 @@ public sealed partial class ExportDialog : ContentDialog
         }
 
         UpdateControlStates();
+    }
+
+    private void UpdateResizeOptionsPanelVisibility(bool enabled)
+    {
+        if (enabled)
+        {
+            var shouldAnimate = _hasOpened && ResizeOptionsPanel.Visibility != Visibility.Visible;
+            ResizeOptionsPanel.Visibility = Visibility.Visible;
+
+            if (shouldAnimate)
+            {
+                PlayResizeOptionsExpandAnimation();
+            }
+            else
+            {
+                StopResizeOptionsExpandAnimation();
+                ResizeOptionsPanel.Opacity = 1d;
+                ResizeOptionsPanelTransform.Y = 0d;
+            }
+
+            return;
+        }
+
+        StopResizeOptionsExpandAnimation();
+        ResizeOptionsPanel.Opacity = 0d;
+        ResizeOptionsPanelTransform.Y = -8d;
+        ResizeOptionsPanel.Visibility = Visibility.Collapsed;
+    }
+
+    private void PlayResizeOptionsExpandAnimation()
+    {
+        StopResizeOptionsExpandAnimation();
+
+        ResizeOptionsPanel.Opacity = 0d;
+        ResizeOptionsPanelTransform.Y = -8d;
+
+        var opacityAnimation = new DoubleAnimation
+        {
+            From = 0d,
+            To = 1d,
+            Duration = TimeSpan.FromMilliseconds(220),
+            EnableDependentAnimation = true
+        };
+        Storyboard.SetTarget(opacityAnimation, ResizeOptionsPanel);
+        Storyboard.SetTargetProperty(opacityAnimation, "Opacity");
+
+        var translateAnimation = new DoubleAnimation
+        {
+            From = -8d,
+            To = 0d,
+            Duration = TimeSpan.FromMilliseconds(220),
+            EnableDependentAnimation = true
+        };
+        Storyboard.SetTarget(translateAnimation, ResizeOptionsPanelTransform);
+        Storyboard.SetTargetProperty(translateAnimation, "Y");
+
+        var storyboard = new Storyboard();
+        storyboard.Children.Add(opacityAnimation);
+        storyboard.Children.Add(translateAnimation);
+        storyboard.Completed += (_, _) =>
+        {
+            if (!ReferenceEquals(_resizeOptionsExpandStoryboard, storyboard))
+            {
+                return;
+            }
+
+            ResizeOptionsPanel.Opacity = 1d;
+            ResizeOptionsPanelTransform.Y = 0d;
+            _resizeOptionsExpandStoryboard = null;
+        };
+
+        _resizeOptionsExpandStoryboard = storyboard;
+        storyboard.Begin();
+    }
+
+    private void StopResizeOptionsExpandAnimation()
+    {
+        var storyboard = _resizeOptionsExpandStoryboard;
+        _resizeOptionsExpandStoryboard = null;
+        storyboard?.Stop();
     }
 
     private void SetResizeInputControlsEnabled(bool enabled)
