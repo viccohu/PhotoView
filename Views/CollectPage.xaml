@@ -377,7 +377,7 @@
                         <ToggleButton
                             x:Name="InfoDrawerToggleButton"
                             IsChecked="{x:Bind ViewModel.IsInfoDrawerOpen, Mode=TwoWay}">
-                            <FontIcon Glyph="&#xE946;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
+                            <FontIcon Glyph="&#xE946;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="18"/>
                         </ToggleButton>
                         <ToggleButton
                             x:Name="DualPageToggleButton"
@@ -389,7 +389,7 @@
                                 <ContentControl
                                     Content="{ThemeResource TextFillColorPrimaryBrush}"
                                     ContentTemplate="{StaticResource DualPageIconTemplate}"/>
-                                <TextBlock x:Uid="CollectPage_DualPage" Text="双页"/>
+                                
                             </StackPanel>
                         </ToggleButton>
                         <Border
@@ -397,14 +397,15 @@
                             Background="{ThemeResource ControlAltFillColorSecondaryBrush}"
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                             BorderThickness="1"
-                            CornerRadius="8"
+                            CornerRadius="2"
                             Visibility="{x:Bind ViewModel.IsDualPageMode, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <StackPanel Orientation="Horizontal" Spacing="2">
+                            <StackPanel Orientation="Horizontal" Spacing="0">
                                 <ToggleButton
                                     x:Name="CompareModeToggleButton"
                                     Style="{StaticResource DualModeToggleStyle}"
                                     Click="CompareModeToggleButton_Click"
                                     Checked="CustomIconToggleButton_CheckedChanged"
+                                    CornerRadius="2,0,0,2"
                                     Unchecked="CustomIconToggleButton_CheckedChanged">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <ContentControl
@@ -418,6 +419,7 @@
                                     Style="{StaticResource DualModeToggleStyle}"
                                     Click="ContinuousModeToggleButton_Click"
                                     Checked="CustomIconToggleButton_CheckedChanged"
+                                     CornerRadius="0,2,2,0"
                                     Unchecked="CustomIconToggleButton_CheckedChanged">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <ContentControl
@@ -438,7 +440,7 @@
                                 ContentTemplate="{StaticResource FlipHorizontalIconTemplate}"/>
                         </Button>
                         <Button x:Name="RotatePreviewButton" Click="RotatePreview_Click">
-                            <FontIcon Glyph="&#xE7AD;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16"/>
+                            <FontIcon Glyph="&#xE7AD;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="18"/>
                         </Button>
                         <Button x:Name="FlipVerticalButton" Click="FlipPreviewVertical_Click">
                             <ContentControl
@@ -457,7 +459,8 @@
                         <Button
                             x:Name="ZoomValueButton"
                             Content="100%"
-                            Width="100"
+                            Width="90"
+                           HorizontalContentAlignment="Left"
                             Click="ZoomValueButton_Click"/>
 
                         <Button
@@ -466,6 +469,7 @@
                             Height="28"
                             Padding="0"
                             Click="ZoomOutButton_Click"
+                            CornerRadius="2"
                             x:Name="ZoomOutButton">
                             <FontIcon Glyph="&#xE71F;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="14"/>
                         </Button>
@@ -483,6 +487,7 @@
                             Width="28"
                             Height="28"
                             Padding="0"
+                            CornerRadius="2"
                             Click="ZoomInButton_Click"
                             x:Name="ZoomInButton">
                             <FontIcon Glyph="&#xE8A3;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="14"/>

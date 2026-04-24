@@ -9,129 +9,200 @@
     mc:Ignorable="d">
 
     <UserControl.Resources>
-        <SolidColorBrush x:Key="FilterChipUncheckedForegroundBrush" Color="{ThemeResource TextFillColorPrimary}"/>
-        <SolidColorBrush x:Key="FilterChipCheckedForegroundBrush" Color="{ThemeResource TextOnAccentFillColorPrimary}"/>
+        <SolidColorBrush x:Key="FilterChipUncheckedForegroundBrush" Color="{ThemeResource TextFillColorPrimary}" />
+        <SolidColorBrush x:Key="FilterChipCheckedForegroundBrush" Color="{ThemeResource TextOnAccentFillColorPrimary}" />
 
         <Style x:Key="FilterChipToggleButtonStyle" TargetType="ToggleButton">
-            <Setter Property="MinHeight" Value="34"/>
-            <Setter Property="Padding" Value="8,0"/>
-            <Setter Property="HorizontalContentAlignment" Value="Left"/>
-            <Setter Property="HorizontalAlignment" Value="Stretch"/>
-            <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorSecondaryBrush}"/>
-            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="Padding" Value="8,0" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorSecondaryBrush}" />
+            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
         </Style>
     </UserControl.Resources>
 
     <Grid Width="665" HorizontalAlignment="Left" VerticalAlignment="Top">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="180"/>
-            <ColumnDefinition Width="220"/>
-            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="180" />
+            <ColumnDefinition Width="245" />
+            <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Column="0" Margin="0" Padding="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="6">
+        <Border
+            Grid.Column="0"
+            Margin="0"
+            Padding="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1"
+            CornerRadius="6">
             <StackPanel Spacing="12">
-                <TextBlock x:Uid="FilterFlyout_Actions" Text="行为" Style="{ThemeResource BodyTextBlockStyle}"/>
-                <ToggleButton x:Name="BurstFilterButton" Style="{StaticResource FilterChipToggleButtonStyle}" Checked="BurstFilterButton_Checked" Unchecked="BurstFilterButton_Unchecked" Visibility="Collapsed">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <ContentControl Content="{ThemeResource TextFillColorPrimaryBrush}" ContentTemplate="{StaticResource BurstFileIconTemplate}"/>
-                        <TextBlock x:Uid="FilterFlyout_Burst" Text="连拍" VerticalAlignment="Center"/>
+                <TextBlock x:Uid="FilterFlyout_Actions" Style="{ThemeResource BodyTextBlockStyle}" />
+                <ToggleButton
+                    x:Name="BurstFilterButton"
+                    Style="{StaticResource FilterChipToggleButtonStyle}"
+                    Checked="BurstFilterButton_Checked"
+                    Unchecked="BurstFilterButton_Unchecked"
+                    Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="2,0,0,0">
+                        <ContentControl Content="{ThemeResource TextFillColorPrimaryBrush}" ContentTemplate="{StaticResource BurstFileIconTemplate}" />
+                        <TextBlock x:Uid="FilterFlyout_Burst" VerticalAlignment="Center" />
                     </StackPanel>
                 </ToggleButton>
-                <ToggleButton x:Name="PendingDeleteFilterButton" Style="{StaticResource FilterChipToggleButtonStyle}" Checked="PendingDeleteFilterButton_Checked" Unchecked="PendingDeleteFilterButton_Unchecked">
+                <ToggleButton
+                    x:Name="PendingDeleteFilterButton"
+                    Style="{StaticResource FilterChipToggleButtonStyle}"
+                    Checked="PendingDeleteFilterButton_Checked"
+                    Unchecked="PendingDeleteFilterButton_Unchecked">
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <ContentControl Content="{ThemeResource TextFillColorPrimaryBrush}" ContentTemplate="{StaticResource PendingDeleteIconTemplate}"/>
-                        <TextBlock x:Uid="FilterFlyout_PendingDelete" Text="预删除" VerticalAlignment="Center"/>
+                        <ContentControl Content="{ThemeResource TextFillColorPrimaryBrush}" ContentTemplate="{StaticResource PendingDeleteIconTemplate}" />
+                        <TextBlock x:Uid="FilterFlyout_PendingDelete" VerticalAlignment="Center" />
                     </StackPanel>
                 </ToggleButton>
             </StackPanel>
         </Border>
 
-        <Border Grid.Column="1" Margin="0" Padding="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="6">
+        <Border
+            Grid.Column="1"
+            Margin="0"
+            Padding="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1"
+            CornerRadius="6">
             <StackPanel Spacing="12">
-                <TextBlock x:Uid="FilterFlyout_Format" Text="格式" Style="{ThemeResource BodyTextBlockStyle}"/>
+                <TextBlock x:Uid="FilterFlyout_Format" Style="{ThemeResource BodyTextBlockStyle}" />
+
                 <Grid ColumnSpacing="0">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="65"/>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <ToggleButton x:Name="ImageFilterButton"  Margin="0,0,1,0" Style="{StaticResource FilterChipToggleButtonStyle}" Checked="ImageFilterButton_Checked" Unchecked="ImageFilterButton_Unchecked" CornerRadius="6,0,0,6">
+                    <ToggleButton
+                        x:Name="ImageFilterButton"
+                        Margin="0,0,1,0"
+                        Style="{StaticResource FilterChipToggleButtonStyle}"
+                        Checked="ImageFilterButton_Checked"
+                        Unchecked="ImageFilterButton_Unchecked"
+                        CornerRadius="6,0,0,6">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <ContentControl Content="{ThemeResource TextFillColorPrimaryBrush}" ContentTemplate="{StaticResource AllImagesIconTemplate}"/>
-                            <TextBlock x:Uid="FilterFlyout_Photo" Text="照片" VerticalAlignment="Center"/>
+                            <ContentControl Content="{ThemeResource TextFillColorPrimaryBrush}" ContentTemplate="{StaticResource AllImagesIconTemplate}" />
+                            <TextBlock x:Uid="FilterFlyout_Photo" VerticalAlignment="Center" />
                         </StackPanel>
                     </ToggleButton>
-                    <ToggleButton x:Name="ImageSingleOnlyFilterButton" Grid.Column="1" Style="{StaticResource FilterChipToggleButtonStyle}" Checked="ImageSingleOnlyFilterButton_Checked" Unchecked="ImageSingleOnlyFilterButton_Unchecked"  CornerRadius="0,6,6,0">
+                    <ToggleButton
+                        x:Name="ImageSingleOnlyFilterButton"
+                        Grid.Column="1"
+                        Style="{StaticResource FilterChipToggleButtonStyle}"
+                        Checked="ImageSingleOnlyFilterButton_Checked"
+                        Unchecked="ImageSingleOnlyFilterButton_Unchecked"
+                        CornerRadius="0,6,6,0">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <ContentControl Content="{ThemeResource TextFillColorPrimaryBrush}" ContentTemplate="{StaticResource ImageOnlyIconTemplate}"/>
-                            <TextBlock x:Uid="FilterFlyout_ImageSolo" Text="单" VerticalAlignment="Center"/>
+                            <ContentControl Content="{ThemeResource TextFillColorPrimaryBrush}" ContentTemplate="{StaticResource ImageOnlyIconTemplate}" />
+                            <TextBlock x:Uid="FilterFlyout_ImageSolo" VerticalAlignment="Center" />
                         </StackPanel>
                     </ToggleButton>
                 </Grid>
+
                 <Grid ColumnSpacing="0">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="65"/>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <ToggleButton x:Name="RawFilterButton" Margin="0,0,1,0" Style="{StaticResource FilterChipToggleButtonStyle}" Checked="RawFilterButton_Checked" Unchecked="RawFilterButton_Unchecked" CornerRadius="6,0,0,6">
+                    <ToggleButton
+                        x:Name="RawFilterButton"
+                        Margin="0,0,1,0"
+                        Style="{StaticResource FilterChipToggleButtonStyle}"
+                        Checked="RawFilterButton_Checked"
+                        Unchecked="RawFilterButton_Unchecked"
+                        CornerRadius="6,0,0,6">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <ContentControl Content="{ThemeResource TextFillColorPrimaryBrush}" ContentTemplate="{StaticResource AllRawIconTemplate}"/>
-                            <TextBlock x:Uid="FilterFlyout_Raw" Text="数字底片" VerticalAlignment="Center"/>
+                            <ContentControl Content="{ThemeResource TextFillColorPrimaryBrush}" ContentTemplate="{StaticResource AllRawIconTemplate}" />
+                            <TextBlock x:Uid="FilterFlyout_Raw" VerticalAlignment="Center" />
                         </StackPanel>
                     </ToggleButton>
-                    <ToggleButton x:Name="RawSingleOnlyFilterButton" Grid.Column="1" Style="{StaticResource FilterChipToggleButtonStyle}" Checked="RawSingleOnlyFilterButton_Checked" Unchecked="RawSingleOnlyFilterButton_Unchecked"  CornerRadius="0,6,6,0">
+                    <ToggleButton
+                        x:Name="RawSingleOnlyFilterButton"
+                        Grid.Column="1"
+                        Style="{StaticResource FilterChipToggleButtonStyle}"
+                        Checked="RawSingleOnlyFilterButton_Checked"
+                        Unchecked="RawSingleOnlyFilterButton_Unchecked"
+                        CornerRadius="0,6,6,0">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <ContentControl Content="{ThemeResource TextFillColorPrimaryBrush}" ContentTemplate="{StaticResource RawOnlyIconTemplate}"/>
-                            <TextBlock x:Uid="FilterFlyout_RawSolo" Text="单" VerticalAlignment="Center"/>
+                            <ContentControl Content="{ThemeResource TextFillColorPrimaryBrush}" ContentTemplate="{StaticResource RawOnlyIconTemplate}" />
+                            <TextBlock x:Uid="FilterFlyout_RawSolo" VerticalAlignment="Center" />
                         </StackPanel>
                     </ToggleButton>
                 </Grid>
+
                 <Grid ColumnSpacing="0">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="65"/>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <ToggleButton x:Name="DualFormatFilterButton" Margin="0,0,1,0" Style="{StaticResource FilterChipToggleButtonStyle}" Checked="DualFormatFilterButton_Checked" Unchecked="DualFormatFilterButton_Unchecked" CornerRadius="6,0,0,6">
+                    <ToggleButton
+                        x:Name="DualFormatFilterButton"
+                        Margin="0,0,1,0"
+                        Style="{StaticResource FilterChipToggleButtonStyle}"
+                        Checked="DualFormatFilterButton_Checked"
+                        Unchecked="DualFormatFilterButton_Unchecked"
+                        CornerRadius="6,0,0,6">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock x:Uid="FilterFlyout_Dual" Text="双格式" VerticalAlignment="Center"/>
+                            <ContentControl Content="{ThemeResource TextFillColorPrimaryBrush}" ContentTemplate="{StaticResource DualFormatIconTemplate}" />
+                            <TextBlock x:Uid="FilterFlyout_Dual" VerticalAlignment="Center" />
                         </StackPanel>
                     </ToggleButton>
-                    <ToggleButton x:Name="DualFormatInverseFilterButton" Grid.Column="1" Style="{StaticResource FilterChipToggleButtonStyle}" Checked="DualFormatInverseFilterButton_Checked" Unchecked="DualFormatInverseFilterButton_Unchecked"  CornerRadius="0,6,6,0">
+                    <ToggleButton
+                        x:Name="DualFormatInverseFilterButton"
+                        Grid.Column="1"
+                        Style="{StaticResource FilterChipToggleButtonStyle}"
+                        Checked="DualFormatInverseFilterButton_Checked"
+                        Unchecked="DualFormatInverseFilterButton_Unchecked"
+                        CornerRadius="0,6,6,0">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock x:Uid="FilterFlyout_Inverse" Text="反向" VerticalAlignment="Center"/>
+                            <ContentControl Content="{ThemeResource TextFillColorPrimaryBrush}" ContentTemplate="{StaticResource DualFormatInverseIconTemplate}" />
+                            <TextBlock x:Uid="FilterFlyout_Inverse" VerticalAlignment="Center" />
                         </StackPanel>
                     </ToggleButton>
                 </Grid>
             </StackPanel>
         </Border>
 
-        <Border Grid.Column="2" Margin="0" Padding="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="6">
+        <Border
+            Grid.Column="2"
+            Margin="0"
+            Padding="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1"
+            CornerRadius="6">
             <StackPanel Spacing="12">
-                <TextBlock x:Uid="FilterFlyout_Rating" Text="评级" Style="{ThemeResource BodyTextBlockStyle}"/>
+                <TextBlock x:Uid="FilterFlyout_Rating" Style="{ThemeResource BodyTextBlockStyle}" />
                 <StackPanel Spacing="4">
-                    <TextBlock x:Uid="FilterFlyout_Mode" Text="模式" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
-                    <StackPanel x:Name="RatingModeButtonsPanel" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Stretch"/>
+                    <TextBlock x:Uid="FilterFlyout_Mode" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7" />
+                    <StackPanel x:Name="RatingModeButtonsPanel" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Stretch" />
                 </StackPanel>
-                <Border Margin="0,6,0,0" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1"/>
+                <Border Margin="0,6,0,0" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" />
                 <StackPanel Spacing="8">
                     <Grid ColumnSpacing="12">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" Spacing="4">
-                            <TextBlock x:Uid="FilterFlyout_Condition" Text="条件" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                            <TextBlock x:Uid="FilterFlyout_Condition" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7" />
                             <ComboBox x:Name="RatingConditionComboBox">
-                                <ComboBoxItem Tag="GreaterOrEqual" Content="&gt;="/>
-                                <ComboBoxItem Tag="Equals" Content="="/>
-                                <ComboBoxItem Tag="LessOrEqual" Content="&lt;="/>
+                                <ComboBoxItem Tag="GreaterOrEqual" Content="&gt;=" />
+                                <ComboBoxItem Tag="Equals" Content="=" />
+                                <ComboBoxItem Tag="LessOrEqual" Content="&lt;=" />
                             </ComboBox>
                         </StackPanel>
                         <StackPanel Grid.Column="1" Spacing="4" HorizontalAlignment="Left">
-                            <TextBlock x:Uid="FilterFlyout_Stars" Text="星级" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7"/>
-                            <RatingControl x:Name="RatingStarsControl" IsClearEnabled="True" MaxRating="5"/>
+                            <TextBlock x:Uid="FilterFlyout_Stars" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7" />
+                            <RatingControl x:Name="RatingStarsControl" IsClearEnabled="True" MaxRating="5" />
                         </StackPanel>
                     </Grid>
                 </StackPanel>
@@ -139,4 +210,3 @@
         </Border>
     </Grid>
 </UserControl>
-
