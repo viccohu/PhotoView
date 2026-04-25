@@ -74,7 +74,7 @@
                     Visibility="Collapsed">
                     <NavigationViewItem.Icon>
                         <FontIcon
-                            Glyph="&#xF0E8;"
+                            Glyph="&#xE8F1;"
                             FontFamily="{StaticResource SymbolThemeFontFamily}"
                             FontSize="16" />
                     </NavigationViewItem.Icon>

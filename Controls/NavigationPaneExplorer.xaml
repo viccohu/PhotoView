@@ -124,12 +124,13 @@
                 Grid.Row="3"
                 ItemsSource="{Binding RootNodes}"
                 Expanding="FolderTreeView_Expanding"
+                Collapsed="FolderTreeView_Collapsed"
                 ItemInvoked="FolderTreeView_ItemInvoked">
                 <TreeView.ItemTemplate>
                     <DataTemplate x:DataType="models:FolderNode">
                         <TreeViewItem
                             ItemsSource="{x:Bind Children}"
-                            IsExpanded="{x:Bind IsExpanded, Mode=TwoWay}"
+                            IsExpanded="{x:Bind IsExpanded, Mode=OneWay}"
                             HasUnrealizedChildren="{x:Bind HasExpandableChildren, Mode=OneWay}"
                             DoubleTapped="TreeViewItem_DoubleTapped"
                             RightTapped="TreeViewItem_RightTapped">

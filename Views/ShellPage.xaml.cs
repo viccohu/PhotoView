@@ -340,10 +340,10 @@ public sealed partial class ShellPage : Page
             : null;
 
         NavigationPaneHost.Context = isPaneOpen ? context : null;
-         ExpandedNavigationPaneItem.Visibility = isPaneOpen && context != null ? Visibility.Visible : Visibility.Collapsed;
+        ExpandedNavigationPaneItem.Visibility = isPaneOpen && context != null ? Visibility.Visible : Visibility.Collapsed;
 
         _compactNavigationPaneHost.Context = !isPaneOpen ? context : null;
-          CompactNavigationPaneItem.Visibility = !isPaneOpen && context != null ? Visibility.Visible : Visibility.Collapsed;
+        CompactNavigationPaneItem.Visibility = !isPaneOpen && context != null ? Visibility.Visible : Visibility.Collapsed;
         CompactNavigationPaneItem.Content = context?.Title ?? "目录";
 
         if (isPaneOpen || context == null)

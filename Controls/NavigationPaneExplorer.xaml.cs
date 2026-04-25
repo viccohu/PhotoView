@@ -1,4 +1,3 @@
-using System.Collections.Specialized;
 using System.ComponentModel;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
@@ -21,6 +20,8 @@ public sealed partial class NavigationPaneExplorer : UserControl
         get => (INavigationPaneContext?)GetValue(ContextProperty);
         set => SetValue(ContextProperty, value);
     }
+
+    private int _syncVersion;
 
     public NavigationPaneExplorer()
     {
@@ -49,14 +50,21 @@ public sealed partial class NavigationPaneExplorer : UserControl
             newNotify.PropertyChanged += Context_PropertyChanged;
         }
 
-        _ = SyncSelectedNodeAsync();
+        _syncVersion++;
+        if (newContext != null)
+        {
+            var version = _syncVersion;
+            DispatcherQueue.TryEnqueue(async () => await SyncSelectedNodeAsync(version));
+        }
     }
 
     private void Context_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(INavigationPaneContext.SelectedNode))
         {
-            DispatcherQueue.TryEnqueue(async () => await SyncSelectedNodeAsync());
+            _syncVersion++;
+            var version = _syncVersion;
+            DispatcherQueue.TryEnqueue(async () => await SyncSelectedNodeAsync(version));
         }
     }
 
@@ -67,8 +75,17 @@ public sealed partial class NavigationPaneExplorer : UserControl
             return;
         }
 
+        node.IsExpanded = true;
         await Context.ExpandNodeAsync(node);
         Context.SelectedNode = node;
+    }
+
+    private void FolderTreeView_Collapsed(TreeView sender, TreeViewCollapsedEventArgs args)
+    {
+        if (args.Item is FolderNode node)
+        {
+            node.IsExpanded = false;
+        }
     }
 
     private async void FolderTreeView_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
@@ -186,9 +203,9 @@ public sealed partial class NavigationPaneExplorer : UserControl
         await Context.ToggleOptionAsync(toggleButton.IsChecked == true);
     }
 
-    private async Task SyncSelectedNodeAsync()
+    private async Task SyncSelectedNodeAsync(int version)
     {
-        if (Context?.SelectedNode == null)
+        if (Context?.SelectedNode == null || version != _syncVersion)
         {
             return;
         }
@@ -204,6 +221,11 @@ public sealed partial class NavigationPaneExplorer : UserControl
         FolderNode? lastNode = null;
         for (var i = 0; i < path.Count; i++)
         {
+            if (version != _syncVersion || Context == null)
+            {
+                return;
+            }
+
             var node = path[i];
             lastNode = node;
 
@@ -214,6 +236,11 @@ public sealed partial class NavigationPaneExplorer : UserControl
                     await Context.ExpandNodeAsync(node);
                 }
 
+                if (version != _syncVersion || Context == null)
+                {
+                    return;
+                }
+
                 if (!node.IsExpanded)
                 {
                     node.IsExpanded = true;
@@ -222,15 +249,12 @@ public sealed partial class NavigationPaneExplorer : UserControl
             }
         }
 
-        if (lastNode != null)
+        if (version != _syncVersion || Context == null || lastNode == null)
         {
-            FolderTreeView.SelectedItem = lastNode;
-            await Task.Delay(50);
-            if (FolderTreeView.ContainerFromItem(lastNode) is TreeViewItem container)
-            {
-                container.StartBringIntoView();
-            }
+            return;
         }
+
+        FolderTreeView.SelectedItem = lastNode;
     }
 
     private static bool TryGetFolderNode(object sender, out FolderNode node)
