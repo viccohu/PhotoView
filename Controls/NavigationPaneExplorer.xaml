@@ -13,7 +13,7 @@
     </UserControl.Resources>
 
     <Border
-        Padding="14,8,0,12"
+        Padding="0,8,0,12"
         Background="Transparent">
         <Grid RowSpacing="6">
             <Grid.RowDefinitions>
@@ -30,6 +30,7 @@
                 x:Name="FolderTreeView"
                 Grid.Row="1"
                 ItemsSource="{Binding RootNodes}"
+                MaxHeight="500"
                 Expanding="FolderTreeView_Expanding"
                 Collapsed="FolderTreeView_Collapsed"
                 ItemInvoked="FolderTreeView_ItemInvoked">
