@@ -19,19 +19,19 @@
 
     <Border
         Padding="12"
+        Width="300"
         Background="Transparent">
         <Grid RowSpacing="8">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
+                <RowDefinition Height="80" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <TextBlock
                 Grid.Row="0"
-                Style="{ThemeResource BodyStrongTextBlockStyle}">
+                Style="{ThemeResource BodyTextBlockStyle}">
                 <Run Text="载入区" />
                 <Run Text="{x:Bind Subtitle, Mode=OneWay}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </TextBlock>
@@ -44,11 +44,11 @@
                     <DataTemplate>
                         <Border
                             Margin="0,0,0,4"
-                            Padding="8,4"
+                            Padding="8,8"
                             Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                             BorderThickness="1"
-                            CornerRadius="4">
+                            CornerRadius="6">
                             <Grid ColumnSpacing="8">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
@@ -58,7 +58,7 @@
                                     Text="{Binding DisplayName}"
                                     TextTrimming="CharacterEllipsis"
                                     VerticalAlignment="Center"
-                                    FontSize="12" />
+                                    FontSize="16" />
                                 <Button
                                     Grid.Column="1"
                                     Tag="{Binding}"
@@ -67,7 +67,7 @@
                                     <FontIcon
                                         Glyph="&#xE711;"
                                         FontFamily="{StaticResource SymbolThemeFontFamily}"
-                                        FontSize="10" />
+                                        FontSize="12" />
                                 </Button>
                             </Grid>
                         </Border>
@@ -75,29 +75,38 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <ToggleButton
-                Grid.Row="2"
-                Content="{x:Bind ToggleOptionText, Mode=OneWay}"
-                IsChecked="{x:Bind ToggleOptionValue, Mode=TwoWay}"
-                Checked="ToggleOptionButton_CheckedChanged"
-                Unchecked="ToggleOptionButton_CheckedChanged"
-                Visibility="{x:Bind IsToggleOptionVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            <Grid Grid.Row="2">
 
-            <Button
-                Grid.Row="3"
-                HorizontalAlignment="Stretch"
-                Click="LoadButton_Click">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <FontIcon
-                        Glyph="&#xF103;"
-                        FontFamily="{StaticResource SymbolThemeFontFamily}"
-                        FontSize="14" />
-                    <TextBlock Text="载入" />
-                </StackPanel>
-            </Button>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <ToggleButton
+                     Grid.Column="0"
+                     Content="{x:Bind ToggleOptionText, Mode=OneWay}"
+                     IsChecked="{x:Bind ToggleOptionValue, Mode=TwoWay}"
+                     Checked="ToggleOptionButton_CheckedChanged"
+                     Unchecked="ToggleOptionButton_CheckedChanged"
+                     Visibility="{x:Bind IsToggleOptionVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                <!--<Button
+                       Grid.Column="0"
+                     HorizontalAlignment="Stretch"
+                     Click="LoadButton_Click">      
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon
+                         Glyph="&#xF103;"
+                         FontFamily="{StaticResource SymbolThemeFontFamily}"
+                         FontSize="14" />
+                        <TextBlock Text="载入" />
+                    </StackPanel>
+                </Button>-->
+
+            </Grid>
+           
 
             <ProgressBar
-                Grid.Row="4"
+                Grid.Row="3"
                 Height="4"
                 IsIndeterminate="{x:Bind IsProgressIndeterminate, Mode=OneWay}"
                 Maximum="100"

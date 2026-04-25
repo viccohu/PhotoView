@@ -40,6 +40,7 @@ public sealed partial class CollectPage : Page
     private readonly ShellToolbarService _shellToolbarService;
     private readonly NavigationPaneContext _navigationPaneContext;
     private CollectSourcePane? _sourcePane;
+    private InfoBadge? _sourceBadge;
     private FolderNode? _rightClickedFolderNode;
     private PointerEventHandler? _thumbnailWheelHandler;
     private KeyEventHandler? _thumbnailPreviewKeyDownHandler;
@@ -586,6 +587,12 @@ public sealed partial class CollectPage : Page
         }
 
         _sourcePane.HasSourceItems = _sourcePane.SourceItems.Count > 0;
+
+        if (_sourceBadge != null)
+        {
+            _sourceBadge.Value = ViewModel.SelectedSourceCount;
+            _sourceBadge.Visibility = ViewModel.SelectedSourceCount > 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
     }
 
     private async Task RemoveSourceFromPaneAsync(NavigationPaneSourceItem item)
@@ -1274,6 +1281,14 @@ public sealed partial class CollectPage : Page
             },
         };
 
+        _sourceBadge = new InfoBadge
+        {
+            Value = 0,
+            VerticalAlignment = VerticalAlignment.Top,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(-10, -10, 0, 0),
+        };
+
         var sourceSplitButton = new SplitButton
         {
             Padding = new Thickness(8),
@@ -1283,19 +1298,27 @@ public sealed partial class CollectPage : Page
                 Content = _sourcePane,
             },
         };
-        sourceSplitButton.Content = new StackPanel
+        sourceSplitButton.Click += async (s, e) => await LoadPreviewFromPaneAsync();
+        sourceSplitButton.Content = new Grid
         {
-            Orientation = Orientation.Horizontal,
-            Spacing = 4,
             Children =
             {
-                new FontIcon
+                new StackPanel
                 {
-                    Glyph = "\uF103",
-                    FontFamily = (FontFamily)Application.Current.Resources["SymbolThemeFontFamily"],
-                    FontSize = 14,
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 4,
+                    Children =
+                    {
+                        new FontIcon
+                        {
+                            Glyph = "\uF103",
+                            FontFamily = (FontFamily)Application.Current.Resources["SymbolThemeFontFamily"],
+                            FontSize = 14,
+                        },
+                        new TextBlock { Text = "载入" },
+                    },
                 },
-                new TextBlock { Text = "载入" },
+                _sourceBadge,
             },
         };
         ApplyToolbarButtonChrome(sourceSplitButton);
