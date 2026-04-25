@@ -20,7 +20,7 @@
     </UserControl.Resources>
 
     <Border
-        Padding="8,8,8,12"
+        Padding="14,8,0,12"
         Background="Transparent">
         <Grid RowSpacing="10">
             <Grid.RowDefinitions>
@@ -80,19 +80,33 @@
             </ItemsControl>
 
             <StackPanel Grid.Row="2" Spacing="8">
-                <ToggleButton
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <ToggleButton Grid.Column="1"
                     Content="{Binding ToggleOptionText}"
                     IsChecked="{Binding ToggleOptionValue, Mode=TwoWay}"
                     Checked="ToggleOptionButton_CheckedChanged"
                     Unchecked="ToggleOptionButton_CheckedChanged"
                     Visibility="{Binding IsToggleOptionVisible, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-                <TextBlock
-                    Text="{Binding StatusText}"
-                    Opacity="0.72"
-                    Style="{ThemeResource CaptionTextBlockStyle}"
-                    TextWrapping="Wrap"
-                    Visibility="{Binding HasStatusText, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <Button
+                        HorizontalAlignment="Stretch"
+                        Click="PrimaryActionButton_Click"
+                        Visibility="{Binding HasPrimaryAction, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon
+                                Glyph="{Binding PrimaryAction.Glyph}"
+                                FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                FontSize="16" />
+                            <TextBlock Text="{Binding PrimaryAction.Text}" />
+                        </StackPanel>
+                    </Button>
+
+                </Grid>
 
                 <ProgressBar
                     Height="4"
@@ -102,21 +116,10 @@
                     Value="{Binding ProgressValue}"
                     Visibility="{Binding IsProgressVisible, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-                <Button
-                    HorizontalAlignment="Stretch"
-                    Click="PrimaryActionButton_Click"
-                    Visibility="{Binding HasPrimaryAction, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon
-                            Glyph="{Binding PrimaryAction.Glyph}"
-                            FontFamily="{StaticResource SymbolThemeFontFamily}"
-                            FontSize="16" />
-                        <TextBlock Text="{Binding PrimaryAction.Text}" />
-                    </StackPanel>
-                </Button>
+
             </StackPanel>
 
-<TreeView
+            <TreeView
                 x:Name="FolderTreeView"
                 Grid.Row="3"
                 ItemsSource="{Binding RootNodes}"

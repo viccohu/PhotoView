@@ -24,7 +24,7 @@
             IsBackButtonVisible="False"
             Title="PhotoView"
             >
-            
+
             <TitleBar.IconSource>
                 <ImageIconSource ImageSource="/Assets/WindowIcon.png" />
             </TitleBar.IconSource>
@@ -40,7 +40,7 @@
             IsBackButtonVisible="Collapsed"
             ItemInvoked="NavigationViewControl_ItemInvoked"
             CompactPaneLength="48"
-            OpenPaneLength="320"
+            OpenPaneLength="300"
             PaneDisplayMode="Left"
             SelectedItem="{x:Bind ViewModel.Selected, Mode=TwoWay}">
             <NavigationView.MenuItems>
@@ -54,16 +54,16 @@
                     x:Uid="Shell_Collect"
                     helpers:NavigationHelper.NavigateTo="PhotoView.ViewModels.CollectViewModel" />
 
-    <NavigationViewItem
+                <NavigationViewItem
                     x:Name="ExpandedNavigationPaneItem"
                     Margin="0,8,0,0"
                     SelectsOnInvoked="False"
                     Visibility="Collapsed">
                     <NavigationViewItem.Content>
                         <controls:NavigationPaneExplorer
-    x:Name="NavigationPaneHost"
+                            x:Name="NavigationPaneHost"
                             MinHeight="400"
-                            MaxHeight="600" />
+                            MaxHeight="400" />
                     </NavigationViewItem.Content>
                 </NavigationViewItem>
                 <NavigationViewItem
@@ -72,11 +72,12 @@
                     Content="目录"
                     SelectsOnInvoked="False"
                     Visibility="Collapsed">
-                    <NavigationViewItem.Icon>                        <FontIcon
+                    <NavigationViewItem.Icon>
+                        <FontIcon
                             Glyph="&#xF0E8;"
                             FontFamily="{StaticResource SymbolThemeFontFamily}"
                             FontSize="16" />
-                   </NavigationViewItem.Icon>
+                    </NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
             <Grid Margin="0,0,0,0">

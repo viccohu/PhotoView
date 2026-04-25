@@ -19,8 +19,8 @@ namespace PhotoView.Views;
 
 public sealed partial class ShellPage : Page
 {
-    private const double LeftNavigationOpenPaneLength = 360d;
-    private const double DefaultNavigationOpenPaneLength = 320d;
+    private const double LeftNavigationOpenPaneLength = 300d;
+    private const double DefaultNavigationOpenPaneLength = 300d;
     private const double CompactNavigationPaneFlyoutWidth = 360d;
     private readonly NavigationPaneExplorer _compactNavigationPaneHost = new();
     private readonly Flyout _compactNavigationPaneFlyout;
