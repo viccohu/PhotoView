@@ -39,6 +39,7 @@ public sealed partial class CollectPage : Page
     private readonly ISettingsService _settingsService;
     private readonly ShellToolbarService _shellToolbarService;
     private readonly NavigationPaneContext _navigationPaneContext;
+    private CollectSourcePane? _sourcePane;
     private FolderNode? _rightClickedFolderNode;
     private PointerEventHandler? _thumbnailWheelHandler;
     private KeyEventHandler? _thumbnailPreviewKeyDownHandler;
@@ -137,7 +138,7 @@ public sealed partial class CollectPage : Page
         EnsurePreviewSelectionInitialized();
         RefreshDualPageLayout(forceRebuild: true);
         UpdateSelectedImageUi();
-        UpdateNavigationPaneContextState();
+        UpdateSourcePaneState();
         RegisterNavigationPane();
         RefreshCustomIconForegrounds();
         QueueVisibleThumbnailLoad("page-loaded");
@@ -225,7 +226,7 @@ public sealed partial class CollectPage : Page
         if (sender is FrameworkElement { Tag: PreviewSource source })
         {
             ViewModel.RemoveSource(source);
-            UpdateNavigationPaneContextState();
+            UpdateSourcePaneState();
         }
     }
 
@@ -515,7 +516,7 @@ public sealed partial class CollectPage : Page
         else if (e.PropertyName == nameof(CollectViewModel.IncludeSubfolders))
         {
             RefreshCustomIconForegrounds();
-            UpdateNavigationPaneContextState();
+            UpdateSourcePaneState();
         }
         else if (e.PropertyName == nameof(CollectViewModel.FocusedPageSlot))
         {
@@ -527,7 +528,7 @@ public sealed partial class CollectPage : Page
             or nameof(CollectViewModel.LoadProgressValue)
             or nameof(CollectViewModel.IsLoadProgressIndeterminate))
         {
-            UpdateNavigationPaneContextState();
+            UpdateSourcePaneState();
         }
     }
 
@@ -535,7 +536,7 @@ public sealed partial class CollectPage : Page
     {
         return new NavigationPaneContext
         {
-            Title = "载入区",
+            Title = "目录",
             RootNodes = ViewModel.FolderTree,
             ActivateOnSingleClick = false,
             ActivateOnDoubleTap = true,
@@ -548,25 +549,10 @@ public sealed partial class CollectPage : Page
             ActivateNodeSecondaryHandler = node =>
             {
                 ViewModel.AddSource(node);
-                UpdateNavigationPaneContextState();
+                UpdateSourcePaneState();
                 return Task.CompletedTask;
             },
             NodeActionsProvider = GetNavigationPaneNodeActions,
-            RemoveSourceHandler = RemoveSourceFromPaneAsync,
-            PrimaryAction = new NavigationPaneHeaderAction
-            {
-                Text = "载入",
-                Glyph = "\uF103"
-            },
-            PrimaryActionHandler = LoadPreviewFromPaneAsync,
-            ToggleOptionText = "包含子文件夹",
-            IsToggleOptionVisible = true,
-            ToggleOptionHandler = value =>
-            {
-                ViewModel.IncludeSubfolders = value;
-                UpdateNavigationPaneContextState();
-                return Task.CompletedTask;
-            }
         };
     }
 
@@ -575,25 +561,31 @@ public sealed partial class CollectPage : Page
         _navigationPaneService.SetContext(this, _navigationPaneContext);
     }
 
-    private void UpdateNavigationPaneContextState()
+    private void UpdateSourcePaneState()
     {
-        _navigationPaneContext.Subtitle = $"{ViewModel.SelectedSourceCount} / {ViewModel.MaxSourceCount}";
-        _navigationPaneContext.ToggleOptionValue = ViewModel.IncludeSubfolders;
-        _navigationPaneContext.StatusText = ViewModel.StatusText;
-        _navigationPaneContext.IsProgressVisible = ViewModel.IsLoading;
-        _navigationPaneContext.IsProgressIndeterminate = ViewModel.IsLoadProgressIndeterminate;
-        _navigationPaneContext.ProgressValue = ViewModel.LoadProgressValue;
+        if (_sourcePane == null)
+        {
+            return;
+        }
 
-        _navigationPaneContext.SourceItems.Clear();
+        _sourcePane.Subtitle = $"{ViewModel.SelectedSourceCount} / {ViewModel.MaxSourceCount}";
+        _sourcePane.ToggleOptionValue = ViewModel.IncludeSubfolders;
+        _sourcePane.IsProgressVisible = ViewModel.IsLoading;
+        _sourcePane.IsProgressIndeterminate = ViewModel.IsLoadProgressIndeterminate;
+        _sourcePane.ProgressValue = ViewModel.LoadProgressValue;
+
+        _sourcePane.SourceItems.Clear();
         foreach (var source in ViewModel.SelectedSources)
         {
-            _navigationPaneContext.SourceItems.Add(new NavigationPaneSourceItem
+            _sourcePane.SourceItems.Add(new NavigationPaneSourceItem
             {
                 Id = source.Path,
                 DisplayName = source.DisplayName,
                 Payload = source
             });
         }
+
+        _sourcePane.HasSourceItems = _sourcePane.SourceItems.Count > 0;
     }
 
     private async Task RemoveSourceFromPaneAsync(NavigationPaneSourceItem item)
@@ -601,7 +593,7 @@ public sealed partial class CollectPage : Page
         if (item.Payload is PreviewSource source)
         {
             ViewModel.RemoveSource(source);
-            UpdateNavigationPaneContextState();
+            UpdateSourcePaneState();
         }
 
         await Task.CompletedTask;
@@ -610,7 +602,7 @@ public sealed partial class CollectPage : Page
     private async Task LoadPreviewFromPaneAsync()
     {
         await ViewModel.LoadPreviewAsync();
-        UpdateNavigationPaneContextState();
+        UpdateSourcePaneState();
         QueueVisibleThumbnailLoad("load-preview");
     }
 
@@ -625,7 +617,7 @@ public sealed partial class CollectPage : Page
                 ExecuteAsync = folderNode =>
                 {
                     ViewModel.AddSource(folderNode);
-                    UpdateNavigationPaneContextState();
+                    UpdateSourcePaneState();
                     return Task.CompletedTask;
                 }
             }
@@ -655,7 +647,7 @@ public sealed partial class CollectPage : Page
                         await ViewModel.PinFolderAsync(folderNode);
                     }
 
-                    UpdateNavigationPaneContextState();
+                    UpdateSourcePaneState();
                 }
             });
         }
@@ -670,7 +662,7 @@ public sealed partial class CollectPage : Page
                 ExecuteAsync = async _ =>
                 {
                     await ViewModel.RefreshExternalDevicesAsync();
-                    UpdateNavigationPaneContextState();
+                    UpdateSourcePaneState();
                 }
             });
         }
@@ -680,7 +672,7 @@ public sealed partial class CollectPage : Page
 
     private void SelectedSources_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        UpdateNavigationPaneContextState();
+        UpdateSourcePaneState();
     }
 
     private void EnsurePreviewSelectionInitialized()
@@ -1267,8 +1259,51 @@ public sealed partial class CollectPage : Page
         _shellFilterSplitButton.Click += FilterSplitButton_Click;
         toolbar.Children.Add(_shellFilterSplitButton);
 
+        _sourcePane = new CollectSourcePane
+        {
+            SourceItems = new ObservableCollection<NavigationPaneSourceItem>(),
+            ToggleOptionText = "包含子文件夹",
+            IsToggleOptionVisible = true,
+            RemoveSourceHandler = RemoveSourceFromPaneAsync,
+            LoadHandler = LoadPreviewFromPaneAsync,
+            ToggleOptionHandler = value =>
+            {
+                ViewModel.IncludeSubfolders = value;
+                UpdateSourcePaneState();
+                return Task.CompletedTask;
+            },
+        };
+
+        var sourceSplitButton = new SplitButton
+        {
+            Padding = new Thickness(8),
+            Flyout = new Flyout
+            {
+                Placement = FlyoutPlacementMode.Bottom,
+                Content = _sourcePane,
+            },
+        };
+        sourceSplitButton.Content = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 4,
+            Children =
+            {
+                new FontIcon
+                {
+                    Glyph = "\uF103",
+                    FontFamily = (FontFamily)Application.Current.Resources["SymbolThemeFontFamily"],
+                    FontSize = 14,
+                },
+                new TextBlock { Text = "载入" },
+            },
+        };
+        ApplyToolbarButtonChrome(sourceSplitButton);
+        toolbar.Children.Add(sourceSplitButton);
+
         UpdateShellToolbarState();
         UpdateFilterButtonState();
+        UpdateSourcePaneState();
         _shellToolbarService.SetToolbar(this, toolbar);
     }
 

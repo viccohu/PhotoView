@@ -339,7 +339,7 @@ public sealed partial class ShellPage : Page
             ? _navigationPaneService.CurrentContext
             : null;
 
-        NavigationPaneHost.Context = context;
+        NavigationPaneHost.Context = isPaneOpen ? context : null;
         ExpandedNavigationPaneItem.Visibility = isPaneOpen && context != null ? Visibility.Visible : Visibility.Collapsed;
 
         _compactNavigationPaneHost.Context = !isPaneOpen ? context : null;
@@ -356,7 +356,7 @@ public sealed partial class ShellPage : Page
     {
         if (CompactNavigationPaneItem.Visibility == Visibility.Visible)
         {
-             _compactNavigationPaneFlyout.ShowAt(CompactNavigationPaneItem);
+            _compactNavigationPaneFlyout.ShowAt(CompactNavigationPaneItem);
         }
     }
 

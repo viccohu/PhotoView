@@ -1,7 +1,7 @@
 using System.ComponentModel;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Controls.Primitives;
 using PhotoView.Contracts.Services;
 using PhotoView.Models;
 
@@ -20,8 +20,6 @@ public sealed partial class NavigationPaneExplorer : UserControl
         get => (INavigationPaneContext?)GetValue(ContextProperty);
         set => SetValue(ContextProperty, value);
     }
-
-    private int _syncVersion;
 
     public NavigationPaneExplorer()
     {
@@ -49,23 +47,10 @@ public sealed partial class NavigationPaneExplorer : UserControl
         {
             newNotify.PropertyChanged += Context_PropertyChanged;
         }
-
-        _syncVersion++;
-        if (newContext != null)
-        {
-            var version = _syncVersion;
-            DispatcherQueue.TryEnqueue(async () => await SyncSelectedNodeAsync(version));
-        }
     }
 
     private void Context_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(INavigationPaneContext.SelectedNode))
-        {
-            _syncVersion++;
-            var version = _syncVersion;
-            DispatcherQueue.TryEnqueue(async () => await SyncSelectedNodeAsync(version));
-        }
     }
 
     private async void FolderTreeView_Expanding(TreeView sender, TreeViewExpandingEventArgs args)
@@ -77,7 +62,6 @@ public sealed partial class NavigationPaneExplorer : UserControl
 
         node.IsExpanded = true;
         await Context.ExpandNodeAsync(node);
-        Context.SelectedNode = node;
     }
 
     private void FolderTreeView_Collapsed(TreeView sender, TreeViewCollapsedEventArgs args)
@@ -176,90 +160,6 @@ public sealed partial class NavigationPaneExplorer : UserControl
             flyout.ShowAt(target);
             e.Handled = true;
         }
-    }
-
-    private async void RemoveSourceButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (Context == null || sender is not FrameworkElement { Tag: NavigationPaneSourceItem item })
-        {
-            return;
-        }
-
-        await Context.RemoveSourceAsync(item);
-    }
-
-    private async void PrimaryActionButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (Context == null)
-        {
-            return;
-        }
-
-        await Context.ExecutePrimaryActionAsync();
-    }
-
-    private async void ToggleOptionButton_CheckedChanged(object sender, RoutedEventArgs e)
-    {
-        if (Context == null || sender is not ToggleButton toggleButton)
-        {
-            return;
-        }
-
-        await Context.ToggleOptionAsync(toggleButton.IsChecked == true);
-    }
-
-    private async Task SyncSelectedNodeAsync(int version)
-    {
-        if (Context?.SelectedNode == null || version != _syncVersion)
-        {
-            return;
-        }
-
-        var path = new List<FolderNode>();
-        var current = Context.SelectedNode;
-        while (current != null)
-        {
-            path.Insert(0, current);
-            current = current.Parent;
-        }
-
-        FolderNode? lastNode = null;
-        for (var i = 0; i < path.Count; i++)
-        {
-            if (version != _syncVersion || Context == null)
-            {
-                return;
-            }
-
-            var node = path[i];
-            lastNode = node;
-
-            if (i < path.Count - 1)
-            {
-                if (!node.IsLoaded)
-                {
-                    await Context.ExpandNodeAsync(node);
-                }
-
-                if (version != _syncVersion || Context == null)
-                {
-                    return;
-                }
-
-                if (!node.IsExpanded)
-                {
-                    node.IsExpanded = true;
-                    await Task.Delay(50);
-                }
-            }
-        }
-
-        if (version != _syncVersion || Context == null || lastNode == null)
-        {
-            return;
-        }
-
-        FolderTreeView.SelectedItem = lastNode;
     }
 
     private static bool TryGetFolderNode(object sender, out FolderNode node)

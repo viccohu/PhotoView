@@ -9,119 +9,26 @@
     mc:Ignorable="d">
 
     <UserControl.Resources>
-        <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <converters:NodeTypeToIconConverter x:Key="NodeTypeToIconConverter" />
-        <Style x:Key="PaneGhostButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="4" />
-        </Style>
     </UserControl.Resources>
 
     <Border
         Padding="14,8,0,12"
         Background="Transparent">
-        <Grid RowSpacing="10">
+        <Grid RowSpacing="6">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <StackPanel Grid.Row="0" Spacing="2">
-                <TextBlock
-                    Text="{Binding Title}"
-                    Style="{ThemeResource BodyStrongTextBlockStyle}" />
-                <TextBlock
-                    Text="{Binding Subtitle}"
-                    Opacity="0.7"
-                    Style="{ThemeResource CaptionTextBlockStyle}"
-                    Visibility="{Binding HasStatusText, Converter={StaticResource BooleanToVisibilityConverter}}" />
-            </StackPanel>
-
-            <ItemsControl
-                Grid.Row="1"
-                ItemsSource="{Binding SourceItems}"
-                Visibility="{Binding HasSourceItems, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="models:NavigationPaneSourceItem">
-                        <Border
-                            Margin="0,0,0,6"
-                            Padding="8,5"
-                            Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                            BorderThickness="1"
-                            CornerRadius="6">
-                            <Grid ColumnSpacing="8">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock
-                                    Text="{x:Bind DisplayName}"
-                                    TextTrimming="CharacterEllipsis"
-                                    VerticalAlignment="Center" />
-                                <Button
-                                    Grid.Column="1"
-                                    Tag="{x:Bind}"
-                                    Click="RemoveSourceButton_Click"
-                                    Style="{StaticResource PaneGhostButtonStyle}">
-                                    <FontIcon
-                                        Glyph="&#xE711;"
-                                        FontFamily="{StaticResource SymbolThemeFontFamily}"
-                                        FontSize="12" />
-                                </Button>
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-
-            <StackPanel Grid.Row="2" Spacing="8">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <ToggleButton Grid.Column="1"
-                    Content="{Binding ToggleOptionText}"
-                    IsChecked="{Binding ToggleOptionValue, Mode=TwoWay}"
-                    Checked="ToggleOptionButton_CheckedChanged"
-                    Unchecked="ToggleOptionButton_CheckedChanged"
-                    Visibility="{Binding IsToggleOptionVisible, Converter={StaticResource BooleanToVisibilityConverter}}" />
-
-                    <Button
-                        HorizontalAlignment="Stretch"
-                        Click="PrimaryActionButton_Click"
-                        Visibility="{Binding HasPrimaryAction, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon
-                                Glyph="{Binding PrimaryAction.Glyph}"
-                                FontFamily="{StaticResource SymbolThemeFontFamily}"
-                                FontSize="16" />
-                            <TextBlock Text="{Binding PrimaryAction.Text}" />
-                        </StackPanel>
-                    </Button>
-
-                </Grid>
-
-                <ProgressBar
-                    Height="4"
-                    IsIndeterminate="{Binding IsProgressIndeterminate}"
-                    Maximum="100"
-                    Minimum="0"
-                    Value="{Binding ProgressValue}"
-                    Visibility="{Binding IsProgressVisible, Converter={StaticResource BooleanToVisibilityConverter}}" />
-
-
-            </StackPanel>
+            <TextBlock
+                Grid.Row="0"
+                Text="{Binding Title}"
+                Style="{ThemeResource BodyStrongTextBlockStyle}" />
 
             <TreeView
                 x:Name="FolderTreeView"
-                Grid.Row="3"
+                Grid.Row="1"
                 ItemsSource="{Binding RootNodes}"
                 Expanding="FolderTreeView_Expanding"
                 Collapsed="FolderTreeView_Collapsed"

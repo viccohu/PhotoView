@@ -36,6 +36,9 @@ public partial class FolderNode : ObservableObject
     private bool _isExpanded;
 
     [ObservableProperty]
+    private bool _isSelected;
+
+    [ObservableProperty]
     private bool _isLoading;
 
     [ObservableProperty]

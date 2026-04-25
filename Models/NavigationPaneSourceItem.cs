@@ -2,9 +2,9 @@ namespace PhotoView.Models;
 
 public sealed class NavigationPaneSourceItem
 {
-    public string Id { get; init; } = Guid.NewGuid().ToString("N");
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
 
-    public string DisplayName { get; init; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
 
-    public object? Payload { get; init; }
+    public object? Payload { get; set; }
 }

@@ -17,30 +17,6 @@ public interface INavigationPaneContext
 
     bool ActivateOnDoubleTap { get; }
 
-    ObservableCollection<NavigationPaneSourceItem> SourceItems { get; }
-
-    bool HasSourceItems { get; }
-
-    NavigationPaneHeaderAction? PrimaryAction { get; }
-
-    bool HasPrimaryAction { get; }
-
-    string? ToggleOptionText { get; }
-
-    bool IsToggleOptionVisible { get; }
-
-    bool ToggleOptionValue { get; set; }
-
-    string? StatusText { get; }
-
-    bool HasStatusText { get; }
-
-    bool IsProgressVisible { get; }
-
-    bool IsProgressIndeterminate { get; }
-
-    double ProgressValue { get; }
-
     Task ExpandNodeAsync(FolderNode node);
 
     Task SelectNodeAsync(FolderNode node);
@@ -50,10 +26,4 @@ public interface INavigationPaneContext
     Task ActivateNodeSecondaryAsync(FolderNode node);
 
     IReadOnlyList<NavigationPaneNodeAction> GetNodeActions(FolderNode node);
-
-    Task RemoveSourceAsync(NavigationPaneSourceItem item);
-
-    Task ExecutePrimaryActionAsync();
-
-    Task ToggleOptionAsync(bool value);
 }
