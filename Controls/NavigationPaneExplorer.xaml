@@ -22,9 +22,7 @@
     <Border
         Padding="8,8,8,12"
         Background="Transparent">
-        <Grid
-            x:Name="LayoutRoot"
-            RowSpacing="10">
+        <Grid RowSpacing="10">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -118,45 +116,41 @@
                 </Button>
             </StackPanel>
 
-            <ScrollViewer
+<TreeView
+                x:Name="FolderTreeView"
                 Grid.Row="3"
-                VerticalScrollBarVisibility="Auto"
-                VerticalScrollMode="Enabled">
-                <TreeView
-                    x:Name="FolderTreeView"
-                    ItemsSource="{Binding RootNodes}"
-                    Expanding="FolderTreeView_Expanding"
-                    ItemInvoked="FolderTreeView_ItemInvoked">
-                    <TreeView.ItemTemplate>
-                        <DataTemplate x:DataType="models:FolderNode">
-                            <TreeViewItem
-                                ItemsSource="{x:Bind Children}"
-                                IsExpanded="{x:Bind IsExpanded, Mode=TwoWay}"
-                                HasUnrealizedChildren="{x:Bind HasExpandableChildren, Mode=OneWay}"
-                                DoubleTapped="TreeViewItem_DoubleTapped"
-                                RightTapped="TreeViewItem_RightTapped">
-                                <Grid Tag="{x:Bind}">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <FontIcon
-                                        Grid.Column="0"
-                                        Margin="0,0,6,0"
-                                        Glyph="{x:Bind NodeType, Converter={StaticResource NodeTypeToIconConverter}}"
-                                        FontFamily="{StaticResource SymbolThemeFontFamily}"
-                                        FontSize="16" />
-                                    <TextBlock
-                                        Grid.Column="1"
-                                        Text="{x:Bind Name}"
-                                        TextTrimming="CharacterEllipsis"
-                                        VerticalAlignment="Center" />
-                                </Grid>
-                            </TreeViewItem>
-                        </DataTemplate>
-                    </TreeView.ItemTemplate>
-                </TreeView>
-            </ScrollViewer>
+                ItemsSource="{Binding RootNodes}"
+                Expanding="FolderTreeView_Expanding"
+                ItemInvoked="FolderTreeView_ItemInvoked">
+                <TreeView.ItemTemplate>
+                    <DataTemplate x:DataType="models:FolderNode">
+                        <TreeViewItem
+                            ItemsSource="{x:Bind Children}"
+                            IsExpanded="{x:Bind IsExpanded, Mode=TwoWay}"
+                            HasUnrealizedChildren="{x:Bind HasExpandableChildren, Mode=OneWay}"
+                            DoubleTapped="TreeViewItem_DoubleTapped"
+                            RightTapped="TreeViewItem_RightTapped">
+                            <Grid Tag="{x:Bind}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <FontIcon
+                                    Grid.Column="0"
+                                    Margin="0,0,6,0"
+                                    Glyph="{x:Bind NodeType, Converter={StaticResource NodeTypeToIconConverter}}"
+                                    FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                    FontSize="16" />
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Text="{x:Bind Name}"
+                                    TextTrimming="CharacterEllipsis"
+                                    VerticalAlignment="Center" />
+                            </Grid>
+                        </TreeViewItem>
+                    </DataTemplate>
+                </TreeView.ItemTemplate>
+            </TreeView>
         </Grid>
     </Border>
 </UserControl>

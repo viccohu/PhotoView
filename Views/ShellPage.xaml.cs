@@ -286,6 +286,17 @@ public sealed partial class ShellPage : Page
 
     private void NavigationViewControl_ItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
     {
+                if (args.InvokedItemContainer == ExpandedNavigationPaneItem)
+        {
+            return;
+        }
+
+        if (args.InvokedItemContainer == CompactNavigationPaneItem)
+        {
+            ShowCompactNavigationPaneFlyout();
+            return;
+        }
+
         if (args.IsSettingsInvoked)
         {
             if (_isOnSettingsPage)
@@ -329,11 +340,11 @@ public sealed partial class ShellPage : Page
             : null;
 
         NavigationPaneHost.Context = isPaneOpen ? context : null;
-        ExpandedNavigationPaneContainer.Visibility = isPaneOpen && context != null ? Visibility.Visible : Visibility.Collapsed;
+         ExpandedNavigationPaneItem.Visibility = isPaneOpen && context != null ? Visibility.Visible : Visibility.Collapsed;
 
         _compactNavigationPaneHost.Context = !isPaneOpen ? context : null;
-        CompactNavigationPaneButton.Visibility = !isPaneOpen && context != null ? Visibility.Visible : Visibility.Collapsed;
-        ToolTipService.SetToolTip(CompactNavigationPaneButton, context?.Title ?? "目录");
+          CompactNavigationPaneItem.Visibility = !isPaneOpen && context != null ? Visibility.Visible : Visibility.Collapsed;
+        CompactNavigationPaneItem.Content = context?.Title ?? "目录";
 
         if (isPaneOpen || context == null)
         {
@@ -343,9 +354,9 @@ public sealed partial class ShellPage : Page
 
     private void ShowCompactNavigationPaneFlyout()
     {
-        if (CompactNavigationPaneButton.Visibility == Visibility.Visible)
+        if (CompactNavigationPaneItem.Visibility == Visibility.Visible)
         {
-            _compactNavigationPaneFlyout.ShowAt(CompactNavigationPaneButton);
+             _compactNavigationPaneFlyout.ShowAt(CompactNavigationPaneItem);
         }
     }
 

@@ -54,36 +54,31 @@
                     x:Uid="Shell_Collect"
                     helpers:NavigationHelper.NavigateTo="PhotoView.ViewModels.CollectViewModel" />
 
-            </NavigationView.MenuItems>
-
-            <NavigationView.PaneFooter>
-                <Grid
-                    x:Name="NavigationPaneFooterHost"
-                    Margin="0,8,0,0">
-                    <Border
-                        x:Name="ExpandedNavigationPaneContainer"
-                        MaxHeight="520"
-                        Visibility="Collapsed">
+    <NavigationViewItem
+                    x:Name="ExpandedNavigationPaneItem"
+                    Margin="0,8,0,0"
+                    SelectsOnInvoked="False"
+                    Visibility="Collapsed">
+                    <NavigationViewItem.Content>
                         <controls:NavigationPaneExplorer
-                            x:Name="NavigationPaneHost" />
-                    </Border>
-                    <Button
-                        x:Name="CompactNavigationPaneButton"
-                        Width="40"
-                        Height="40"
-                        Padding="0"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Top"
-                        Click="CompactNavigationPaneButton_Click"
-                        Visibility="Collapsed">
-                        <FontIcon
+    x:Name="NavigationPaneHost"
+                            MinHeight="400"
+                            MaxHeight="600" />
+                    </NavigationViewItem.Content>
+                </NavigationViewItem>
+                <NavigationViewItem
+                    x:Name="CompactNavigationPaneItem"
+                    Margin="0,8,0,0"
+                    Content="目录"
+                    SelectsOnInvoked="False"
+                    Visibility="Collapsed">
+                    <NavigationViewItem.Icon>                        <FontIcon
                             Glyph="&#xF0E8;"
                             FontFamily="{StaticResource SymbolThemeFontFamily}"
                             FontSize="16" />
-                    </Button>
-                </Grid>
-            </NavigationView.PaneFooter>
-
+                   </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
             <Grid Margin="0,0,0,0">
                 <Frame x:Name="NavigationFrame" CacheSize="2" />
             </Grid>
