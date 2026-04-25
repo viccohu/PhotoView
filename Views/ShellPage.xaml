@@ -60,9 +60,13 @@
                 <Grid
                     x:Name="NavigationPaneFooterHost"
                     Margin="0,8,0,0">
-                    <controls:NavigationPaneExplorer
-                        x:Name="NavigationPaneHost"
-                        Visibility="Collapsed" />
+                    <Border
+                        x:Name="ExpandedNavigationPaneContainer"
+                        MaxHeight="520"
+                        Visibility="Collapsed">
+                        <controls:NavigationPaneExplorer
+                            x:Name="NavigationPaneHost" />
+                    </Border>
                     <Button
                         x:Name="CompactNavigationPaneButton"
                         Width="40"

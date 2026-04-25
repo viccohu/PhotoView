@@ -329,7 +329,7 @@ public sealed partial class ShellPage : Page
             : null;
 
         NavigationPaneHost.Context = isPaneOpen ? context : null;
-        NavigationPaneHost.Visibility = isPaneOpen && context != null ? Visibility.Visible : Visibility.Collapsed;
+        ExpandedNavigationPaneContainer.Visibility = isPaneOpen && context != null ? Visibility.Visible : Visibility.Collapsed;
 
         _compactNavigationPaneHost.Context = !isPaneOpen ? context : null;
         CompactNavigationPaneButton.Visibility = !isPaneOpen && context != null ? Visibility.Visible : Visibility.Collapsed;
@@ -341,12 +341,17 @@ public sealed partial class ShellPage : Page
         }
     }
 
+    private void ShowCompactNavigationPaneFlyout()
+    {
+        if (CompactNavigationPaneButton.Visibility == Visibility.Visible)
+        {
+            _compactNavigationPaneFlyout.ShowAt(CompactNavigationPaneButton);
+        }
+    }
+
     private void CompactNavigationPaneButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is FrameworkElement target && CompactNavigationPaneButton.Visibility == Visibility.Visible)
-        {
-            _compactNavigationPaneFlyout.ShowAt(target);
-        }
+        ShowCompactNavigationPaneFlyout();
     }
 
     private Flyout CreateCompactNavigationPaneFlyout()
