@@ -82,6 +82,11 @@ public sealed partial class NavigationPaneExplorer : UserControl
 
     private void FolderTreeView_Collapsed(TreeView sender, TreeViewCollapsedEventArgs args)
     {
+        if (DataContext == null)
+        {
+            return;
+        }
+
         if (args.Item is FolderNode node)
         {
             node.IsExpanded = false;

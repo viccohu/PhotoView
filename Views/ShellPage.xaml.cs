@@ -339,7 +339,7 @@ public sealed partial class ShellPage : Page
             ? _navigationPaneService.CurrentContext
             : null;
 
-        NavigationPaneHost.Context = isPaneOpen ? context : null;
+        NavigationPaneHost.Context = context;
         ExpandedNavigationPaneItem.Visibility = isPaneOpen && context != null ? Visibility.Visible : Visibility.Collapsed;
 
         _compactNavigationPaneHost.Context = !isPaneOpen ? context : null;
