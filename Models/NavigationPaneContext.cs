@@ -6,6 +6,11 @@ namespace PhotoView.Models;
 
 public partial class NavigationPaneContext : ObservableObject, INavigationPaneContext
 {
+    public NavigationPaneContext()
+    {
+        _sourceItems.CollectionChanged += SourceItems_CollectionChanged;
+    }
+
     [ObservableProperty]
     private string _title = string.Empty;
 
