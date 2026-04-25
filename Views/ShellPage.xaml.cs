@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 
 using PhotoView.Contracts.Services;
+using PhotoView.Controls;
 using PhotoView.Helpers;
 using PhotoView.Services;
 using PhotoView.ViewModels;
@@ -20,6 +21,9 @@ public sealed partial class ShellPage : Page
 {
     private const double LeftNavigationOpenPaneLength = 360d;
     private const double DefaultNavigationOpenPaneLength = 320d;
+    private const double CompactNavigationPaneFlyoutWidth = 360d;
+    private readonly NavigationPaneExplorer _compactNavigationPaneHost = new();
+    private readonly Flyout _compactNavigationPaneFlyout;
 
     public ShellViewModel ViewModel
     {
@@ -34,6 +38,7 @@ public sealed partial class ShellPage : Page
     private string? _lastPageKey;
     private bool _isOnSettingsPage;
     private int _shellToolbarUpdateVersion;
+    private long _isPaneOpenChangedCallbackToken;
 
     public ShellPage(ShellViewModel viewModel, ISettingsService settingsService)
     {
@@ -42,6 +47,10 @@ public sealed partial class ShellPage : Page
         _shellToolbarService = App.GetService<ShellToolbarService>();
         _navigationPaneService = App.GetService<INavigationPaneService>();
         InitializeComponent();
+        _compactNavigationPaneFlyout = CreateCompactNavigationPaneFlyout();
+        _isPaneOpenChangedCallbackToken = NavigationViewControl.RegisterPropertyChangedCallback(
+            NavigationView.IsPaneOpenProperty,
+            OnNavigationViewPaneOpenChanged);
 
         ViewModel.NavigationService.Frame = NavigationFrame;
         ViewModel.NavigationViewService.Initialize(NavigationViewControl);
@@ -70,6 +79,13 @@ public sealed partial class ShellPage : Page
     private async Task InitializeNavigationViewModeAsync()
     {
         var mode = await _settingsService.LoadNavigationViewModeAsync();
+        if (mode == NavigationViewPaneDisplayMode.LeftCompact)
+        {
+            mode = NavigationViewPaneDisplayMode.Left;
+            _settingsService.NavigationViewMode = mode;
+            await _settingsService.SaveNavigationViewModeAsync(mode);
+        }
+
         _ = await _settingsService.LoadBatchSizeAsync();
         _ = await _settingsService.LoadPerformanceModeAsync();
         _ = await _settingsService.LoadThumbnailSizeAsync();
@@ -198,20 +214,26 @@ public sealed partial class ShellPage : Page
 
     private void ApplyNavigationViewMode(NavigationViewPaneDisplayMode mode)
     {
-        var useLeftNavigation = mode == NavigationViewPaneDisplayMode.Left ||
-            mode == NavigationViewPaneDisplayMode.LeftCompact;
-        var useCompactPopup = mode == NavigationViewPaneDisplayMode.LeftCompact;
+        var normalizedMode = mode == NavigationViewPaneDisplayMode.LeftCompact
+            ? NavigationViewPaneDisplayMode.Left
+            : mode;
+        var useLeftNavigation = normalizedMode == NavigationViewPaneDisplayMode.Left;
 
-        NavigationViewControl.PaneDisplayMode = mode;
-        NavigationViewControl.IsPaneToggleButtonVisible = mode == NavigationViewPaneDisplayMode.Left;
-        NavigationViewControl.IsPaneOpen = mode == NavigationViewPaneDisplayMode.Left;
+        NavigationViewControl.PaneDisplayMode = normalizedMode;
+        NavigationViewControl.IsPaneToggleButtonVisible = useLeftNavigation;
+        NavigationViewControl.IsPaneOpen = useLeftNavigation;
         NavigationViewControl.OpenPaneLength = useLeftNavigation
             ? LeftNavigationOpenPaneLength
             : DefaultNavigationOpenPaneLength;
-        CompactNavigationPaneFlyout.Hide();
+        _compactNavigationPaneFlyout.Hide();
 
         UpdateNavigationPaneState();
         UpdateTitleBarLayout(useLeftNavigation);
+    }
+
+    private void OnNavigationViewPaneOpenChanged(DependencyObject sender, DependencyProperty dependency)
+    {
+        DispatcherQueue.TryEnqueue(UpdateNavigationPaneState);
     }
 
     private void UpdateTitleBarLayout(bool useLeftNavigation)
@@ -300,26 +322,49 @@ public sealed partial class ShellPage : Page
     private void UpdateNavigationPaneState()
     {
         var mode = NavigationViewControl.PaneDisplayMode;
-        var context = !_isOnSettingsPage &&
-            (mode == NavigationViewPaneDisplayMode.Left || mode == NavigationViewPaneDisplayMode.LeftCompact)
+        var useLeftNavigation = mode == NavigationViewPaneDisplayMode.Left;
+        var isPaneOpen = useLeftNavigation && NavigationViewControl.IsPaneOpen;
+        var context = !_isOnSettingsPage && useLeftNavigation
             ? _navigationPaneService.CurrentContext
             : null;
-        var useInlinePane = mode == NavigationViewPaneDisplayMode.Left;
-        var useCompactPopup = mode == NavigationViewPaneDisplayMode.LeftCompact;
 
-        NavigationPaneHost.Context = useInlinePane ? context : null;
-        NavigationPaneHost.Visibility = useInlinePane && context != null ? Visibility.Visible : Visibility.Collapsed;
+        NavigationPaneHost.Context = isPaneOpen ? context : null;
+        NavigationPaneHost.Visibility = isPaneOpen && context != null ? Visibility.Visible : Visibility.Collapsed;
 
-        CompactNavigationPaneHost.Context = useCompactPopup ? context : null;
-        CompactNavigationPaneButton.Visibility = useCompactPopup && context != null ? Visibility.Visible : Visibility.Collapsed;
-        CompactNavigationPaneButtonText.Text = context?.Title ?? "目录";
+        _compactNavigationPaneHost.Context = !isPaneOpen ? context : null;
+        CompactNavigationPaneButton.Visibility = !isPaneOpen && context != null ? Visibility.Visible : Visibility.Collapsed;
+        ToolTipService.SetToolTip(CompactNavigationPaneButton, context?.Title ?? "目录");
+
+        if (isPaneOpen || context == null)
+        {
+            _compactNavigationPaneFlyout.Hide();
+        }
     }
 
     private void CompactNavigationPaneButton_Click(object sender, RoutedEventArgs e)
     {
-        if (CompactNavigationPaneButton.Flyout is Flyout flyout)
+        if (sender is FrameworkElement target && CompactNavigationPaneButton.Visibility == Visibility.Visible)
         {
-            flyout.ShowAt(CompactNavigationPaneButton);
+            _compactNavigationPaneFlyout.ShowAt(target);
         }
+    }
+
+    private Flyout CreateCompactNavigationPaneFlyout()
+    {
+        return new Flyout
+        {
+            Placement = FlyoutPlacementMode.Right,
+            Content = new Border
+            {
+                Width = CompactNavigationPaneFlyoutWidth,
+                MaxHeight = 720,
+                Padding = new Thickness(0),
+                Background = (Brush)Application.Current.Resources["LayerFillColorDefaultBrush"],
+                BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(12),
+                Child = _compactNavigationPaneHost
+            }
+        };
     }
 }

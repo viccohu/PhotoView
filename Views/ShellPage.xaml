@@ -56,45 +56,28 @@
 
             </NavigationView.MenuItems>
 
-            <NavigationView.PaneCustomContent>
-                <controls:NavigationPaneExplorer
-                    x:Name="NavigationPaneHost"
-                    Visibility="Collapsed" />
-            </NavigationView.PaneCustomContent>
-
             <NavigationView.PaneFooter>
-                <Button
-                    x:Name="CompactNavigationPaneButton"
-                    Margin="4,8,4,8"
-                    Padding="8"
-                    HorizontalAlignment="Stretch"
-                    Click="CompactNavigationPaneButton_Click"
-                    Visibility="Collapsed">
-                    <Button.Flyout>
-                        <Flyout x:Name="CompactNavigationPaneFlyout" Placement="Right">
-                            <Border
-                                Width="360"
-                                MaxHeight="720"
-                                Padding="0"
-                                Background="{ThemeResource LayerFillColorDefaultBrush}"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                BorderThickness="1"
-                                CornerRadius="12">
-                                <controls:NavigationPaneExplorer x:Name="CompactNavigationPaneHost" />
-                            </Border>
-                        </Flyout>
-                    </Button.Flyout>
-                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left">
+                <Grid
+                    x:Name="NavigationPaneFooterHost"
+                    Margin="0,8,0,0">
+                    <controls:NavigationPaneExplorer
+                        x:Name="NavigationPaneHost"
+                        Visibility="Collapsed" />
+                    <Button
+                        x:Name="CompactNavigationPaneButton"
+                        Width="40"
+                        Height="40"
+                        Padding="0"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Top"
+                        Click="CompactNavigationPaneButton_Click"
+                        Visibility="Collapsed">
                         <FontIcon
                             Glyph="&#xF0E8;"
                             FontFamily="{StaticResource SymbolThemeFontFamily}"
                             FontSize="16" />
-                        <TextBlock
-                            x:Name="CompactNavigationPaneButtonText"
-                            Text="目录"
-                            TextTrimming="CharacterEllipsis" />
-                    </StackPanel>
-                </Button>
+                    </Button>
+                </Grid>
             </NavigationView.PaneFooter>
 
             <Grid Margin="0,0,0,0">
