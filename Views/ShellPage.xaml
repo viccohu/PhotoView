@@ -92,5 +92,17 @@
             VerticalAlignment="Top"
             Margin="0,7,68,0"
             Canvas.ZIndex="10"/>
+
+        <ProgressBar
+            x:Name="GlobalProgressBar"
+            Grid.Row="1"
+            Height="2"
+            IsIndeterminate="False"
+            Maximum="100"
+            Minimum="0"
+            Value="0"
+            Visibility="Collapsed"
+            VerticalAlignment="Bottom"
+            Canvas.ZIndex="100" />
     </Grid>
 </Page>

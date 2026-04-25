@@ -26,7 +26,6 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="80" />
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <TextBlock
@@ -76,7 +75,6 @@
             </ItemsControl>
 
             <Grid Grid.Row="2">
-
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
@@ -88,31 +86,7 @@
                      Checked="ToggleOptionButton_CheckedChanged"
                      Unchecked="ToggleOptionButton_CheckedChanged"
                      Visibility="{x:Bind IsToggleOptionVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
-
-                <!--<Button
-                       Grid.Column="0"
-                     HorizontalAlignment="Stretch"
-                     Click="LoadButton_Click">      
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon
-                         Glyph="&#xF103;"
-                         FontFamily="{StaticResource SymbolThemeFontFamily}"
-                         FontSize="14" />
-                        <TextBlock Text="载入" />
-                    </StackPanel>
-                </Button>-->
-
             </Grid>
-           
-
-            <ProgressBar
-                Grid.Row="3"
-                Height="4"
-                IsIndeterminate="{x:Bind IsProgressIndeterminate, Mode=OneWay}"
-                Maximum="100"
-                Minimum="0"
-                Value="{x:Bind ProgressValue, Mode=OneWay}"
-                Visibility="{x:Bind IsProgressVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
         </Grid>
     </Border>
 </UserControl>

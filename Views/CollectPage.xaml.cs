@@ -571,9 +571,6 @@ public sealed partial class CollectPage : Page
 
         _sourcePane.Subtitle = $"{ViewModel.SelectedSourceCount} / {ViewModel.MaxSourceCount}";
         _sourcePane.ToggleOptionValue = ViewModel.IncludeSubfolders;
-        _sourcePane.IsProgressVisible = ViewModel.IsLoading;
-        _sourcePane.IsProgressIndeterminate = ViewModel.IsLoadProgressIndeterminate;
-        _sourcePane.ProgressValue = ViewModel.LoadProgressValue;
 
         _sourcePane.SourceItems.Clear();
         foreach (var source in ViewModel.SelectedSources)
@@ -593,6 +590,11 @@ public sealed partial class CollectPage : Page
             _sourceBadge.Value = ViewModel.SelectedSourceCount;
             _sourceBadge.Visibility = ViewModel.SelectedSourceCount > 0 ? Visibility.Visible : Visibility.Collapsed;
         }
+
+        _shellToolbarService.UpdateProgress(
+            ViewModel.IsLoading,
+            ViewModel.IsLoadProgressIndeterminate,
+            ViewModel.LoadProgressValue);
     }
 
     private async Task RemoveSourceFromPaneAsync(NavigationPaneSourceItem item)

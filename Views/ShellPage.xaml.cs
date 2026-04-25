@@ -68,6 +68,7 @@ public sealed partial class ShellPage : Page
         _navigationService = App.GetService<INavigationService>();
         _navigationService.Navigated += OnNavigationServiceNavigated;
         _shellToolbarService.ToolbarChanged += OnShellToolbarChanged;
+        _shellToolbarService.ProgressChanged += OnProgressChanged;
         _navigationPaneService.CurrentContextChanged += OnNavigationPaneContextChanged;
 
         // 浣跨敤瀹樻柟 TitleBar
@@ -141,6 +142,16 @@ public sealed partial class ShellPage : Page
                 return;
 
             ShellToolbarHost.Content = _shellToolbarService.CurrentToolbar;
+        });
+    }
+
+    private void OnProgressChanged(object? sender, EventArgs e)
+    {
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            GlobalProgressBar.IsIndeterminate = _shellToolbarService.IsProgressIndeterminate;
+            GlobalProgressBar.Value = _shellToolbarService.ProgressValue;
+            GlobalProgressBar.Visibility = _shellToolbarService.IsProgressVisible ? Visibility.Visible : Visibility.Collapsed;
         });
     }
 

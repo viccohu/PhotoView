@@ -27,15 +27,6 @@ public sealed partial class CollectSourcePane : UserControl
     public static readonly DependencyProperty ToggleOptionValueProperty = DependencyProperty.Register(
         nameof(ToggleOptionValue), typeof(bool), typeof(CollectSourcePane), new PropertyMetadata(false));
 
-    public static readonly DependencyProperty IsProgressVisibleProperty = DependencyProperty.Register(
-        nameof(IsProgressVisible), typeof(bool), typeof(CollectSourcePane), new PropertyMetadata(false));
-
-    public static readonly DependencyProperty IsProgressIndeterminateProperty = DependencyProperty.Register(
-        nameof(IsProgressIndeterminate), typeof(bool), typeof(CollectSourcePane), new PropertyMetadata(false));
-
-    public static readonly DependencyProperty ProgressValueProperty = DependencyProperty.Register(
-        nameof(ProgressValue), typeof(double), typeof(CollectSourcePane), new PropertyMetadata(0d));
-
     public ObservableCollection<NavigationPaneSourceItem> SourceItems
     {
         get => (ObservableCollection<NavigationPaneSourceItem>)GetValue(SourceItemsProperty);
@@ -70,24 +61,6 @@ public sealed partial class CollectSourcePane : UserControl
     {
         get => (bool)GetValue(ToggleOptionValueProperty);
         set => SetValue(ToggleOptionValueProperty, value);
-    }
-
-    public bool IsProgressVisible
-    {
-        get => (bool)GetValue(IsProgressVisibleProperty);
-        set => SetValue(IsProgressVisibleProperty, value);
-    }
-
-    public bool IsProgressIndeterminate
-    {
-        get => (bool)GetValue(IsProgressIndeterminateProperty);
-        set => SetValue(IsProgressIndeterminateProperty, value);
-    }
-
-    public double ProgressValue
-    {
-        get => (double)GetValue(ProgressValueProperty);
-        set => SetValue(ProgressValueProperty, value);
     }
 
     public Func<NavigationPaneSourceItem, Task>? RemoveSourceHandler { get; set; }
