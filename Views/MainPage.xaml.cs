@@ -589,7 +589,7 @@ public sealed partial class MainPage : Page
             // 濠碘€冲€归悘?RememberLastFolder 濞?false 濞戞挻鏌ㄩ崙锛勭磼韫囨洜鎼肩€垫澘鎳撶换鍐╃▔閳ь剚娼鍡欑閻犲洤鐡ㄥΣ鎴犳媼閸撗呮瀭鐎瑰憡褰冩慨鐐存姜閹存帞鐟柡鍫簻閹酣鎮?
             if (!settingsService.RememberLastFolder && waitCount > 0)
             {
-                // System.Diagnostics.Debug.WriteLine($"[MainPage] 闁哄牜浜滈幆搴ㄦ偨閵婎煈鍞跺ù锝呯箣缁楀倸鈻庨檱閻儳顕ラ崟鍓佺閻犲搫鐤囩换鍐箒閵忕媭妲?);
+                await NavigateToDefaultFolderAsync();
                 return;
             }
             
@@ -601,7 +601,7 @@ public sealed partial class MainPage : Page
         
         if (!settingsService.RememberLastFolder || string.IsNullOrEmpty(settingsService.LastFolderPath))
         {
-            // System.Diagnostics.Debug.WriteLine($"[MainPage] 閻犱警鍨扮欢鐐寸▔閾忓厜鏁勯柟瀛樼墬濠€顓㈠触椤栨粍鏆忛柨娑樼焷閻戯附娼婚崶銊ゅ垝濠?);
+            await NavigateToDefaultFolderAsync();
             return;
         }
 
@@ -621,8 +621,32 @@ public sealed partial class MainPage : Page
         }
         else
         {
-            // System.Diagnostics.Debug.WriteLine($"[MainPage] 闁哄牜浜濇竟姗€宕氭０浣虹憪婵炲枴銈囩唴鐎? {settingsService.LastFolderPath}");
+            await NavigateToDefaultFolderAsync();
         }
+    }
+
+    private async System.Threading.Tasks.Task NavigateToDefaultFolderAsync()
+    {
+        if (_isUnloaded || AppLifetime.IsShuttingDown)
+            return;
+
+        var thisPcNode = ViewModel.FolderTree.FirstOrDefault(node => node.NodeType == NodeType.ThisPC);
+        if (thisPcNode == null)
+            return;
+
+        if (!thisPcNode.IsLoaded)
+        {
+            await ViewModel.LoadChildrenAsync(thisPcNode);
+        }
+
+        var favoritesRoot = FolderTreeService.GetFavoritesRootFromThisPc(thisPcNode);
+        if (favoritesRoot == null)
+            return;
+
+        await ExpandTreeViewPathAsync(favoritesRoot);
+        if (_isUnloaded || AppLifetime.IsShuttingDown)
+            return;
+        ThrottleLoadImages(favoritesRoot);
     }
 
     private async System.Threading.Tasks.Task<FolderNode?> TryFindAndLoadNodeByPathAsync(string targetPath)
@@ -1068,7 +1092,10 @@ public sealed partial class MainPage : Page
 
     private async void SubFolderGridView_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
-        if (TryGetFolderNodeFromElement(e.OriginalSource, out var folderNode) && folderNode.Folder != null)
+        if (TryGetFolderNodeFromElement(e.OriginalSource, out var folderNode) && 
+            (folderNode.Folder != null || 
+             folderNode.NodeType == NodeType.FavoritesRoot || 
+             folderNode.NodeType == NodeType.ExternalDevice))
         {
             SubFolderGridView.SelectedItem = folderNode;
             await NavigateToFolderNodeAsync(folderNode);

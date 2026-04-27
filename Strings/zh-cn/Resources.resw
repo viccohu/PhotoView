@@ -784,7 +784,7 @@
     <value>文件路径</value>
   </data>
   <data name="PreviewCanvas_Empty.Text" xml:space="preserve">
-    <value>选择一张图片</value>
+    <value>请载入图片</value>
   </data>
   <data name="Settings_LanguageRestart_Title" xml:space="preserve">
     <value>需要重启</value>

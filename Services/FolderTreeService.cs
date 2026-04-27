@@ -25,31 +25,37 @@ public sealed class FolderTreeService
         _isInitialized = true;
     }
 
-    public async Task<(FolderNode FavoritesRoot, FolderNode ThisPc, FolderNode ExternalDevices)> CreateRootNodesAsync()
+    public async Task<FolderNode> CreateRootNodesAsync()
     {
         await InitializeAsync();
 
-        var favoritesRoot = new FolderNode(null, NodeType.FavoritesRoot)
+        var thisPc = new FolderNode(null, NodeType.ThisPC)
+        {
+            Name = "这台电脑",
+            HasSubFolders = true,
+            IsExpanded = true
+        };
+
+        var favoritesRoot = new FolderNode(null, NodeType.FavoritesRoot, thisPc)
         {
             Name = "常用文件夹",
             HasSubFolders = true,
             IsExpanded = true
         };
 
-        var thisPc = new FolderNode(null, NodeType.ThisPC)
-        {
-            Name = "这台电脑",
-            HasSubFolders = true
-        };
-
-        var externalDevices = new FolderNode(null, NodeType.ExternalDevice)
+        var externalDevices = new FolderNode(null, NodeType.ExternalDevice, thisPc)
         {
             Name = "外接设备",
             HasSubFolders = true
         };
 
+        thisPc.Children.Add(favoritesRoot);
+        thisPc.Children.Add(externalDevices);
+
         await RefreshFavoriteFoldersAsync(favoritesRoot);
-        return (favoritesRoot, thisPc, externalDevices);
+        await PopulateExternalDeviceChildrenAsync(externalDevices);
+        
+        return thisPc;
     }
 
     public async Task LoadChildrenAsync(FolderNode node)
@@ -58,7 +64,11 @@ public sealed class FolderTreeService
             return;
 
         node.IsLoading = true;
-        node.Children.Clear();
+
+        if (node.NodeType != NodeType.ThisPC)
+        {
+            node.Children.Clear();
+        }
 
         try
         {
@@ -105,6 +115,16 @@ public sealed class FolderTreeService
         externalDevicesRoot.IsLoaded = false;
         externalDevicesRoot.Children.Clear();
         await LoadChildrenAsync(externalDevicesRoot);
+    }
+
+    public static FolderNode? GetFavoritesRootFromThisPc(FolderNode? thisPcNode)
+    {
+        return thisPcNode?.Children.FirstOrDefault(c => c.NodeType == NodeType.FavoritesRoot);
+    }
+
+    public static FolderNode? GetExternalDevicesFromThisPc(FolderNode? thisPcNode)
+    {
+        return thisPcNode?.Children.FirstOrDefault(c => c.NodeType == NodeType.ExternalDevice);
     }
 
     public async Task RefreshFavoriteFoldersAsync(FolderNode? favoritesRoot)
@@ -234,6 +254,32 @@ public sealed class FolderTreeService
 
     private async Task PopulateThisPcChildrenAsync(FolderNode node)
     {
+        var existingFavoritesRoot = node.Children.FirstOrDefault(c => c.NodeType == NodeType.FavoritesRoot);
+        var existingExternalDevices = node.Children.FirstOrDefault(c => c.NodeType == NodeType.ExternalDevice);
+
+        if (existingFavoritesRoot == null)
+        {
+            existingFavoritesRoot = new FolderNode(null, NodeType.FavoritesRoot, node)
+            {
+                Name = "常用文件夹",
+                HasSubFolders = true,
+                IsExpanded = true
+            };
+            node.Children.Insert(0, existingFavoritesRoot);
+            await RefreshFavoriteFoldersAsync(existingFavoritesRoot);
+        }
+
+        if (existingExternalDevices == null)
+        {
+            existingExternalDevices = new FolderNode(null, NodeType.ExternalDevice, node)
+            {
+                Name = "外接设备",
+                HasSubFolders = true
+            };
+            node.Children.Insert(1, existingExternalDevices);
+            await PopulateExternalDeviceChildrenAsync(existingExternalDevices);
+        }
+
         await AddKnownFolderNodeAsync(node, "桌面", Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory));
         await AddKnownFolderNodeAsync(node, "图片", Environment.GetFolderPath(Environment.SpecialFolder.MyPictures));
         await AddKnownFolderNodeAsync(node, "下载", Path.Combine(

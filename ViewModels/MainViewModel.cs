@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using PhotoView.Contracts.Services;
 using PhotoView.Helpers;
 using PhotoView.Models;
@@ -233,15 +233,13 @@ public partial class MainViewModel : ObservableRecipient
     {
         try
         {
-            var roots = await _folderTreeService.CreateRootNodesAsync();
-            _favoritesRootNode = roots.FavoritesRoot;
-            _thisPcNode = roots.ThisPc;
-            _externalDeviceNode = roots.ExternalDevices;
+            var thisPcNode = await _folderTreeService.CreateRootNodesAsync();
+            _thisPcNode = thisPcNode;
+            _favoritesRootNode = FolderTreeService.GetFavoritesRootFromThisPc(thisPcNode);
+            _externalDeviceNode = FolderTreeService.GetExternalDevicesFromThisPc(thisPcNode);
 
             FolderTree.Clear();
-            FolderTree.Add(_favoritesRootNode);
             FolderTree.Add(_thisPcNode);
-            FolderTree.Add(_externalDeviceNode);
 
             ClearStatus();
             FolderTreeLoaded?.Invoke(this, EventArgs.Empty);
@@ -323,14 +321,21 @@ public partial class MainViewModel : ObservableRecipient
             if (AppLifetime.IsShuttingDown || _externalDeviceNode == null)
                 return;
 
-            if (!_externalDeviceNode.IsLoaded && !ReferenceEquals(SelectedFolder, _externalDeviceNode))
-            {
-                _externalDeviceNode.HasSubFolders = true;
-                _externalDeviceNode.RefreshExpandableState();
-                return;
-            }
+            await _folderTreeService.RefreshExternalDevicesAsync(_externalDeviceNode);
 
-            await RefreshExternalDevicesAsync();
+            if (SelectedFolder?.NodeType == NodeType.ThisPC)
+            {
+                await SyncCurrentSubFoldersAsync(SelectedFolder, CancellationToken.None);
+            }
+            else if (!_externalDeviceNode.IsLoaded && !ReferenceEquals(SelectedFolder, _externalDeviceNode))
+            {
+                _externalDeviceNode.HasSubFolders = _externalDeviceNode.Children.Count > 0;
+                _externalDeviceNode.RefreshExpandableState();
+            }
+            else if (ReferenceEquals(SelectedFolder, _externalDeviceNode))
+            {
+                await SyncCurrentSubFoldersAsync(_externalDeviceNode, CancellationToken.None);
+            }
         });
     }
 
@@ -574,7 +579,9 @@ public partial class MainViewModel : ObservableRecipient
         cancellationToken.ThrowIfCancellationRequested();
 
         var subFolders = folderNode.Children
-            .Where(child => child.Folder != null)
+            .Where(child => child.Folder != null || 
+                   child.NodeType == NodeType.FavoritesRoot || 
+                   (child.NodeType == NodeType.ExternalDevice && child.HasSubFolders))
             .ToList();
 
         CurrentSubFolders.Clear();

@@ -41,7 +41,7 @@
         <TextBlock
             x:Uid="PreviewCanvas_Empty"
             x:Name="EmptyText"
-            Text="选择一张图片"
+            Text="请载入图片"
             Opacity="0.55"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"

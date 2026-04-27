@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using PhotoView.Contracts.Services;
 using PhotoView.Helpers;
 using PhotoView.Models;
@@ -464,11 +464,9 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     {
         try
         {
-            var roots = await _folderTreeService.CreateRootNodesAsync();
+            var thisPcNode = await _folderTreeService.CreateRootNodesAsync();
             FolderTree.Clear();
-            FolderTree.Add(roots.FavoritesRoot);
-            FolderTree.Add(roots.ThisPc);
-            FolderTree.Add(roots.ExternalDevices);
+            FolderTree.Add(thisPcNode);
         }
         catch (Exception ex)
         {
@@ -478,7 +476,8 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
 
     private FolderNode? GetFavoritesRootNode()
     {
-        return FolderTree.FirstOrDefault(node => node.NodeType == NodeType.FavoritesRoot);
+        var thisPcNode = FolderTree.FirstOrDefault(node => node.NodeType == NodeType.ThisPC);
+        return FolderTreeService.GetFavoritesRootFromThisPc(thisPcNode);
     }
 
     private async Task<int> LoadSourcesRoundRobinAsync(
