@@ -1288,12 +1288,13 @@ public sealed partial class CollectPage : Page
             Value = 0,
             VerticalAlignment = VerticalAlignment.Top,
             HorizontalAlignment = HorizontalAlignment.Left,
-            Margin = new Thickness(-10, -10, 0, 0),
+            
+            Margin = new Thickness(-8, -10, 0, 0),
         };
 
         var sourceSplitButton = new SplitButton
         {
-            Padding = new Thickness(8),
+            Padding = new Thickness(12,8,12,8),
             Flyout = new Flyout
             {
                 Placement = FlyoutPlacementMode.Bottom,
@@ -1315,7 +1316,7 @@ public sealed partial class CollectPage : Page
                         {
                             Glyph = "\uF103",
                             FontFamily = (FontFamily)Application.Current.Resources["SymbolThemeFontFamily"],
-                            FontSize = 14,
+                            FontSize = 18,
                         },
                         new TextBlock { Text = "载入" },
                     },

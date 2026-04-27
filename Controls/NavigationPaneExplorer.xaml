@@ -23,7 +23,7 @@
 
             <TextBlock
                 Grid.Row="0"
-                Text="{Binding Title}"
+                Text="目录"
                 Style="{ThemeResource BodyStrongTextBlockStyle}" />
 
             <TreeView
