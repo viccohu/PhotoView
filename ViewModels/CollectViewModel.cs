@@ -41,6 +41,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
 
     private const uint FirstBatchSize = 30;
     private const int DeferredImageInfoLoadDelayMs = 400;
+    private const int CompletedLoadProgressHoldMs = 450;
     private const double BurstGroupingWindowSeconds = 2d;
     private readonly PreviewWorkspaceService _workspaceService;
     private readonly ISettingsService _settingsService;
@@ -53,12 +54,12 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     private readonly List<BurstPhotoGroup> _burstGroups = new();
     private readonly HashSet<ImageFileInfo> _metadataHydrationQueued = new();
     private readonly HashSet<string> _loadedSourcePaths = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, bool> _loadedSourceIncludeSubfolders = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? _loadCts;
     private CancellationTokenSource? _metadataCts;
     private DateTime _lastLoadStatusUpdateUtc = DateTime.MinValue;
     private int _pendingDeleteCount;
     private int _filteredPhotoCount;
-    private bool _loadedIncludeSubfolders;
 
     public CollectViewModel(
         PreviewWorkspaceService workspaceService,
@@ -107,6 +108,17 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
 
     [ObservableProperty]
     private bool _includeSubfolders;
+
+    partial void OnIncludeSubfoldersChanged(bool value)
+    {
+        foreach (var source in SelectedSources)
+        {
+            source.IncludeSubfolders = value;
+        }
+    }
+
+    [ObservableProperty]
+    private bool _hasLoadedPreview;
 
     [ObservableProperty]
     private bool _isLoading;
@@ -177,7 +189,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
 
     public bool AddSource(string path)
     {
-        var added = _workspaceService.AddSource(path);
+        var added = _workspaceService.AddSource(path, IncludeSubfolders);
         if (!added)
         {
             StatusText = string.Format("CollectPage_Status_MaxSources".GetLocalized(), MaxSourceCount);
@@ -240,11 +252,13 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         });
     }
 
-        public async Task<LoadPreviewResult> LoadPreviewAsync()
+    public async Task<LoadPreviewResult> LoadPreviewAsync(bool forceRefresh = false)
     {
         ResetLoadProgress();
-        var sourcePaths = SelectedSources.Select(source => source.Path).ToArray();
-        if (sourcePaths.Length == 0)
+        var sourceRequests = SelectedSources
+            .Select(source => new SourceLoadRequest(source.Path, source.IncludeSubfolders))
+            .ToArray();
+        if (sourceRequests.Length == 0)
         {
             ResetMetadataHydrationQueue();
             ReplaceImageList(Array.Empty<ImageFileInfo>());
@@ -252,19 +266,21 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
             ClearBurstGroups();
             UpdateFilteredPhotoCount();
             _loadedSourcePaths.Clear();
+            _loadedSourceIncludeSubfolders.Clear();
+            HasLoadedPreview = false;
             StatusText = "CollectPage_Status_AddFolder".GetLocalized();
             return new LoadPreviewResult(false, false, false, false);
         }
 
-        var canAppend = _loadedSourcePaths.Count > 0 &&
-            IncludeSubfolders == _loadedIncludeSubfolders &&
-            _loadedSourcePaths.IsSubsetOf(sourcePaths);
+        var canAppend = !forceRefresh &&
+            _loadedSourcePaths.Count > 0 &&
+            IsLoadedSourceConfigurationSubsetOf(sourceRequests);
 
-        var pathsToLoad = canAppend
-            ? sourcePaths.Where(path => !_loadedSourcePaths.Contains(path)).ToArray()
-            : sourcePaths;
+        var sourcesToLoad = canAppend
+            ? sourceRequests.Where(source => !_loadedSourcePaths.Contains(source.Path)).ToArray()
+            : sourceRequests;
 
-        if (pathsToLoad.Length == 0)
+        if (sourcesToLoad.Length == 0)
         {
             StatusText = "CollectPage_Status_UpToDate".GetLocalized();
             return new LoadPreviewResult(false, false, false, false);
@@ -277,9 +293,11 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         _loadCts?.Cancel();
         _loadCts = new CancellationTokenSource();
         var cancellationToken = _loadCts.Token;
+        var currentLoadCts = _loadCts;
+        var completedSuccessfully = false;
         IsLoading = true;
-        IsLoadProgressIndeterminate = true;
-        LoadProgressValue = 10d;
+        IsLoadProgressIndeterminate = false;
+        LoadProgressValue = 0d;
         StatusText = (canAppend ? "CollectPage_Status_Appending" : "CollectPage_Status_Loading").GetLocalized();
 
         if (!canAppend)
@@ -294,25 +312,27 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
             PendingDeleteCount = 0;
             UpdateFilteredPhotoCount();
             _loadedSourcePaths.Clear();
+            _loadedSourceIncludeSubfolders.Clear();
             await Task.Yield();
         }
 
         try
         {
             var loadedCount = await LoadSourcesRoundRobinAsync(
-                pathsToLoad,
-                IncludeSubfolders,
+                sourcesToLoad,
                 cancellationToken,
                 metadataCancellationToken);
 
-            foreach (var path in pathsToLoad)
+            foreach (var source in sourcesToLoad)
             {
-                _loadedSourcePaths.Add(path);
+                _loadedSourcePaths.Add(source.Path);
+                _loadedSourceIncludeSubfolders[source.Path] = source.IncludeSubfolders;
             }
 
-            _loadedIncludeSubfolders = IncludeSubfolders;
             SelectedImage ??= Images.FirstOrDefault();
             UpdateLoadProgress(100d, isIndeterminate: false);
+            completedSuccessfully = true;
+            HasLoadedPreview = true;
             StatusText = string.Format("CollectPage_Status_LoadedImages".GetLocalized(), _allImages.Count);
             if (loadedCount == 0 && _allImages.Count == 0)
             {
@@ -334,8 +354,17 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         }
         finally
         {
-            IsLoading = false;
-            ResetLoadProgress();
+            if (completedSuccessfully)
+            {
+                UpdateLoadProgress(100d, isIndeterminate: false);
+                await Task.Delay(CompletedLoadProgressHoldMs);
+            }
+
+            if (ReferenceEquals(_loadCts, currentLoadCts))
+            {
+                IsLoading = false;
+                ResetLoadProgress();
+            }
         }
     }
     public void TogglePendingDelete(ImageFileInfo? image)
@@ -480,30 +509,50 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         return FolderTreeService.GetFavoritesRootFromThisPc(thisPcNode);
     }
 
+    private bool IsLoadedSourceConfigurationSubsetOf(IReadOnlyList<SourceLoadRequest> sourceRequests)
+    {
+        foreach (var loadedPath in _loadedSourcePaths)
+        {
+            if (!_loadedSourceIncludeSubfolders.TryGetValue(loadedPath, out var loadedIncludeSubfolders))
+            {
+                return false;
+            }
+
+            var matchingSource = sourceRequests.FirstOrDefault(source =>
+                string.Equals(source.Path, loadedPath, StringComparison.OrdinalIgnoreCase));
+            if (string.IsNullOrWhiteSpace(matchingSource.Path) ||
+                matchingSource.IncludeSubfolders != loadedIncludeSubfolders)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private async Task<int> LoadSourcesRoundRobinAsync(
-        IReadOnlyList<string> sourcePaths,
-        bool includeSubfolders,
+        IReadOnlyList<SourceLoadRequest> sourceRequests,
         CancellationToken cancellationToken,
         CancellationToken metadataCancellationToken)
     {
         var states = new List<SourceLoadState>();
-        foreach (var path in sourcePaths)
+        foreach (var source in sourceRequests)
         {
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                var folder = await StorageFolder.GetFolderFromPathAsync(path).AsTask(cancellationToken);
+                var folder = await StorageFolder.GetFolderFromPathAsync(source.Path).AsTask(cancellationToken);
                 var queryOptions = new QueryOptions(CommonFileQuery.OrderByName, ImageExtensions.ToList())
                 {
                     IndexerOption = IndexerOption.DoNotUseIndexer,
-                    FolderDepth = includeSubfolders ? FolderDepth.Deep : FolderDepth.Shallow
+                    FolderDepth = source.IncludeSubfolders ? FolderDepth.Deep : FolderDepth.Shallow
                 };
-                states.Add(new SourceLoadState(path, folder.CreateFileQueryWithOptions(queryOptions)));
-                UpdateSourceInitializationProgress(states.Count, sourcePaths.Count);
+                states.Add(new SourceLoadState(source.Path, folder.CreateFileQueryWithOptions(queryOptions)));
+                UpdateSourceInitializationProgress(states.Count, sourceRequests.Count);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[CollectViewModel] Source open failed {path}: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[CollectViewModel] Source open failed {source.Path}: {ex.Message}");
             }
         }
 
@@ -529,6 +578,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
                 }
 
                 state.Index += (uint)batch.Count;
+                state.LoadedBatchCount++;
                 var addedImages = AddFilesFromSourceBatch(state, batch, cancellationToken);
                 totalAdded += addedImages.Count;
 
@@ -1165,7 +1215,10 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
             return;
 
         var completedCount = states.Count(state => state.IsComplete);
-        var activeRatio = completedCount / (double)states.Count;
+        var activeContribution = states
+            .Where(state => !state.IsComplete && state.LoadedBatchCount > 0)
+            .Sum(state => 0.9d * (1d - (1d / (state.LoadedBatchCount + 1d))));
+        var activeRatio = Math.Clamp((completedCount + activeContribution) / states.Count, 0d, 1d);
         var progress = 25d + (60d * activeRatio);
         UpdateLoadProgress(progress, isIndeterminate: false);
     }
@@ -1226,6 +1279,8 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         //System.Diagnostics.Debug.WriteLine($"[CollectLoad] {DateTime.Now:HH:mm:ss.fff} {message}");
     }
 
+    private readonly record struct SourceLoadRequest(string Path, bool IncludeSubfolders);
+
     private sealed class SourceLoadState
     {
         public SourceLoadState(string sourcePath, StorageFileQueryResult query)
@@ -1239,6 +1294,8 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         public StorageFileQueryResult Query { get; }
 
         public uint Index { get; set; }
+
+        public int LoadedBatchCount { get; set; }
 
         public bool IsComplete { get; set; }
 

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
@@ -47,10 +48,38 @@ public sealed partial class NavigationPaneExplorer : UserControl
         {
             newNotify.PropertyChanged += Context_PropertyChanged;
         }
+
+        QueueSelectedNodeIntoView();
     }
 
     private void Context_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(INavigationPaneContext.SelectedNode))
+        {
+            QueueSelectedNodeIntoView();
+        }
+    }
+
+    private void QueueSelectedNodeIntoView()
+    {
+        DispatcherQueue.TryEnqueue(async () =>
+        {
+            await Task.Yield();
+
+            var selectedNode = Context?.SelectedNode;
+            if (selectedNode == null)
+            {
+                return;
+            }
+
+            FolderTreeView.SelectedItem = selectedNode;
+
+            if (FolderTreeView.ContainerFromItem(selectedNode) is TreeViewItem selectedItem)
+            {
+                selectedItem.StartBringIntoView();
+                selectedItem.Focus(FocusState.Programmatic);
+            }
+        });
     }
 
     private async void FolderTreeView_Expanding(TreeView sender, TreeViewExpandingEventArgs args)
@@ -157,7 +186,10 @@ public sealed partial class NavigationPaneExplorer : UserControl
 
         if (sender is FrameworkElement target)
         {
-            flyout.ShowAt(target);
+            flyout.ShowAt(target, new FlyoutShowOptions
+            {
+                Position = e.GetPosition(target)
+            });
             e.Handled = true;
         }
     }

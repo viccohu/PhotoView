@@ -304,7 +304,13 @@ public sealed partial class ShellPage : Page
 
         if (args.InvokedItemContainer == CompactNavigationPaneItem)
         {
-            ShowCompactNavigationPaneFlyout();
+            ShowNavigationPaneFlyout(CompactNavigationPaneItem, FlyoutPlacementMode.Right);
+            return;
+        }
+
+        if (args.InvokedItemContainer == TopNavigationPaneItem)
+        {
+            ShowNavigationPaneFlyout(TopNavigationPaneItem, FlyoutPlacementMode.BottomEdgeAlignedLeft);
             return;
         }
 
@@ -345,17 +351,19 @@ public sealed partial class ShellPage : Page
     {
         var mode = NavigationViewControl.PaneDisplayMode;
         var useLeftNavigation = mode == NavigationViewPaneDisplayMode.Left;
+        var useTopNavigation = mode == NavigationViewPaneDisplayMode.Top;
         var isPaneOpen = useLeftNavigation && NavigationViewControl.IsPaneOpen;
-        var context = !_isOnSettingsPage && useLeftNavigation
+        var context = !_isOnSettingsPage
             ? _navigationPaneService.CurrentContext
             : null;
 
         NavigationPaneHost.Context = isPaneOpen ? context : null;
         ExpandedNavigationPaneItem.Visibility = isPaneOpen && context != null ? Visibility.Visible : Visibility.Collapsed;
 
-        _compactNavigationPaneHost.Context = !isPaneOpen ? context : null;
-        CompactNavigationPaneItem.Visibility = !isPaneOpen && context != null ? Visibility.Visible : Visibility.Collapsed;
+        _compactNavigationPaneHost.Context = (!isPaneOpen && context != null) ? context : null;
+        CompactNavigationPaneItem.Visibility = useLeftNavigation && !isPaneOpen && context != null ? Visibility.Visible : Visibility.Collapsed;
         CompactNavigationPaneItem.Content = context?.Title ?? "目录";
+        TopNavigationPaneItem.Visibility = useTopNavigation && context != null ? Visibility.Visible : Visibility.Collapsed;
 
         if (isPaneOpen || context == null)
         {
@@ -363,17 +371,19 @@ public sealed partial class ShellPage : Page
         }
     }
 
-    private void ShowCompactNavigationPaneFlyout()
+    private void ShowNavigationPaneFlyout(FrameworkElement target, FlyoutPlacementMode placement)
     {
-        if (CompactNavigationPaneItem.Visibility == Visibility.Visible)
+        if (target.Visibility == Visibility.Visible)
         {
-            _compactNavigationPaneFlyout.ShowAt(CompactNavigationPaneItem);
+            _compactNavigationPaneFlyout.Hide();
+            _compactNavigationPaneFlyout.Placement = placement;
+            _compactNavigationPaneFlyout.ShowAt(target);
         }
     }
 
     private void CompactNavigationPaneButton_Click(object sender, RoutedEventArgs e)
     {
-        ShowCompactNavigationPaneFlyout();
+        ShowNavigationPaneFlyout(CompactNavigationPaneItem, FlyoutPlacementMode.Right);
     }
 
     private Flyout CreateCompactNavigationPaneFlyout()

@@ -52,6 +52,9 @@ public sealed partial class CollectPage : Page
     private Button? _shellDeleteButton;
     private SplitButton? _shellFilterSplitButton;
     private Microsoft.UI.Xaml.Shapes.Rectangle? _shellFilterActiveIndicator;
+    private SplitButton? _sourceSplitButton;
+    private FontIcon? _sourceLoadIcon;
+    private Microsoft.UI.Xaml.Shapes.Rectangle? _sourceLoadActiveIndicator;
     private (ImageFileInfo Image, uint Rating)? _pendingRatingUpdate;
     private int _selectedThumbnailLoadVersion;
     private int _lastDirectionalNavigationDirection;
@@ -178,6 +181,9 @@ public sealed partial class CollectPage : Page
         _shellDeleteButton = null;
         _shellFilterSplitButton = null;
         _shellFilterActiveIndicator = null;
+        _sourceSplitButton = null;
+        _sourceLoadIcon = null;
+        _sourceLoadActiveIndicator = null;
         _thumbnailCoordinator.VisibleThumbnailLoadTimer.Tick -= VisibleThumbnailLoadTimer_Tick;
         _ratingDebounceTimer.Tick -= RatingDebounceTimer_Tick;
         ViewModel.Images.CollectionChanged -= Images_CollectionChanged;
@@ -255,7 +261,11 @@ public sealed partial class CollectPage : Page
             _rightClickedFolderNode = node;
             if (sender is TreeViewItem { Content: Grid grid })
             {
-                FlyoutBase.ShowAttachedFlyout(grid);
+                var flyout = FlyoutBase.GetAttachedFlyout(grid);
+                flyout?.ShowAt(grid, new FlyoutShowOptions
+                {
+                    Position = e.GetPosition(grid)
+                });
             }
             e.Handled = true;
         }
@@ -519,6 +529,11 @@ public sealed partial class CollectPage : Page
             RefreshCustomIconForegrounds();
             UpdateSourcePaneState();
         }
+        else if (e.PropertyName == nameof(CollectViewModel.HasLoadedPreview))
+        {
+            UpdateSourceLoadButtonState();
+            UpdateSourcePaneState();
+        }
         else if (e.PropertyName == nameof(CollectViewModel.FocusedPageSlot))
         {
             UpdatePreviewHostVisuals();
@@ -579,6 +594,7 @@ public sealed partial class CollectPage : Page
             {
                 Id = source.Path,
                 DisplayName = source.DisplayName,
+                IncludeSubfolders = source.IncludeSubfolders,
                 Payload = source
             });
         }
@@ -597,6 +613,18 @@ public sealed partial class CollectPage : Page
             ViewModel.LoadProgressValue);
     }
 
+    private async Task SetSourceIncludeSubfoldersAsync(NavigationPaneSourceItem item, bool includeSubfolders)
+    {
+        if (item.Payload is PreviewSource source &&
+            source.IncludeSubfolders != includeSubfolders)
+        {
+            source.IncludeSubfolders = includeSubfolders;
+            UpdateSourcePaneState();
+        }
+
+        await Task.CompletedTask;
+    }
+
     private async Task RemoveSourceFromPaneAsync(NavigationPaneSourceItem item)
     {
         if (item.Payload is PreviewSource source)
@@ -608,9 +636,9 @@ public sealed partial class CollectPage : Page
         await Task.CompletedTask;
     }
 
-    private async Task LoadPreviewFromPaneAsync()
+    private async Task LoadPreviewFromPaneAsync(bool forceRefresh = false)
     {
-        await ViewModel.LoadPreviewAsync();
+        await ViewModel.LoadPreviewAsync(forceRefresh);
         UpdateSourcePaneState();
         QueueVisibleThumbnailLoad("load-preview");
     }
@@ -1248,6 +1276,45 @@ public sealed partial class CollectPage : Page
             VerticalAlignment = VerticalAlignment.Center
         };
 
+        _sourcePane = new CollectSourcePane
+        {
+            SourceItems = new ObservableCollection<NavigationPaneSourceItem>(),
+            ToggleOptionText = "包含所有子文件夹",
+            IsToggleOptionVisible = true,
+            RemoveSourceHandler = RemoveSourceFromPaneAsync,
+            SourceIncludeSubfoldersHandler = SetSourceIncludeSubfoldersAsync,
+            LoadHandler = () => LoadPreviewFromPaneAsync(ViewModel.HasLoadedPreview),
+            ToggleOptionHandler = value =>
+            {
+                ViewModel.IncludeSubfolders = value;
+                UpdateSourcePaneState();
+                return Task.CompletedTask;
+            },
+        };
+
+        _sourceBadge = new InfoBadge
+        {
+            Value = 0,
+            VerticalAlignment = VerticalAlignment.Top,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            
+            Margin = new Thickness(-8, -10, 0, 0),
+        };
+
+        _sourceSplitButton = new SplitButton
+        {
+            Padding = new Thickness(12,8,12,8),
+            Flyout = new Flyout
+            {
+                Placement = FlyoutPlacementMode.BottomEdgeAlignedLeft,
+                Content = _sourcePane,
+            },
+        };
+        _sourceSplitButton.Click += async (s, e) => await LoadPreviewFromPaneAsync(ViewModel.HasLoadedPreview);
+        _sourceSplitButton.Content = CreateSourceLoadButtonContent();
+        ApplyToolbarButtonChrome(_sourceSplitButton);
+        toolbar.Children.Add(_sourceSplitButton);
+
         var exportButton = CreateToolbarButton("\uE72D", "Common_Export".GetLocalized());
         exportButton.Click += ExportButton_Click;
         toolbar.Children.Add(exportButton);
@@ -1268,69 +1335,75 @@ public sealed partial class CollectPage : Page
         _shellFilterSplitButton.Click += FilterSplitButton_Click;
         toolbar.Children.Add(_shellFilterSplitButton);
 
-        _sourcePane = new CollectSourcePane
-        {
-            SourceItems = new ObservableCollection<NavigationPaneSourceItem>(),
-            ToggleOptionText = "包含子文件夹",
-            IsToggleOptionVisible = true,
-            RemoveSourceHandler = RemoveSourceFromPaneAsync,
-            LoadHandler = LoadPreviewFromPaneAsync,
-            ToggleOptionHandler = value =>
-            {
-                ViewModel.IncludeSubfolders = value;
-                UpdateSourcePaneState();
-                return Task.CompletedTask;
-            },
-        };
-
-        _sourceBadge = new InfoBadge
-        {
-            Value = 0,
-            VerticalAlignment = VerticalAlignment.Top,
-            HorizontalAlignment = HorizontalAlignment.Left,
-            
-            Margin = new Thickness(-8, -10, 0, 0),
-        };
-
-        var sourceSplitButton = new SplitButton
-        {
-            Padding = new Thickness(12,8,12,8),
-            Flyout = new Flyout
-            {
-                Placement = FlyoutPlacementMode.Bottom,
-                Content = _sourcePane,
-            },
-        };
-        sourceSplitButton.Click += async (s, e) => await LoadPreviewFromPaneAsync();
-        sourceSplitButton.Content = new Grid
-        {
-            Children =
-            {
-                new StackPanel
-                {
-                    Orientation = Orientation.Horizontal,
-                    Spacing = 4,
-                    Children =
-                    {
-                        new FontIcon
-                        {
-                            Glyph = "\uF103",
-                            FontFamily = (FontFamily)Application.Current.Resources["SymbolThemeFontFamily"],
-                            FontSize = 18,
-                        },
-                        new TextBlock { Text = "载入" },
-                    },
-                },
-                _sourceBadge,
-            },
-        };
-        ApplyToolbarButtonChrome(sourceSplitButton);
-        toolbar.Children.Add(sourceSplitButton);
-
         UpdateShellToolbarState();
         UpdateFilterButtonState();
+        UpdateSourceLoadButtonState();
         UpdateSourcePaneState();
         _shellToolbarService.SetToolbar(this, toolbar);
+    }
+
+    private Grid CreateSourceLoadButtonContent()
+    {
+        var root = new Grid
+        {
+            IsHitTestVisible = false
+        };
+
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(3) });
+
+        _sourceLoadIcon = new FontIcon
+        {
+            Glyph = ViewModel.HasLoadedPreview ? "\uE72C" : "\uF22C",
+            FontFamily = (FontFamily)Application.Current.Resources["SymbolThemeFontFamily"],
+            FontSize = 14,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        var label = new TextBlock
+        {
+            Text = "载入",
+            FontSize = 14,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        var content = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 4,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Children =
+            {
+                _sourceLoadIcon,
+                label,
+            },
+        };
+        Grid.SetRow(content, 0);
+        root.Children.Add(content);
+
+        _sourceLoadActiveIndicator = new Microsoft.UI.Xaml.Shapes.Rectangle
+        {
+            Width = 25,
+            Height = 3,
+            Fill = GetToolbarActiveIndicatorBrush(),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Bottom,
+            Margin = new Thickness(0, 1, 0, 0),
+            RadiusX = 1.5,
+            RadiusY = 1.5,
+            Opacity = ViewModel.HasLoadedPreview ? 1 : 0
+        };
+        Grid.SetRow(_sourceLoadActiveIndicator, 1);
+        root.Children.Add(_sourceLoadActiveIndicator);
+
+        if (_sourceBadge != null)
+        {
+            Grid.SetRow(_sourceBadge, 0);
+            root.Children.Add(_sourceBadge);
+        }
+
+        return root;
     }
 
     private void UpdateShellToolbarState()
@@ -1338,6 +1411,22 @@ public sealed partial class CollectPage : Page
         if (_shellDeleteButton != null)
         {
             _shellDeleteButton.IsEnabled = ViewModel.PendingDeleteCount > 0;
+        }
+    }
+
+    private void UpdateSourceLoadButtonState()
+    {
+        if (_sourceLoadIcon != null)
+        {
+            _sourceLoadIcon.Glyph = ViewModel.HasLoadedPreview ? "\uE72C" : "\uF22C";
+        }
+
+        UpdateToolbarActiveIndicator(_sourceLoadActiveIndicator, ViewModel.HasLoadedPreview);
+
+        if (_sourceSplitButton != null)
+        {
+            ApplyToolbarButtonChrome(_sourceSplitButton);
+            ToolTipService.SetToolTip(_sourceSplitButton, ViewModel.HasLoadedPreview ? "刷新载入" : "载入");
         }
     }
 

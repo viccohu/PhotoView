@@ -15,23 +15,30 @@
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="4" />
         </Style>
+        <Style x:Key="PaneGhostToggleButtonStyle" TargetType="ToggleButton">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="MinWidth" Value="32" />
+        </Style>
     </UserControl.Resources>
 
     <Border
-        Padding="12"
+        Padding="0"
         Width="300"
         Background="Transparent">
         <Grid RowSpacing="8">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="80" />
+                <RowDefinition Height="Auto"  MinHeight="80"/>
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <TextBlock
                 Grid.Row="0"
                 Style="{ThemeResource BodyTextBlockStyle}">
-                <Run Text="载入区" />
+                <Run Text="载入文件夹" />
                 <Run Text="{x:Bind Subtitle, Mode=OneWay}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </TextBlock>
 
@@ -43,14 +50,15 @@
                     <DataTemplate>
                         <Border
                             Margin="0,0,0,4"
-                            Padding="8,8"
+                            Padding="8,0"
                             Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                             BorderThickness="1"
                             CornerRadius="6">
-                            <Grid ColumnSpacing="8">
+                            <Grid ColumnSpacing="0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock
@@ -58,9 +66,27 @@
                                     TextTrimming="CharacterEllipsis"
                                     VerticalAlignment="Center"
                                     FontSize="16" />
-                                <Button
+                                <ToggleButton
                                     Grid.Column="1"
                                     Tag="{Binding}"
+                                    CornerRadius="2"
+                                    Height="35"
+                                    IsChecked="{Binding IncludeSubfolders, Mode=TwoWay}"
+                                    Checked="SourceIncludeSubfoldersButton_CheckedChanged"
+                                    Unchecked="SourceIncludeSubfoldersButton_CheckedChanged"
+                                    Style="{StaticResource PaneGhostToggleButtonStyle}"
+                                    ToolTipService.ToolTip="包含子文件夹">
+                                    <ContentControl
+                                        Content="{ThemeResource TextFillColorPrimaryBrush}"
+                                        ContentTemplate="{StaticResource SubFolderIconTemplate}" />
+                                </ToggleButton>
+                                <Button
+                                    Grid.Column="2"
+                                    Tag="{Binding}"
+                                    Height="35"
+                                    Width="35"
+                                    Margin="6,0"
+                                    CornerRadius="2"
                                     Click="RemoveSourceButton_Click"
                                     Style="{StaticResource PaneGhostButtonStyle}">
                                     <FontIcon
@@ -81,11 +107,24 @@
 
                 <ToggleButton
                      Grid.Column="0"
-                     Content="{x:Bind ToggleOptionText, Mode=OneWay}"
                      IsChecked="{x:Bind ToggleOptionValue, Mode=TwoWay}"
                      Checked="ToggleOptionButton_CheckedChanged"
                      Unchecked="ToggleOptionButton_CheckedChanged"
-                     Visibility="{x:Bind IsToggleOptionVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                     ToolTipService.ToolTip="{x:Bind ToggleOptionText, Mode=OneWay}"
+                     Visibility="{x:Bind IsToggleOptionVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <ContentControl
+                            Content="{ThemeResource TextFillColorPrimaryBrush}"
+                            ContentTemplate="{StaticResource SubFolderIconTemplate}" />
+                        <Rectangle
+                            Width="1"
+                            Fill="{ThemeResource DividerStrokeColorDefaultBrush}"
+                            Margin="2,0" />
+                        <TextBlock
+                            Text="{x:Bind ToggleOptionText, Mode=OneWay}"
+                            VerticalAlignment="Center" />
+                    </StackPanel>
+                </ToggleButton>
             </Grid>
         </Grid>
     </Border>

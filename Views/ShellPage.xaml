@@ -53,6 +53,19 @@
                     x:Name="PreviewNavigationItem"
                     x:Uid="Shell_Collect"
                     helpers:NavigationHelper.NavigateTo="PhotoView.ViewModels.CollectViewModel" />
+                <NavigationViewItem
+                    x:Name="TopNavigationPaneItem"
+                    Content="目录"
+                    SelectsOnInvoked="False"
+                    ToolTipService.ToolTip="目录"
+                    Visibility="Collapsed">
+                    <NavigationViewItem.Icon>
+                        <FontIcon
+                            Glyph="&#xE8F1;"
+                            FontFamily="{StaticResource SymbolThemeFontFamily}"
+                            FontSize="16" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
 
                 <NavigationViewItem
                     x:Name="ExpandedNavigationPaneItem"

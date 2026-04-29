@@ -64,6 +64,7 @@ public sealed partial class CollectSourcePane : UserControl
     }
 
     public Func<NavigationPaneSourceItem, Task>? RemoveSourceHandler { get; set; }
+    public Func<NavigationPaneSourceItem, bool, Task>? SourceIncludeSubfoldersHandler { get; set; }
     public Func<Task>? LoadHandler { get; set; }
     public Func<bool, Task>? ToggleOptionHandler { get; set; }
 
@@ -77,6 +78,16 @@ public sealed partial class CollectSourcePane : UserControl
         if (sender is FrameworkElement { Tag: NavigationPaneSourceItem item } && RemoveSourceHandler != null)
         {
             await RemoveSourceHandler(item);
+        }
+    }
+
+    private async void SourceIncludeSubfoldersButton_CheckedChanged(object sender, RoutedEventArgs e)
+    {
+        if (sender is ToggleButton toggleButton &&
+            toggleButton.Tag is NavigationPaneSourceItem item &&
+            SourceIncludeSubfoldersHandler != null)
+        {
+            await SourceIncludeSubfoldersHandler(item, toggleButton.IsChecked == true);
         }
     }
 

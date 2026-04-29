@@ -6,5 +6,7 @@ public sealed class NavigationPaneSourceItem
 
     public string DisplayName { get; set; } = string.Empty;
 
+    public bool IncludeSubfolders { get; set; }
+
     public object? Payload { get; set; }
 }

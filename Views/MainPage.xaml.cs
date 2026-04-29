@@ -1380,7 +1380,7 @@ public sealed partial class MainPage : Page
             }
         }
 
-        FlyoutBase.ShowAttachedFlyout(element);
+        ShowAttachedFlyoutAtPointer(element, e);
         e.Handled = true;
     }
 
@@ -1392,7 +1392,7 @@ public sealed partial class MainPage : Page
         if (treeViewItem.Content is Grid grid && grid.Tag is FolderNode node)
         {
             _rightClickedFolderNode = node;
-            FlyoutBase.ShowAttachedFlyout(grid);
+            ShowAttachedFlyoutAtPointer(grid, e);
         }
         e.Handled = true;
     }
@@ -1406,9 +1406,18 @@ public sealed partial class MainPage : Page
         {
             _rightClickedSubFolderNode = node;
             SubFolderGridView.SelectedItem = node;
-            FlyoutBase.ShowAttachedFlyout(element);
+            ShowAttachedFlyoutAtPointer(element, e);
             e.Handled = true;
         }
+    }
+
+    private static void ShowAttachedFlyoutAtPointer(FrameworkElement target, RightTappedRoutedEventArgs e)
+    {
+        var flyout = FlyoutBase.GetAttachedFlyout(target);
+        flyout?.ShowAt(target, new FlyoutShowOptions
+        {
+            Position = e.GetPosition(target)
+        });
     }
 
     private FolderNode? _rightClickedFolderNode;

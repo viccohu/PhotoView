@@ -12,7 +12,7 @@ public sealed class PreviewWorkspaceService
 
     public event EventHandler? SourcesChanged;
 
-    public bool AddSource(string? path)
+    public bool AddSource(string? path, bool includeSubfolders = false)
     {
         if (string.IsNullOrWhiteSpace(path))
             return false;
@@ -27,7 +27,7 @@ public sealed class PreviewWorkspaceService
         if (SelectedSources.Count >= MaxSourceCount)
             return false;
 
-        SelectedSources.Add(new PreviewSource(normalizedPath));
+        SelectedSources.Add(new PreviewSource(normalizedPath, includeSubfolders));
         SourcesChanged?.Invoke(this, EventArgs.Empty);
         return true;
     }

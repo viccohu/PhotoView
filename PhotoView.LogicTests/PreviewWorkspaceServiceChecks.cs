@@ -8,6 +8,8 @@ internal static class PreviewWorkspaceServiceChecks
     {
         using var sandbox = new TempDirectorySandbox();
         AddSource_NormalizesPath_AndAvoidsDuplicates(sandbox.RootPath);
+        AddSource_StoresIncludeSubfolders(sandbox.RootPath);
+        AddSource_DuplicateDoesNotOverwriteIncludeSubfolders(sandbox.RootPath);
         AddSource_StopsAtMaximumCount(sandbox.RootPath);
         RemoveSource_RaisesSourcesChanged(sandbox.RootPath);
     }
@@ -24,6 +26,30 @@ internal static class PreviewWorkspaceServiceChecks
         TestAssert.True(duplicate, "Duplicate add should be treated as success.");
         TestAssert.Equal(1, service.SelectedSources.Count, "Duplicate add should not create a second source.");
         TestAssert.Equal(folder.FullName, service.SelectedSources[0].Path, "Stored path should be normalized.");
+    }
+
+    private static void AddSource_StoresIncludeSubfolders(string rootPath)
+    {
+        var service = new PreviewWorkspaceService();
+        var folder = Directory.CreateDirectory(Path.Combine(rootPath, "RecursiveSession"));
+
+        var added = service.AddSource(folder.FullName, includeSubfolders: true);
+
+        TestAssert.True(added, "Source should be added.");
+        TestAssert.True(service.SelectedSources[0].IncludeSubfolders, "Added source should store the include-subfolders option.");
+    }
+
+    private static void AddSource_DuplicateDoesNotOverwriteIncludeSubfolders(string rootPath)
+    {
+        var service = new PreviewWorkspaceService();
+        var folder = Directory.CreateDirectory(Path.Combine(rootPath, "DuplicateRecursiveSession"));
+
+        service.AddSource(folder.FullName, includeSubfolders: true);
+        var duplicate = service.AddSource(folder.FullName + Path.DirectorySeparatorChar, includeSubfolders: false);
+
+        TestAssert.True(duplicate, "Duplicate add should be treated as success.");
+        TestAssert.Equal(1, service.SelectedSources.Count, "Duplicate add should not create a second source.");
+        TestAssert.True(service.SelectedSources[0].IncludeSubfolders, "Duplicate add should not overwrite the existing include-subfolders option.");
     }
 
     private static void AddSource_StopsAtMaximumCount(string rootPath)
