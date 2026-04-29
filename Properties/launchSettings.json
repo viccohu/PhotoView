@@ -1,10 +1,10 @@
 {
   "profiles": {
-    "PhotoView (Package)": {
+    "Sivo One (Package)": {
       "commandName": "MsixPackage",
       "nativeDebugging": true
     },
-    "PhotoView (Unpackaged)": {
+    "Sivo One (Unpackaged)": {
       "commandName": "Project"
     }
   }

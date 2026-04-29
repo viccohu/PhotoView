@@ -395,7 +395,7 @@ public sealed partial class CollectPage : Page
         }
 
         e.Data.RequestedOperation = DataPackageOperation.Copy;
-        e.Data.Properties.ApplicationName = "PhotoView";
+        e.Data.Properties.ApplicationName = "AppDisplayName".GetLocalized();
         e.Data.Properties.Title = storageFiles.Count == 1
             ? storageFiles[0].Name
             : string.Format("Common_FileCount".GetLocalized(), storageFiles.Count);

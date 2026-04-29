@@ -118,10 +118,10 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="AppDescription" xml:space="preserve">
-    <value>PhotoView</value>
+    <value>Sivo One</value>
   </data>
   <data name="AppDisplayName" xml:space="preserve">
-    <value>PhotoView</value>
+    <value>Sivo One</value>
   </data>
   <data name="SettingsPage_PrivacyTermsLink.Content" xml:space="preserve">
     <value>Privacy Statement</value>
@@ -283,7 +283,10 @@
     <value>Privacy Statement</value>
   </data>
   <data name="Settings_ProductInfo.Header" xml:space="preserve">
-    <value>PhotoView</value>
+    <value>Sivo One</value>
+  </data>
+  <data name="Settings_ProductInfoLocalizedName.Text" xml:space="preserve">
+    <value></value>
   </data>
   <data name="Common_FileCount" xml:space="preserve">
     <value>{0} files</value>
@@ -790,7 +793,7 @@
     <value>Restart required</value>
   </data>
   <data name="Settings_LanguageRestart_Content" xml:space="preserve">
-    <value>Restart PhotoView now to apply the new display language?</value>
+    <value>Restart Sivo One now to apply the new display language?</value>
   </data>
   <data name="Settings_LanguageRestart_RestartNow" xml:space="preserve">
     <value>Restart now</value>

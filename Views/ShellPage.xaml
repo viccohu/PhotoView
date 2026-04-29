@@ -21,7 +21,7 @@
             Grid.Row="0"
             BackRequested="TitleBar_BackRequested"
             IsBackButtonVisible="False"
-            Title="PhotoView">
+            Title="Sivo One · 片刻">
 
             <TitleBar.IconSource>
                 <ImageIconSource ImageSource="/Assets/WindowIcon.png" />
