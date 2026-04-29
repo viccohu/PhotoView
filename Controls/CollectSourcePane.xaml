@@ -35,12 +35,17 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <TextBlock
+            <StackPanel
                 Grid.Row="0"
-                Style="{ThemeResource BodyTextBlockStyle}">
-                <Run Text="载入文件夹" />
-                <Run Text="{x:Bind Subtitle, Mode=OneWay}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-            </TextBlock>
+                Orientation="Horizontal">
+                <TextBlock
+                    x:Name="LoadFoldersTextBlock"
+                    Style="{ThemeResource BodyTextBlockStyle}" />
+                <TextBlock
+                    Text="{x:Bind Subtitle, Mode=OneWay}"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{ThemeResource BodyTextBlockStyle}" />
+            </StackPanel>
 
             <ItemsControl
                 Grid.Row="1"
@@ -75,7 +80,7 @@
                                     Checked="SourceIncludeSubfoldersButton_CheckedChanged"
                                     Unchecked="SourceIncludeSubfoldersButton_CheckedChanged"
                                     Style="{StaticResource PaneGhostToggleButtonStyle}"
-                                    ToolTipService.ToolTip="包含子文件夹">
+                                    Loaded="SourceIncludeSubfoldersButton_Loaded">
                                     <ContentControl
                                         Content="{ThemeResource TextFillColorPrimaryBrush}"
                                         ContentTemplate="{StaticResource SubFolderIconTemplate}" />

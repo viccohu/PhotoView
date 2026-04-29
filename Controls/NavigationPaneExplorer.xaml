@@ -6,6 +6,8 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:models="using:PhotoView.Models"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Loaded="NavigationPaneExplorer_Loaded"
+    Unloaded="NavigationPaneExplorer_Unloaded"
     mc:Ignorable="d">
 
     <UserControl.Resources>
@@ -22,6 +24,7 @@
             </Grid.RowDefinitions>
 
             <TextBlock
+                x:Name="DirectoryHeaderTextBlock"
                 Grid.Row="0"
                 Text="目录"
                 Style="{ThemeResource BodyStrongTextBlockStyle}" />

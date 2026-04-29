@@ -1,4 +1,5 @@
 using PhotoView.Contracts.Services;
+using PhotoView.Helpers;
 using PhotoView.Models;
 using Windows.Storage;
 
@@ -31,21 +32,21 @@ public sealed class FolderTreeService
 
         var thisPc = new FolderNode(null, NodeType.ThisPC)
         {
-            Name = "这台电脑",
+            Name = "NavigationPane_ThisPC".GetLocalized(),
             HasSubFolders = true,
             IsExpanded = true
         };
 
         var favoritesRoot = new FolderNode(null, NodeType.FavoritesRoot, thisPc)
         {
-            Name = "常用文件夹",
+            Name = "NavigationPane_Favorites".GetLocalized(),
             HasSubFolders = true,
             IsExpanded = true
         };
 
         var externalDevices = new FolderNode(null, NodeType.ExternalDevice, thisPc)
         {
-            Name = "外接设备",
+            Name = "NavigationPane_ExternalDevices".GetLocalized(),
             HasSubFolders = true
         };
 
@@ -261,7 +262,7 @@ public sealed class FolderTreeService
         {
             existingFavoritesRoot = new FolderNode(null, NodeType.FavoritesRoot, node)
             {
-                Name = "常用文件夹",
+                Name = "NavigationPane_Favorites".GetLocalized(),
                 HasSubFolders = true,
                 IsExpanded = true
             };
@@ -273,16 +274,16 @@ public sealed class FolderTreeService
         {
             existingExternalDevices = new FolderNode(null, NodeType.ExternalDevice, node)
             {
-                Name = "外接设备",
+                Name = "NavigationPane_ExternalDevices".GetLocalized(),
                 HasSubFolders = true
             };
             node.Children.Insert(1, existingExternalDevices);
             await PopulateExternalDeviceChildrenAsync(existingExternalDevices);
         }
 
-        await AddKnownFolderNodeAsync(node, "桌面", Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory));
-        await AddKnownFolderNodeAsync(node, "图片", Environment.GetFolderPath(Environment.SpecialFolder.MyPictures));
-        await AddKnownFolderNodeAsync(node, "下载", Path.Combine(
+        await AddKnownFolderNodeAsync(node, "NavigationPane_Desktop".GetLocalized(), Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory));
+        await AddKnownFolderNodeAsync(node, "NavigationPane_Pictures".GetLocalized(), Environment.GetFolderPath(Environment.SpecialFolder.MyPictures));
+        await AddKnownFolderNodeAsync(node, "NavigationPane_Downloads".GetLocalized(), Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             "Downloads"));
 

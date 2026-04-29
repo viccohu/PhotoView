@@ -4,12 +4,15 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using PhotoView.Contracts.Services;
+using PhotoView.Helpers;
 using PhotoView.Models;
 
 namespace PhotoView.Controls;
 
 public sealed partial class NavigationPaneExplorer : UserControl
 {
+    private bool _suppressCollapseStateUpdates;
+
     public static readonly DependencyProperty ContextProperty = DependencyProperty.Register(
         nameof(Context),
         typeof(INavigationPaneContext),
@@ -27,6 +30,20 @@ public sealed partial class NavigationPaneExplorer : UserControl
         InitializeComponent();
     }
 
+    private void NavigationPaneExplorer_Loaded(object sender, RoutedEventArgs e)
+    {
+        DirectoryHeaderTextBlock.Text = "NavigationPane_Directory".GetLocalized();
+        if (Context != null)
+        {
+            _suppressCollapseStateUpdates = false;
+        }
+    }
+
+    private void NavigationPaneExplorer_Unloaded(object sender, RoutedEventArgs e)
+    {
+        _suppressCollapseStateUpdates = true;
+    }
+
     private static void OnContextChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is NavigationPaneExplorer control)
@@ -37,6 +54,8 @@ public sealed partial class NavigationPaneExplorer : UserControl
 
     private void OnContextChanged(INavigationPaneContext? oldContext, INavigationPaneContext? newContext)
     {
+        _suppressCollapseStateUpdates = newContext == null;
+
         if (oldContext is INotifyPropertyChanged oldNotify)
         {
             oldNotify.PropertyChanged -= Context_PropertyChanged;
@@ -95,7 +114,7 @@ public sealed partial class NavigationPaneExplorer : UserControl
 
     private void FolderTreeView_Collapsed(TreeView sender, TreeViewCollapsedEventArgs args)
     {
-        if (DataContext == null)
+        if (DataContext == null || _suppressCollapseStateUpdates)
         {
             return;
         }

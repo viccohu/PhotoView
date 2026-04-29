@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using PhotoView.Helpers;
 using PhotoView.Models;
 
 namespace PhotoView.Controls;
@@ -71,6 +72,7 @@ public sealed partial class CollectSourcePane : UserControl
     public CollectSourcePane()
     {
         InitializeComponent();
+        LoadFoldersTextBlock.Text = "CollectSourcePane_LoadFolders.Text".GetLocalized();
     }
 
     private async void RemoveSourceButton_Click(object sender, RoutedEventArgs e)
@@ -88,6 +90,14 @@ public sealed partial class CollectSourcePane : UserControl
             SourceIncludeSubfoldersHandler != null)
         {
             await SourceIncludeSubfoldersHandler(item, toggleButton.IsChecked == true);
+        }
+    }
+
+    private void SourceIncludeSubfoldersButton_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is ToggleButton toggleButton)
+        {
+            ToolTipService.SetToolTip(toggleButton, "CollectSourcePane_IncludeSubfolders.ToolTipService.ToolTip".GetLocalized());
         }
     }
 

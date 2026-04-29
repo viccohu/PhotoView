@@ -47,6 +47,7 @@ public sealed partial class ShellPage : Page
         _shellToolbarService = App.GetService<ShellToolbarService>();
         _navigationPaneService = App.GetService<INavigationPaneService>();
         InitializeComponent();
+        ApplyNavigationPaneLocalization();
         _compactNavigationPaneFlyout = CreateCompactNavigationPaneFlyout();
         _isPaneOpenChangedCallbackToken = NavigationViewControl.RegisterPropertyChangedCallback(
             NavigationView.IsPaneOpenProperty,
@@ -130,6 +131,14 @@ public sealed partial class ShellPage : Page
             UpdateNavigationIcons();
             UpdateTitleBarColor();
         });
+    }
+
+    private void ApplyNavigationPaneLocalization()
+    {
+        var directoryText = "NavigationPane_Directory".GetLocalized();
+        TopNavigationPaneItem.Content = directoryText;
+        ToolTipService.SetToolTip(TopNavigationPaneItem, directoryText);
+        CompactNavigationPaneItem.Content = directoryText;
     }
 
     private void OnShellToolbarChanged(object? sender, EventArgs e)
@@ -351,7 +360,7 @@ public sealed partial class ShellPage : Page
 
         _compactNavigationPaneHost.Context = (!isPaneOpen && context != null) ? context : null;
         CompactNavigationPaneItem.Visibility = useLeftNavigation && !isPaneOpen && context != null ? Visibility.Visible : Visibility.Collapsed;
-        CompactNavigationPaneItem.Content = context?.Title ?? "目录";
+        CompactNavigationPaneItem.Content = context?.Title ?? "NavigationPane_Directory".GetLocalized();
         TopNavigationPaneItem.Visibility = useTopNavigation && context != null ? Visibility.Visible : Visibility.Collapsed;
 
         if (isPaneOpen || context == null)

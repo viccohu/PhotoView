@@ -260,7 +260,7 @@ public partial class MainViewModel : ObservableRecipient
                 "Failed to build root folder tree.",
                 ex,
                 showToUser: true,
-                userMessage: "无法加载文件夹入口，请稍后重试。");
+                userMessage: "MainPage_LoadFolderTreeFailed".GetLocalized());
         }
     }
 
@@ -520,7 +520,7 @@ public partial class MainViewModel : ObservableRecipient
                 "Failed while enumerating folder images.",
                 ex,
                 showToUser: true,
-                userMessage: $"无法读取文件夹“{folderNode?.Name ?? "未知目录"}”中的图片。",
+                userMessage: string.Format("MainPage_LoadImagesFailed".GetLocalized(), folderNode?.Name ?? "NavigationPane_UnknownFolder".GetLocalized()),
                 ("Folder", folderNode?.FullPath));
         }
         finally
@@ -1556,7 +1556,7 @@ public partial class MainViewModel : ObservableRecipient
                 "Failed while enumerating folder images without history tracking.",
                 ex,
                 showToUser: true,
-                userMessage: $"无法刷新文件夹“{folderNode?.Name ?? "未知目录"}”中的图片。",
+                userMessage: string.Format("MainPage_RefreshImagesFailed".GetLocalized(), folderNode?.Name ?? "NavigationPane_UnknownFolder".GetLocalized()),
                 ("Folder", folderNode?.FullPath));
         }
         finally

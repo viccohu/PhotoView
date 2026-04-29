@@ -558,7 +558,7 @@ public sealed partial class CollectPage : Page
     {
         return new NavigationPaneContext
         {
-            Title = "目录",
+            Title = "CollectPage_LoadArea.Text".GetLocalized(),
             RootNodes = ViewModel.FolderTree,
             ActivateOnSingleClick = false,
             ActivateOnDoubleTap = true,
@@ -661,7 +661,7 @@ public sealed partial class CollectPage : Page
         {
             new NavigationPaneNodeAction
             {
-                Text = "添加到载入区",
+                Text = "CollectPage_AddToLoadArea.Text".GetLocalized(),
                 Glyph = "\uE710",
                 ExecuteAsync = folderNode =>
                 {
@@ -682,8 +682,8 @@ public sealed partial class CollectPage : Page
             actions.Add(new NavigationPaneNodeAction
             {
                 Text = isPinned
-                    ? "取消固定"
-                    : "固定到常用文件夹",
+                    ? "CollectPage_UnpinFolder.Text".GetLocalized()
+                    : "CollectPage_PinFolder.Text".GetLocalized(),
                 Glyph = isPinned ? "\uE77A" : "\uE718",
                 ExecuteAsync = async folderNode =>
                 {
@@ -706,7 +706,7 @@ public sealed partial class CollectPage : Page
             actions.Add(new NavigationPaneNodeAction { IsSeparator = true });
             actions.Add(new NavigationPaneNodeAction
             {
-                Text = "刷新外接设备",
+                Text = "CollectPage_RefreshDevices.Text".GetLocalized(),
                 Glyph = "\uE72C",
                 ExecuteAsync = async _ =>
                 {
@@ -1291,7 +1291,7 @@ public sealed partial class CollectPage : Page
         _sourcePane = new CollectSourcePane
         {
             SourceItems = new ObservableCollection<NavigationPaneSourceItem>(),
-            ToggleOptionText = "包含所有子文件夹",
+            ToggleOptionText = "CollectPage_IncludeAllSubfolders".GetLocalized(),
             IsToggleOptionVisible = true,
             RemoveSourceHandler = RemoveSourceFromPaneAsync,
             SourceIncludeSubfoldersHandler = SetSourceIncludeSubfoldersAsync,
@@ -1462,9 +1462,9 @@ public sealed partial class CollectPage : Page
     {
         return state switch
         {
-            CollectPreviewLoadState.Append => "追加",
-            CollectPreviewLoadState.Refresh => "刷新",
-            _ => "载入",
+            CollectPreviewLoadState.Append => "CollectPage_Append".GetLocalized(),
+            CollectPreviewLoadState.Refresh => "CollectPage_Refresh".GetLocalized(),
+            _ => "CollectPage_Load.Text".GetLocalized(),
         };
     }
 
@@ -1472,9 +1472,9 @@ public sealed partial class CollectPage : Page
     {
         return state switch
         {
-            CollectPreviewLoadState.Append => "追加载入",
-            CollectPreviewLoadState.Refresh => "刷新载入",
-            _ => "载入",
+            CollectPreviewLoadState.Append => "CollectPage_AppendLoad".GetLocalized(),
+            CollectPreviewLoadState.Refresh => "CollectPage_RefreshLoad".GetLocalized(),
+            _ => "CollectPage_Load.Text".GetLocalized(),
         };
     }
 

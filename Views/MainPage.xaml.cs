@@ -838,7 +838,7 @@ public sealed partial class MainPage : Page
     {
         return new NavigationPaneContext
         {
-            Title = "相册",
+            Title = "MainPage_Library.Text".GetLocalized(),
             RootNodes = ViewModel.FolderTree,
             ActivateOnSingleClick = true,
             ActivateOnDoubleTap = false,
@@ -880,7 +880,7 @@ public sealed partial class MainPage : Page
         {
             actions.Add(new NavigationPaneNodeAction
             {
-                Text = "添加到预览",
+                Text = "MainPage_AddToPreview.Text".GetLocalized(),
                 Glyph = "\uE710",
                 ExecuteAsync = folderNode =>
                 {
@@ -890,7 +890,7 @@ public sealed partial class MainPage : Page
             });
             actions.Add(new NavigationPaneNodeAction
             {
-                Text = "在资源管理器中打开",
+                Text = "MainPage_OpenInExplorer.Text".GetLocalized(),
                 Glyph = "\uE838",
                 ExecuteAsync = folderNode =>
                 {
@@ -902,8 +902,8 @@ public sealed partial class MainPage : Page
             actions.Add(new NavigationPaneNodeAction
             {
                 Text = isPinned
-                    ? "取消固定文件夹"
-                    : "固定文件夹",
+                    ? "MainPage_UnpinFolder.Text".GetLocalized()
+                    : "MainPage_PinFolder.Text".GetLocalized(),
                 Glyph = isPinned ? "\uE77A" : "\uE718",
                 ExecuteAsync = async folderNode =>
                 {
@@ -926,7 +926,7 @@ public sealed partial class MainPage : Page
             actions.Add(new NavigationPaneNodeAction { IsSeparator = true });
             actions.Add(new NavigationPaneNodeAction
             {
-                Text = "刷新外接设备",
+                Text = "MainPage_RefreshDevices.Text".GetLocalized(),
                 Glyph = "\uE72C",
                 ExecuteAsync = async _ =>
                 {
