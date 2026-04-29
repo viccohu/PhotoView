@@ -71,9 +71,9 @@ public sealed partial class ShellPage : Page
         _shellToolbarService.ProgressChanged += OnProgressChanged;
         _navigationPaneService.CurrentContextChanged += OnNavigationPaneContextChanged;
 
-        // 浣跨敤瀹樻柟 TitleBar
         App.MainWindow.ExtendsContentIntoTitleBar = true;
-        App.MainWindow.SetTitleBar(titleBar);
+        App.MainWindow.SetTitleBar(ShellTitleBar);
+        UpdateTitleBarLayout();
         App.MainWindow.Activated += MainWindow_Activated;
     }
 
@@ -239,7 +239,7 @@ public sealed partial class ShellPage : Page
         _compactNavigationPaneFlyout.Hide();
 
         UpdateNavigationPaneState();
-        UpdateTitleBarLayout(useLeftNavigation);
+        UpdateTitleBarLayout();
     }
 
     private void OnNavigationViewPaneOpenChanged(DependencyObject sender, DependencyProperty dependency)
@@ -247,7 +247,7 @@ public sealed partial class ShellPage : Page
         DispatcherQueue.TryEnqueue(UpdateNavigationPaneState);
     }
 
-    private void UpdateTitleBarLayout(bool useLeftNavigation)
+    private void UpdateTitleBarLayout()
     {
         var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
         var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hWnd);
@@ -257,9 +257,7 @@ public sealed partial class ShellPage : Page
             return;
         }
 
-        appWindow.TitleBar.PreferredHeightOption = useLeftNavigation
-            ? TitleBarHeightOption.Standard
-            : TitleBarHeightOption.Tall;
+        appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
     }
 
     private void UpdateNavigationIcons()
@@ -286,15 +284,6 @@ public sealed partial class ShellPage : Page
             UriSource = new Uri(uri)
         };
     }
-    private void TitleBar_BackRequested(TitleBar sender, object args)
-    {
-        // 澶勭悊杩斿洖閫昏緫
-        if (NavigationFrame.CanGoBack)
-        {
-            NavigationFrame.GoBack();
-        }
-    }
-
     private void NavigationViewControl_ItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
     {
                 if (args.InvokedItemContainer == ExpandedNavigationPaneItem)

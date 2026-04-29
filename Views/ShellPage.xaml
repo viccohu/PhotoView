@@ -9,26 +9,20 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Loaded="OnLoaded">
 
-    <Grid>
+    <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <!--  TitleBar  -->
             <RowDefinition Height="*" />
-            <!--  NavigationView  -->
         </Grid.RowDefinitions>
 
         <TitleBar
-            x:Name="titleBar"
+            x:Name="ShellTitleBar"
             Grid.Row="0"
-            BackRequested="TitleBar_BackRequested"
             IsBackButtonVisible="False"
-            Title="PhotoView"
-            >
-
+            Title="PhotoView">
             <TitleBar.IconSource>
                 <ImageIconSource ImageSource="/Assets/WindowIcon.png" />
             </TitleBar.IconSource>
-
         </TitleBar>
 
         <NavigationView
@@ -38,11 +32,15 @@
             Canvas.ZIndex="0"
             IsSettingsVisible="True"
             IsBackButtonVisible="Collapsed"
+            IsTitleBarAutoPaddingEnabled="False"
             ItemInvoked="NavigationViewControl_ItemInvoked"
             CompactPaneLength="48"
             OpenPaneLength="300"
             PaneDisplayMode="Left"
             SelectedItem="{x:Bind ViewModel.Selected, Mode=TwoWay}">
+            <NavigationView.Resources>
+                <Thickness x:Key="TopNavigationViewTopNavGridMargin">4,0,145,0</Thickness>
+            </NavigationView.Resources>
             <NavigationView.MenuItems>
 
                 <NavigationViewItem
@@ -103,7 +101,7 @@
             Grid.Row="1"
             HorizontalAlignment="Right"
             VerticalAlignment="Top"
-            Margin="0,7,68,0"
+            Margin="0,4,210,0"
             Canvas.ZIndex="10"/>
 
         <ProgressBar

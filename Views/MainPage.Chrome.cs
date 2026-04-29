@@ -74,6 +74,7 @@ public sealed partial class MainPage
 
         UpdateShellToolbarState();
         UpdateFilterButtonState();
+        UpdateGlobalLoadProgress();
         _shellToolbarService.SetToolbar(this, toolbar);
     }
 

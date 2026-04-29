@@ -54,6 +54,7 @@ public sealed partial class CollectPage : Page
     private Microsoft.UI.Xaml.Shapes.Rectangle? _shellFilterActiveIndicator;
     private SplitButton? _sourceSplitButton;
     private FontIcon? _sourceLoadIcon;
+    private TextBlock? _sourceLoadText;
     private Microsoft.UI.Xaml.Shapes.Rectangle? _sourceLoadActiveIndicator;
     private (ImageFileInfo Image, uint Rating)? _pendingRatingUpdate;
     private int _selectedThumbnailLoadVersion;
@@ -183,6 +184,7 @@ public sealed partial class CollectPage : Page
         _shellFilterActiveIndicator = null;
         _sourceSplitButton = null;
         _sourceLoadIcon = null;
+        _sourceLoadText = null;
         _sourceLoadActiveIndicator = null;
         _thumbnailCoordinator.VisibleThumbnailLoadTimer.Tick -= VisibleThumbnailLoadTimer_Tick;
         _ratingDebounceTimer.Tick -= RatingDebounceTimer_Tick;
@@ -534,6 +536,10 @@ public sealed partial class CollectPage : Page
             UpdateSourceLoadButtonState();
             UpdateSourcePaneState();
         }
+        else if (e.PropertyName == nameof(CollectViewModel.PreviewLoadState))
+        {
+            UpdateSourceLoadButtonState();
+        }
         else if (e.PropertyName == nameof(CollectViewModel.FocusedPageSlot))
         {
             UpdatePreviewHostVisuals();
@@ -619,6 +625,7 @@ public sealed partial class CollectPage : Page
             source.IncludeSubfolders != includeSubfolders)
         {
             source.IncludeSubfolders = includeSubfolders;
+            ViewModel.RefreshPreviewLoadState();
             UpdateSourcePaneState();
         }
 
@@ -641,6 +648,11 @@ public sealed partial class CollectPage : Page
         await ViewModel.LoadPreviewAsync(forceRefresh);
         UpdateSourcePaneState();
         QueueVisibleThumbnailLoad("load-preview");
+    }
+
+    private Task LoadPreviewFromCurrentButtonStateAsync()
+    {
+        return LoadPreviewFromPaneAsync(ViewModel.PreviewLoadState == CollectPreviewLoadState.Refresh);
     }
 
     private IReadOnlyList<NavigationPaneNodeAction> GetNavigationPaneNodeActions(FolderNode node)
@@ -1283,7 +1295,7 @@ public sealed partial class CollectPage : Page
             IsToggleOptionVisible = true,
             RemoveSourceHandler = RemoveSourceFromPaneAsync,
             SourceIncludeSubfoldersHandler = SetSourceIncludeSubfoldersAsync,
-            LoadHandler = () => LoadPreviewFromPaneAsync(ViewModel.HasLoadedPreview),
+            LoadHandler = LoadPreviewFromCurrentButtonStateAsync,
             ToggleOptionHandler = value =>
             {
                 ViewModel.IncludeSubfolders = value;
@@ -1310,7 +1322,7 @@ public sealed partial class CollectPage : Page
                 Content = _sourcePane,
             },
         };
-        _sourceSplitButton.Click += async (s, e) => await LoadPreviewFromPaneAsync(ViewModel.HasLoadedPreview);
+        _sourceSplitButton.Click += async (s, e) => await LoadPreviewFromCurrentButtonStateAsync();
         _sourceSplitButton.Content = CreateSourceLoadButtonContent();
         ApplyToolbarButtonChrome(_sourceSplitButton);
         toolbar.Children.Add(_sourceSplitButton);
@@ -1354,15 +1366,15 @@ public sealed partial class CollectPage : Page
 
         _sourceLoadIcon = new FontIcon
         {
-            Glyph = ViewModel.HasLoadedPreview ? "\uE72C" : "\uF22C",
+            Glyph = GetSourceLoadButtonGlyph(ViewModel.PreviewLoadState),
             FontFamily = (FontFamily)Application.Current.Resources["SymbolThemeFontFamily"],
             FontSize = 14,
             VerticalAlignment = VerticalAlignment.Center
         };
 
-        var label = new TextBlock
+        _sourceLoadText = new TextBlock
         {
-            Text = "载入",
+            Text = GetSourceLoadButtonText(ViewModel.PreviewLoadState),
             FontSize = 14,
             VerticalAlignment = VerticalAlignment.Center
         };
@@ -1376,7 +1388,7 @@ public sealed partial class CollectPage : Page
             Children =
             {
                 _sourceLoadIcon,
-                label,
+                _sourceLoadText,
             },
         };
         Grid.SetRow(content, 0);
@@ -1392,7 +1404,7 @@ public sealed partial class CollectPage : Page
             Margin = new Thickness(0, 1, 0, 0),
             RadiusX = 1.5,
             RadiusY = 1.5,
-            Opacity = ViewModel.HasLoadedPreview ? 1 : 0
+            Opacity = IsSourceLoadButtonActive(ViewModel.PreviewLoadState) ? 1 : 0
         };
         Grid.SetRow(_sourceLoadActiveIndicator, 1);
         root.Children.Add(_sourceLoadActiveIndicator);
@@ -1416,18 +1428,59 @@ public sealed partial class CollectPage : Page
 
     private void UpdateSourceLoadButtonState()
     {
+        var state = ViewModel.PreviewLoadState;
         if (_sourceLoadIcon != null)
         {
-            _sourceLoadIcon.Glyph = ViewModel.HasLoadedPreview ? "\uE72C" : "\uF22C";
+            _sourceLoadIcon.Glyph = GetSourceLoadButtonGlyph(state);
         }
 
-        UpdateToolbarActiveIndicator(_sourceLoadActiveIndicator, ViewModel.HasLoadedPreview);
+        if (_sourceLoadText != null)
+        {
+            _sourceLoadText.Text = GetSourceLoadButtonText(state);
+        }
+
+        UpdateToolbarActiveIndicator(_sourceLoadActiveIndicator, IsSourceLoadButtonActive(state));
 
         if (_sourceSplitButton != null)
         {
             ApplyToolbarButtonChrome(_sourceSplitButton);
-            ToolTipService.SetToolTip(_sourceSplitButton, ViewModel.HasLoadedPreview ? "刷新载入" : "载入");
+            ToolTipService.SetToolTip(_sourceSplitButton, GetSourceLoadButtonToolTip(state));
         }
+    }
+
+    private static string GetSourceLoadButtonGlyph(CollectPreviewLoadState state)
+    {
+        return state switch
+        {
+            CollectPreviewLoadState.Append => "\uEA63",
+            CollectPreviewLoadState.Refresh => "\uE8F7",
+            _ => "\uEA64",
+        };
+    }
+
+    private static string GetSourceLoadButtonText(CollectPreviewLoadState state)
+    {
+        return state switch
+        {
+            CollectPreviewLoadState.Append => "追加",
+            CollectPreviewLoadState.Refresh => "刷新",
+            _ => "载入",
+        };
+    }
+
+    private static string GetSourceLoadButtonToolTip(CollectPreviewLoadState state)
+    {
+        return state switch
+        {
+            CollectPreviewLoadState.Append => "追加载入",
+            CollectPreviewLoadState.Refresh => "刷新载入",
+            _ => "载入",
+        };
+    }
+
+    private static bool IsSourceLoadButtonActive(CollectPreviewLoadState state)
+    {
+        return state is CollectPreviewLoadState.Append or CollectPreviewLoadState.Refresh;
     }
 
     private static Button CreateToolbarButton(string glyph, string tooltip)

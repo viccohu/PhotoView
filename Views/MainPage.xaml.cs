@@ -257,6 +257,20 @@ public sealed partial class MainPage : Page
         {
             UpdateShellToolbarState();
         }
+        else if (e.PropertyName is nameof(MainViewModel.IsLoadingImages)
+            or nameof(MainViewModel.IsImageLoadProgressIndeterminate)
+            or nameof(MainViewModel.ImageLoadProgressValue))
+        {
+            UpdateGlobalLoadProgress();
+        }
+    }
+
+    private void UpdateGlobalLoadProgress()
+    {
+        _shellToolbarService.UpdateProgress(
+            ViewModel.IsLoadingImages,
+            ViewModel.IsImageLoadProgressIndeterminate,
+            ViewModel.ImageLoadProgressValue);
     }
 
 
@@ -744,6 +758,7 @@ public sealed partial class MainPage : Page
         _isUnloaded = true;
         _navigationPaneService.ClearContext(this);
         _shellToolbarService.ClearToolbar(this);
+        _shellToolbarService.UpdateProgress(false, false, 0d);
         _shellDeleteButton = null;
         _shellAutoExpandBurstToggleButton = null;
         _shellFilterSplitButton = null;

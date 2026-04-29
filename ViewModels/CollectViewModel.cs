@@ -115,10 +115,20 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         {
             source.IncludeSubfolders = value;
         }
+
+        RefreshPreviewLoadState();
     }
 
     [ObservableProperty]
     private bool _hasLoadedPreview;
+
+    partial void OnHasLoadedPreviewChanged(bool value)
+    {
+        RefreshPreviewLoadState();
+    }
+
+    [ObservableProperty]
+    private CollectPreviewLoadState _previewLoadState = CollectPreviewLoadState.Load;
 
     [ObservableProperty]
     private bool _isLoading;
@@ -202,6 +212,15 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
         _workspaceService.RemoveSource(source);
     }
 
+    public void RefreshPreviewLoadState()
+    {
+        PreviewLoadState = CollectPreviewLoadStateEvaluator.Determine(
+            HasLoadedPreview,
+            SelectedSources.ToList(),
+            _loadedSourcePaths,
+            _loadedSourceIncludeSubfolders);
+    }
+
     public async Task PinFolderAsync(FolderNode? node)
     {
         await _folderTreeService.PinFolderAsync(node, GetFavoritesRootNode());
@@ -268,6 +287,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
             _loadedSourcePaths.Clear();
             _loadedSourceIncludeSubfolders.Clear();
             HasLoadedPreview = false;
+            RefreshPreviewLoadState();
             StatusText = "CollectPage_Status_AddFolder".GetLocalized();
             return new LoadPreviewResult(false, false, false, false);
         }
@@ -333,6 +353,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
             UpdateLoadProgress(100d, isIndeterminate: false);
             completedSuccessfully = true;
             HasLoadedPreview = true;
+            RefreshPreviewLoadState();
             StatusText = string.Format("CollectPage_Status_LoadedImages".GetLocalized(), _allImages.Count);
             if (loadedCount == 0 && _allImages.Count == 0)
             {
@@ -806,6 +827,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
     private void WorkspaceService_SourcesChanged(object? sender, EventArgs e)
     {
         OnPropertyChanged(nameof(SelectedSourceCount));
+        RefreshPreviewLoadState();
     }
 
     private void OnFilterChanged(object? sender, EventArgs e)
