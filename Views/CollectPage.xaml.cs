@@ -145,6 +145,7 @@ public sealed partial class CollectPage : Page
         EnsurePreviewSelectionInitialized();
         RefreshDualPageLayout(forceRebuild: true);
         UpdateSelectedImageUi();
+        EnsureLoadDrawerOpenForEmptyPreview(animate: false);
         UpdateLoadDrawerState(animate: false);
         RefreshCustomIconForegrounds();
         QueueVisibleThumbnailLoad("page-loaded");
@@ -231,6 +232,10 @@ public sealed partial class CollectPage : Page
         if (result.AutoCollapseDrawer)
         {
             CollapseLoadDrawer();
+        }
+        else if (!result.LoadedAnyFiles)
+        {
+            ExpandLoadDrawer();
         }
         QueueVisibleThumbnailLoad("load-preview");
     }
@@ -1021,6 +1026,25 @@ public sealed partial class CollectPage : Page
         UpdateLoadDrawerState();
     }
 
+    private void ExpandLoadDrawer(bool animate = true)
+    {
+        _isLoadDrawerPinnedCollapsed = false;
+        _isLoadDrawerTemporarilyExpanded = false;
+        _ = _settingsService.SaveCollectPageLoadDrawerCollapsedAsync(_isLoadDrawerPinnedCollapsed);
+        UpdateLoadDrawerState(animate);
+    }
+
+    private void EnsureLoadDrawerOpenForEmptyPreview(bool animate = true)
+    {
+        if (ViewModel.HasLoadedPreview)
+            return;
+
+        _isLoadDrawerPinnedCollapsed = false;
+        _isLoadDrawerTemporarilyExpanded = false;
+        _ = _settingsService.SaveCollectPageLoadDrawerCollapsedAsync(_isLoadDrawerPinnedCollapsed);
+        UpdateLoadDrawerState(animate);
+    }
+
     private void UpdateLoadDrawerState(bool animate = true)
     {
         var isExpanded = IsLoadDrawerExpanded;
@@ -1483,6 +1507,10 @@ public sealed partial class CollectPage : Page
         if (result.AutoCollapseDrawer)
         {
             CollapseLoadDrawer();
+        }
+        else if (!result.LoadedAnyFiles)
+        {
+            ExpandLoadDrawer();
         }
 
         UpdateSourcePaneState();
