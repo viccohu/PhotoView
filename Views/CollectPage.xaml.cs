@@ -131,6 +131,7 @@ public sealed partial class CollectPage : Page
     private void CollectPage_ActualThemeChanged(FrameworkElement sender, object args)
     {
         RefreshCustomIconForegrounds();
+        UpdateSourceLoadButtonForeground();
     }
 
     private async void CollectPage_Loaded(object sender, RoutedEventArgs e)
@@ -791,6 +792,18 @@ public sealed partial class CollectPage : Page
         UpdateToggleContentForeground(ContinuousModeToggleButton);
     }
 
+    private void UpdateSourceLoadButtonForeground()
+    {
+        var foregroundBrush = GetSourceLoadButtonForegroundBrush(ViewModel.PreviewLoadState);
+
+        ApplyContentForeground(_sourceSplitButton?.Content as DependencyObject, foregroundBrush);
+
+        if (_sourceSplitButton != null)
+        {
+            _sourceSplitButton.Foreground = foregroundBrush;
+        }
+    }
+
     private void UpdateToggleContentForeground(ToggleButton? button)
     {
         if (button == null)
@@ -814,6 +827,20 @@ public sealed partial class CollectPage : Page
         var fallbackKey = button.IsChecked == true
             ? "TextOnAccentFillColorPrimaryBrush"
             : "TextFillColorPrimaryBrush";
+
+        return GetThemeBrush(fallbackKey, Windows.UI.Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF));
+    }
+
+    private Brush GetSourceLoadButtonForegroundBrush(CollectPreviewLoadState state)
+    {
+        const string resourceKey = "CollectToggleUncheckedForegroundBrush";
+
+        if (Resources.TryGetValue(resourceKey, out var resource) && resource is Brush brush)
+        {
+            return brush;
+        }
+
+        const string fallbackKey = "TextFillColorPrimaryBrush";
 
         return GetThemeBrush(fallbackKey, Windows.UI.Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF));
     }
@@ -1346,6 +1373,8 @@ public sealed partial class CollectPage : Page
 
     private Grid CreateSourceLoadButtonContent()
     {
+        var foregroundBrush = GetSourceLoadButtonForegroundBrush(ViewModel.PreviewLoadState);
+
         var root = new Grid
         {
             IsHitTestVisible = false
@@ -1356,18 +1385,20 @@ public sealed partial class CollectPage : Page
 
         _sourceLoadIcon = new ContentControl
         {
-            Content = GetThemeBrush("TextFillColorPrimaryBrush", Windows.UI.Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF)),
+            Content = foregroundBrush,
             ContentTemplate = GetSourceLoadButtonIconTemplate(ViewModel.PreviewLoadState),
             Width = 18,
             Height = 18,
-            VerticalAlignment = VerticalAlignment.Center
+            VerticalAlignment = VerticalAlignment.Center,
+            Foreground = foregroundBrush
         };
 
         _sourceLoadText = new TextBlock
         {
             Text = GetSourceLoadButtonText(ViewModel.PreviewLoadState),
             FontSize = 14,
-            VerticalAlignment = VerticalAlignment.Center
+            VerticalAlignment = VerticalAlignment.Center,
+            Foreground = foregroundBrush
         };
 
         var content = new StackPanel
@@ -1434,6 +1465,8 @@ public sealed partial class CollectPage : Page
             ApplyToolbarButtonChrome(_sourceSplitButton);
             ToolTipService.SetToolTip(_sourceSplitButton, GetSourceLoadButtonToolTip(state));
         }
+
+        UpdateSourceLoadButtonForeground();
     }
 
     private void UpdateSourcePaneState()
