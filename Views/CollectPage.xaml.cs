@@ -12,6 +12,7 @@ using PhotoView.Helpers;
 using PhotoView.Models;
 using PhotoView.Services;
 using PhotoView.ViewModels;
+using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IO;
@@ -48,11 +49,16 @@ public sealed partial class CollectPage : Page
     private bool _isUpdatingZoomSlider;
     private bool _isLoadDrawerPinnedCollapsed;
     private bool _isLoadDrawerTemporarilyExpanded;
-    private bool _preserveLoadProgressPanelDuringCollapse;
     private bool _suppressNextThumbnailDragStart;
     private Button? _shellDeleteButton;
     private SplitButton? _shellFilterSplitButton;
     private Microsoft.UI.Xaml.Shapes.Rectangle? _shellFilterActiveIndicator;
+    private CollectSourcePane? _sourcePane;
+    private SplitButton? _sourceSplitButton;
+    private InfoBadge? _sourceBadge;
+    private FontIcon? _sourceLoadIcon;
+    private TextBlock? _sourceLoadText;
+    private Microsoft.UI.Xaml.Shapes.Rectangle? _sourceLoadActiveIndicator;
     private (ImageFileInfo Image, uint Rating)? _pendingRatingUpdate;
     private int _selectedThumbnailLoadVersion;
     private int _lastDirectionalNavigationDirection;
@@ -171,9 +177,16 @@ public sealed partial class CollectPage : Page
 
         _isDisposed = true;
         _shellToolbarService.ClearToolbar(this);
+        _shellToolbarService.UpdateProgress(false, false, 0d);
         _shellDeleteButton = null;
         _shellFilterSplitButton = null;
         _shellFilterActiveIndicator = null;
+        _sourcePane = null;
+        _sourceSplitButton = null;
+        _sourceBadge = null;
+        _sourceLoadIcon = null;
+        _sourceLoadText = null;
+        _sourceLoadActiveIndicator = null;
         _thumbnailCoordinator.VisibleThumbnailLoadTimer.Tick -= VisibleThumbnailLoadTimer_Tick;
         _ratingDebounceTimer.Tick -= RatingDebounceTimer_Tick;
         ViewModel.Images.CollectionChanged -= Images_CollectionChanged;
@@ -217,7 +230,7 @@ public sealed partial class CollectPage : Page
         var result = await ViewModel.LoadPreviewAsync();
         if (result.AutoCollapseDrawer)
         {
-            CollapseLoadDrawer(preserveLoadProgressPanel: result.StartedLoading);
+            CollapseLoadDrawer();
         }
         QueueVisibleThumbnailLoad("load-preview");
     }
@@ -386,7 +399,6 @@ public sealed partial class CollectPage : Page
 
     private void ApplyLocalizedToolTips()
     {
-        ToolTipService.SetToolTip(IncludeSubfoldersToggleButton, "CollectPage_Tooltip_IncludeSubfolders".GetLocalized());
         ToolTipService.SetToolTip(ThumbnailSizeToggleButton, "CollectPage_Tooltip_CollapseThumbnails".GetLocalized());
         ToolTipService.SetToolTip(InfoDrawerToggleButton, "CollectPage_Tooltip_ImageInfo".GetLocalized());
         ToolTipService.SetToolTip(DualPageToggleButton, "CollectPage_Tooltip_DualPage".GetLocalized());
@@ -497,6 +509,10 @@ public sealed partial class CollectPage : Page
         {
             UpdateShellToolbarState();
         }
+        else if (e.PropertyName == nameof(CollectViewModel.SelectedSourceCount))
+        {
+            UpdateSourcePaneState();
+        }
         else if (e.PropertyName == nameof(CollectViewModel.ThumbnailSize))
         {
             QueueVisibleThumbnailLoad("thumbnail-size-changed");
@@ -517,15 +533,28 @@ public sealed partial class CollectPage : Page
         else if (e.PropertyName == nameof(CollectViewModel.IncludeSubfolders))
         {
             RefreshCustomIconForegrounds();
+            UpdateSourcePaneState();
         }
         else if (e.PropertyName == nameof(CollectViewModel.FocusedPageSlot))
         {
             UpdatePreviewHostVisuals();
             SyncZoomControlsFromActiveCanvas();
         }
-        else if (e.PropertyName == nameof(CollectViewModel.IsLoading) && !_preserveLoadProgressPanelDuringCollapse)
+        else if (e.PropertyName is nameof(CollectViewModel.IsLoading)
+            or nameof(CollectViewModel.StatusText)
+            or nameof(CollectViewModel.LoadProgressValue)
+            or nameof(CollectViewModel.IsLoadProgressIndeterminate))
         {
-            SyncLoadProgressPanelVisibility();
+            UpdateSourcePaneState();
+        }
+        else if (e.PropertyName == nameof(CollectViewModel.HasLoadedPreview))
+        {
+            UpdateSourceLoadButtonState();
+            UpdateSourcePaneState();
+        }
+        else if (e.PropertyName == nameof(CollectViewModel.PreviewLoadState))
+        {
+            UpdateSourceLoadButtonState();
         }
     }
 
@@ -751,7 +780,6 @@ public sealed partial class CollectPage : Page
 
     private void RefreshCustomIconForegrounds()
     {
-        UpdateToggleContentForeground(IncludeSubfoldersToggleButton);
         UpdateToggleContentForeground(ThumbnailSizeToggleButton);
         UpdateToggleContentForeground(DualPageToggleButton);
         UpdateToggleContentForeground(CompareModeToggleButton);
@@ -845,7 +873,10 @@ public sealed partial class CollectPage : Page
     private void CompareModeToggleButton_Click(object sender, RoutedEventArgs e)
     {
         if (!ViewModel.IsDualPageMode || ViewModel.DualPageMode == DualPageMode.Compare)
+        {
+            UpdateDualModeButtons();
             return;
+        }
 
         ViewModel.DualPageMode = DualPageMode.Compare;
         ViewModel.FocusedPageSlot = PreviewPageSlot.Left;
@@ -855,7 +886,10 @@ public sealed partial class CollectPage : Page
     private void ContinuousModeToggleButton_Click(object sender, RoutedEventArgs e)
     {
         if (!ViewModel.IsDualPageMode || ViewModel.DualPageMode == DualPageMode.Continuous)
+        {
+            UpdateDualModeButtons();
             return;
+        }
 
         ViewModel.DualPageMode = DualPageMode.Continuous;
         ViewModel.FocusedPageSlot = PreviewPageSlot.Left;
@@ -887,7 +921,9 @@ public sealed partial class CollectPage : Page
         if (delta == 0)
             return;
 
-        var sourceCanvas = sender == RightPreviewHost ? RightPreviewCanvas : LeftPreviewCanvas;
+        var sourceCanvas = sender is Border host && host == RightPreviewHost
+            ? RightPreviewCanvas
+            : LeftPreviewCanvas;
         var targetPercent = Math.Clamp(sourceCanvas.ZoomPercent + (delta > 0 ? 10d : -10d), ZoomSlider.Minimum, ZoomSlider.Maximum);
 
         _isUpdatingDualPageZoom = true;
@@ -979,12 +1015,6 @@ public sealed partial class CollectPage : Page
 
     private void CollapseLoadDrawer(bool preserveLoadProgressPanel = false)
     {
-        if (preserveLoadProgressPanel)
-        {
-            _preserveLoadProgressPanelDuringCollapse = true;
-            LoadProgressPanel.Visibility = Visibility.Visible;
-        }
-
         _isLoadDrawerPinnedCollapsed = true;
         _isLoadDrawerTemporarilyExpanded = false;
         _ = _settingsService.SaveCollectPageLoadDrawerCollapsedAsync(_isLoadDrawerPinnedCollapsed);
@@ -999,8 +1029,6 @@ public sealed partial class CollectPage : Page
 
         if (isExpanded)
         {
-            _preserveLoadProgressPanelDuringCollapse = false;
-            SyncLoadProgressPanelVisibility();
             SetLoadDrawerContentVisibility(Visibility.Visible);
         }
 
@@ -1111,16 +1139,10 @@ public sealed partial class CollectPage : Page
 
     private void FinishLoadDrawerCollapsePresentation()
     {
-        if (!_preserveLoadProgressPanelDuringCollapse)
-            return;
-
-        _preserveLoadProgressPanelDuringCollapse = false;
-        SyncLoadProgressPanelVisibility();
     }
 
     private void SyncLoadProgressPanelVisibility()
     {
-        LoadProgressPanel.Visibility = ViewModel.IsLoading ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void UpdateInfoDrawerState(bool animate = true)
@@ -1226,6 +1248,43 @@ public sealed partial class CollectPage : Page
             VerticalAlignment = VerticalAlignment.Center
         };
 
+        _sourcePane = new CollectSourcePane
+        {
+            SourceItems = new ObservableCollection<NavigationPaneSourceItem>(),
+            ToggleOptionText = "CollectPage_IncludeAllSubfolders".GetLocalized(),
+            IsToggleOptionVisible = true,
+            RemoveSourceHandler = RemoveSourceFromPaneAsync,
+            SourceIncludeSubfoldersHandler = SetSourceIncludeSubfoldersAsync,
+            ToggleOptionHandler = value =>
+            {
+                ViewModel.IncludeSubfolders = value;
+                UpdateSourcePaneState();
+                return Task.CompletedTask;
+            },
+        };
+
+        _sourceBadge = new InfoBadge
+        {
+            Value = 0,
+            VerticalAlignment = VerticalAlignment.Top,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(-8, -10, 0, 0),
+        };
+
+        _sourceSplitButton = new SplitButton
+        {
+            Padding = new Thickness(12, 8, 12, 8),
+            Flyout = new Flyout
+            {
+                Placement = FlyoutPlacementMode.BottomEdgeAlignedLeft,
+                Content = _sourcePane,
+            },
+        };
+        _sourceSplitButton.Click += SourceSplitButton_Click;
+        _sourceSplitButton.Content = CreateSourceLoadButtonContent();
+        ApplyToolbarButtonChrome(_sourceSplitButton);
+        toolbar.Children.Add(_sourceSplitButton);
+
         var exportButton = CreateToolbarButton("\uE72D", "Common_Export".GetLocalized());
         exportButton.Click += ExportButton_Click;
         toolbar.Children.Add(exportButton);
@@ -1248,6 +1307,8 @@ public sealed partial class CollectPage : Page
 
         UpdateShellToolbarState();
         UpdateFilterButtonState();
+        UpdateSourceLoadButtonState();
+        UpdateSourcePaneState();
         _shellToolbarService.SetToolbar(this, toolbar);
     }
 
@@ -1257,6 +1318,214 @@ public sealed partial class CollectPage : Page
         {
             _shellDeleteButton.IsEnabled = ViewModel.PendingDeleteCount > 0;
         }
+    }
+
+    private Grid CreateSourceLoadButtonContent()
+    {
+        var root = new Grid
+        {
+            IsHitTestVisible = false
+        };
+
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(3) });
+
+        _sourceLoadIcon = new FontIcon
+        {
+            Glyph = GetSourceLoadButtonGlyph(ViewModel.PreviewLoadState),
+            FontFamily = (FontFamily)Application.Current.Resources["SymbolThemeFontFamily"],
+            FontSize = 14,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        _sourceLoadText = new TextBlock
+        {
+            Text = GetSourceLoadButtonText(ViewModel.PreviewLoadState),
+            FontSize = 14,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        var content = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 4,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Children =
+            {
+                _sourceLoadIcon,
+                _sourceLoadText,
+            },
+        };
+        Grid.SetRow(content, 0);
+        root.Children.Add(content);
+
+        _sourceLoadActiveIndicator = new Microsoft.UI.Xaml.Shapes.Rectangle
+        {
+            Width = 25,
+            Height = 3,
+            Fill = GetToolbarActiveIndicatorBrush(),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Bottom,
+            Margin = new Thickness(0, 1, 0, 0),
+            RadiusX = 1.5,
+            RadiusY = 1.5,
+            Opacity = IsSourceLoadButtonActive(ViewModel.PreviewLoadState) ? 1 : 0
+        };
+        Grid.SetRow(_sourceLoadActiveIndicator, 1);
+        root.Children.Add(_sourceLoadActiveIndicator);
+
+        if (_sourceBadge != null)
+        {
+            Grid.SetRow(_sourceBadge, 0);
+            root.Children.Add(_sourceBadge);
+        }
+
+        return root;
+    }
+
+    private async void SourceSplitButton_Click(SplitButton sender, SplitButtonClickEventArgs args)
+    {
+        await LoadPreviewFromCurrentButtonStateAsync();
+    }
+
+    private void UpdateSourceLoadButtonState()
+    {
+        var state = ViewModel.PreviewLoadState;
+        if (_sourceLoadIcon != null)
+        {
+            _sourceLoadIcon.Glyph = GetSourceLoadButtonGlyph(state);
+        }
+
+        if (_sourceLoadText != null)
+        {
+            _sourceLoadText.Text = GetSourceLoadButtonText(state);
+        }
+
+        UpdateToolbarActiveIndicator(_sourceLoadActiveIndicator, IsSourceLoadButtonActive(state));
+
+        if (_sourceSplitButton != null)
+        {
+            ApplyToolbarButtonChrome(_sourceSplitButton);
+            ToolTipService.SetToolTip(_sourceSplitButton, GetSourceLoadButtonToolTip(state));
+        }
+    }
+
+    private void UpdateSourcePaneState()
+    {
+        if (_sourcePane == null)
+        {
+            _shellToolbarService.UpdateProgress(
+                ViewModel.IsLoading,
+                ViewModel.IsLoadProgressIndeterminate,
+                ViewModel.LoadProgressValue);
+            return;
+        }
+
+        _sourcePane.Subtitle = $"{ViewModel.SelectedSourceCount} / {ViewModel.MaxSourceCount}";
+        _sourcePane.StatusText = ViewModel.StatusText;
+        _sourcePane.ToggleOptionValue = ViewModel.IncludeSubfolders;
+
+        _sourcePane.SourceItems.Clear();
+        foreach (var source in ViewModel.SelectedSources)
+        {
+            _sourcePane.SourceItems.Add(new NavigationPaneSourceItem
+            {
+                Id = source.Path,
+                DisplayName = source.DisplayName,
+                IncludeSubfolders = source.IncludeSubfolders,
+                Payload = source
+            });
+        }
+
+        _sourcePane.HasSourceItems = _sourcePane.SourceItems.Count > 0;
+
+        if (_sourceBadge != null)
+        {
+            _sourceBadge.Value = ViewModel.SelectedSourceCount;
+            _sourceBadge.Visibility = ViewModel.SelectedSourceCount > 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        _shellToolbarService.UpdateProgress(
+            ViewModel.IsLoading,
+            ViewModel.IsLoadProgressIndeterminate,
+            ViewModel.LoadProgressValue);
+    }
+
+    private async Task SetSourceIncludeSubfoldersAsync(NavigationPaneSourceItem item, bool includeSubfolders)
+    {
+        if (item.Payload is PreviewSource source &&
+            source.IncludeSubfolders != includeSubfolders)
+        {
+            source.IncludeSubfolders = includeSubfolders;
+            ViewModel.RefreshPreviewLoadState();
+            UpdateSourcePaneState();
+        }
+
+        await Task.CompletedTask;
+    }
+
+    private async Task RemoveSourceFromPaneAsync(NavigationPaneSourceItem item)
+    {
+        if (item.Payload is PreviewSource source)
+        {
+            ViewModel.RemoveSource(source);
+            UpdateSourcePaneState();
+        }
+
+        await Task.CompletedTask;
+    }
+
+    private async Task LoadPreviewFromPaneAsync(bool forceRefresh = false)
+    {
+        var result = await ViewModel.LoadPreviewAsync(forceRefresh);
+        if (result.AutoCollapseDrawer)
+        {
+            CollapseLoadDrawer();
+        }
+
+        UpdateSourcePaneState();
+        QueueVisibleThumbnailLoad("load-preview");
+    }
+
+    private Task LoadPreviewFromCurrentButtonStateAsync()
+    {
+        return LoadPreviewFromPaneAsync(ViewModel.PreviewLoadState == CollectPreviewLoadState.Refresh);
+    }
+
+    private static string GetSourceLoadButtonGlyph(CollectPreviewLoadState state)
+    {
+        return state switch
+        {
+            CollectPreviewLoadState.Append => "\uEA63",
+            CollectPreviewLoadState.Refresh => "\uE8F7",
+            _ => "\uEA64",
+        };
+    }
+
+    private static string GetSourceLoadButtonText(CollectPreviewLoadState state)
+    {
+        return state switch
+        {
+            CollectPreviewLoadState.Append => "CollectPage_Append".GetLocalized(),
+            CollectPreviewLoadState.Refresh => "CollectPage_Refresh".GetLocalized(),
+            _ => "CollectPage_Load.Text".GetLocalized(),
+        };
+    }
+
+    private static string GetSourceLoadButtonToolTip(CollectPreviewLoadState state)
+    {
+        return state switch
+        {
+            CollectPreviewLoadState.Append => "CollectPage_AppendLoad".GetLocalized(),
+            CollectPreviewLoadState.Refresh => "CollectPage_RefreshLoad".GetLocalized(),
+            _ => "CollectPage_Load.Text".GetLocalized(),
+        };
+    }
+
+    private static bool IsSourceLoadButtonActive(CollectPreviewLoadState state)
+    {
+        return state is CollectPreviewLoadState.Append or CollectPreviewLoadState.Refresh;
     }
 
     private static Button CreateToolbarButton(string glyph, string tooltip)

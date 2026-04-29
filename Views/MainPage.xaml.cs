@@ -256,6 +256,12 @@ public sealed partial class MainPage : Page
         {
             UpdateShellToolbarState();
         }
+        else if (e.PropertyName is nameof(MainViewModel.IsLoadingImages)
+            or nameof(MainViewModel.IsImageLoadProgressIndeterminate)
+            or nameof(MainViewModel.ImageLoadProgressValue))
+        {
+            UpdateGlobalLoadProgress();
+        }
     }
 
 
@@ -715,6 +721,7 @@ public sealed partial class MainPage : Page
     private void MainPage_Unloaded(object sender, RoutedEventArgs e)
     {
         _isUnloaded = true;
+        _shellToolbarService.UpdateProgress(false, false, 0d);
         _shellToolbarService.ClearToolbar(this);
         _shellDeleteButton = null;
         _shellAutoExpandBurstToggleButton = null;

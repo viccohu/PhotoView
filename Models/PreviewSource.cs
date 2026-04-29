@@ -5,15 +5,19 @@ namespace PhotoView.Models;
 
 public partial class PreviewSource : ObservableObject
 {
-    public PreviewSource(string path)
+    public PreviewSource(string path, bool includeSubfolders = false)
     {
         Path = NormalizePath(path);
         DisplayName = CreateDisplayName(Path);
+        IncludeSubfolders = includeSubfolders;
     }
 
     public string Path { get; }
 
     public string DisplayName { get; }
+
+    [ObservableProperty]
+    private bool _includeSubfolders;
 
     private static string NormalizePath(string path)
     {

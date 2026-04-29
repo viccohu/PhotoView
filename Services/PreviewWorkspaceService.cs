@@ -12,7 +12,7 @@ public sealed class PreviewWorkspaceService
 
     public event EventHandler? SourcesChanged;
 
-    public bool AddSource(string? path)
+    public bool AddSource(string? path, bool includeSubfolders = false)
     {
         if (string.IsNullOrWhiteSpace(path))
             return false;
@@ -21,13 +21,21 @@ public sealed class PreviewWorkspaceService
         if (!Directory.Exists(normalizedPath))
             return false;
 
-        if (SelectedSources.Any(source => string.Equals(source.Path, normalizedPath, StringComparison.OrdinalIgnoreCase)))
+        var existingSource = SelectedSources.FirstOrDefault(source => string.Equals(source.Path, normalizedPath, StringComparison.OrdinalIgnoreCase));
+        if (existingSource != null)
+        {
+            if (existingSource.IncludeSubfolders != includeSubfolders)
+            {
+                existingSource.IncludeSubfolders = includeSubfolders;
+                SourcesChanged?.Invoke(this, EventArgs.Empty);
+            }
             return true;
+        }
 
         if (SelectedSources.Count >= MaxSourceCount)
             return false;
 
-        SelectedSources.Add(new PreviewSource(normalizedPath));
+        SelectedSources.Add(new PreviewSource(normalizedPath, includeSubfolders));
         SourcesChanged?.Invoke(this, EventArgs.Empty);
         return true;
     }

@@ -8,6 +8,7 @@ internal static class PreviewSourceChecks
     {
         using var sandbox = new TempDirectorySandbox();
         DisplayName_ContainsParentAndFolderName(sandbox.RootPath);
+        IncludeSubfolders_IsStored();
     }
 
     private static void DisplayName_ContainsParentAndFolderName(string rootPath)
@@ -18,5 +19,12 @@ internal static class PreviewSourceChecks
 
         TestAssert.Equal(folder.FullName, source.Path, "PreviewSource should normalize the stored path.");
         TestAssert.Equal("Projects / Album", source.DisplayName, "PreviewSource should show parent and folder name.");
+    }
+
+    private static void IncludeSubfolders_IsStored()
+    {
+        var source = new PreviewSource(@"C:\Photos", includeSubfolders: true);
+
+        TestAssert.True(source.IncludeSubfolders, "PreviewSource should store include-subfolders state.");
     }
 }

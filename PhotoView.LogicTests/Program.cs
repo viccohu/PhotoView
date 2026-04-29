@@ -7,6 +7,7 @@ internal static class Program
         try
         {
             FilterViewModelChecks.Run();
+            CollectPreviewLoadStateEvaluatorChecks.Run();
             GroupRatingSyncHelperChecks.Run();
             ImageFormatRegistryChecks.Run();
             MainPageLocalizationChecks.Run();

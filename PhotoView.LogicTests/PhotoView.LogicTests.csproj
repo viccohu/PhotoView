@@ -17,6 +17,8 @@
     <Compile Include="..\Helpers\ResourceKeyHelper.cs" Link="Source\Helpers\ResourceKeyHelper.cs" />
     <Compile Include="..\Helpers\ThumbnailRangeHelper.cs" Link="Source\Helpers\ThumbnailRangeHelper.cs" />
     <Compile Include="..\Models\ImageFormatRegistry.cs" Link="Source\Models\ImageFormatRegistry.cs" />
+    <Compile Include="..\Models\CollectPreviewLoadState.cs" Link="Source\Models\CollectPreviewLoadState.cs" />
+    <Compile Include="..\Models\CollectPreviewLoadStateEvaluator.cs" Link="Source\Models\CollectPreviewLoadStateEvaluator.cs" />
     <Compile Include="..\Models\PreviewSource.cs" Link="Source\Models\PreviewSource.cs" />
     <Compile Include="..\Services\PreviewWorkspaceService.cs" Link="Source\Services\PreviewWorkspaceService.cs" />
     <Compile Include="..\ViewModels\FilterViewModel.cs" Link="Source\ViewModels\FilterViewModel.cs" />

@@ -298,7 +298,7 @@
     <value>确定</value>
   </data>
   <data name="MainPage_Library.Text" xml:space="preserve">
-    <value>相册</value>
+    <value>导航</value>
   </data>
   <data name="MainPage_AddToPreview.Text" xml:space="preserve">
     <value>添加到预览</value>
@@ -433,7 +433,7 @@
     <value>没有文件符合当前删除选项。</value>
   </data>
   <data name="CollectPage_LoadArea.Text" xml:space="preserve">
-    <value>载入区</value>
+    <value>导航</value>
   </data>
   <data name="CollectPage_Load.Text" xml:space="preserve">
     <value>载入</value>
@@ -875,5 +875,26 @@
   </data>
   <data name="CollectPage_Status_Failed" xml:space="preserve">
     <value>载入失败: {0}</value>
+  </data>
+  <data name="CollectSourcePane_LoadFolders.Text" xml:space="preserve">
+    <value>载入文件夹</value>
+  </data>
+  <data name="CollectSourcePane_IncludeSubfolders.ToolTipService.ToolTip" xml:space="preserve">
+    <value>包含子文件夹</value>
+  </data>
+  <data name="CollectPage_IncludeAllSubfolders" xml:space="preserve">
+    <value>包含所有子文件夹</value>
+  </data>
+  <data name="CollectPage_Append" xml:space="preserve">
+    <value>追加</value>
+  </data>
+  <data name="CollectPage_Refresh" xml:space="preserve">
+    <value>刷新</value>
+  </data>
+  <data name="CollectPage_AppendLoad" xml:space="preserve">
+    <value>追加载入</value>
+  </data>
+  <data name="CollectPage_RefreshLoad" xml:space="preserve">
+    <value>刷新载入</value>
   </data>
 </root>

@@ -72,6 +72,7 @@ public partial class MainViewModel : ObservableRecipient
     private const uint PageSize = 100;
     private const uint InitialFileEnumerationBatchSize = 30;
     private const int DeferredImageInfoLoadDelayMs = 400;
+    private const int CompletedImageLoadProgressHoldMs = 450;
     private const int RatingPreloadCommitBatchSize = 75;
     private const double BurstGroupingWindowSeconds = 2d;
     private CancellationTokenSource? _loadImagesCts;
@@ -119,6 +120,15 @@ public partial class MainViewModel : ObservableRecipient
 
     [ObservableProperty]
     private bool _isStatusVisible;
+
+    [ObservableProperty]
+    private bool _isLoadingImages;
+
+    [ObservableProperty]
+    private bool _isImageLoadProgressIndeterminate;
+
+    [ObservableProperty]
+    private double _imageLoadProgressValue;
 
     public bool CanGoBack => _navigationHistory.Count > 1;
     
@@ -362,7 +372,10 @@ public partial class MainViewModel : ObservableRecipient
         _loadImagesCts?.Cancel();
         _loadImagesCts = new CancellationTokenSource();
         var cancellationToken = _loadImagesCts.Token;
+        var currentLoadCts = _loadImagesCts;
+        var completedSuccessfully = false;
         ResetRatingPreload(cancellationToken);
+        BeginImageLoadProgress();
 
         if (folderNode != null && folderNode != SelectedFolder)
         {
@@ -389,7 +402,10 @@ public partial class MainViewModel : ObservableRecipient
         await SyncCurrentSubFoldersAsync(folderNode, cancellationToken);
 
         if (folderNode?.Folder == null)
+        {
+            await CompleteImageLoadProgressAsync(currentLoadCts, showComplete: false);
             return;
+        }
 
         await RecordFolderVisitAsync(folderNode);
 
@@ -405,6 +421,8 @@ public partial class MainViewModel : ObservableRecipient
             };
 
             var result = folderNode.Folder.CreateFileQueryWithOptions(queryOptions);
+            var totalFileCount = await result.GetItemCountAsync().AsTask(cancellationToken);
+            StartDeterminateImageLoadProgress(totalFileCount);
             
             var fileNameMap = new Dictionary<string, List<StorageFile>>(StringComparer.OrdinalIgnoreCase);
             var processedGroups = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -474,6 +492,7 @@ public partial class MainViewModel : ObservableRecipient
                 }
                 
                 index += (uint)batch.Count;
+                UpdateImageLoadProgress(index, totalFileCount);
             }
             
 
@@ -490,6 +509,8 @@ public partial class MainViewModel : ObservableRecipient
             {
                 await _settingsService.SaveLastFolderPathAsync(folderNode.FullPath);
             }
+
+            completedSuccessfully = true;
         }
         catch (OperationCanceledException)
         {
@@ -503,6 +524,10 @@ public partial class MainViewModel : ObservableRecipient
                 showToUser: true,
                 userMessage: $"无法读取文件夹“{folderNode?.Name ?? "未知目录"}”中的图片。",
                 ("Folder", folderNode?.FullPath));
+        }
+        finally
+        {
+            await CompleteImageLoadProgressAsync(currentLoadCts, completedSuccessfully);
         }
     }
 
@@ -618,6 +643,54 @@ public partial class MainViewModel : ObservableRecipient
         return ShouldPreferIndexer(folderNode?.FullPath)
             ? IndexerOption.UseIndexerWhenAvailable
             : IndexerOption.DoNotUseIndexer;
+    }
+
+    private void BeginImageLoadProgress()
+    {
+        IsLoadingImages = true;
+        IsImageLoadProgressIndeterminate = true;
+        ImageLoadProgressValue = 0d;
+    }
+
+    private void StartDeterminateImageLoadProgress(uint totalFileCount)
+    {
+        IsImageLoadProgressIndeterminate = totalFileCount == 0;
+        ImageLoadProgressValue = totalFileCount == 0 ? 0d : 5d;
+    }
+
+    private void UpdateImageLoadProgress(uint loadedFileCount, uint totalFileCount)
+    {
+        if (totalFileCount == 0)
+        {
+            IsImageLoadProgressIndeterminate = true;
+            return;
+        }
+
+        IsImageLoadProgressIndeterminate = false;
+        ImageLoadProgressValue = Math.Clamp(loadedFileCount * 100d / totalFileCount, 0d, 100d);
+    }
+
+    private async Task CompleteImageLoadProgressAsync(CancellationTokenSource currentLoadCts, bool showComplete)
+    {
+        if (!ReferenceEquals(_loadImagesCts, currentLoadCts))
+        {
+            return;
+        }
+
+        if (showComplete)
+        {
+            IsImageLoadProgressIndeterminate = false;
+            ImageLoadProgressValue = 100d;
+            await Task.Delay(CompletedImageLoadProgressHoldMs);
+            if (!ReferenceEquals(_loadImagesCts, currentLoadCts))
+            {
+                return;
+            }
+        }
+
+        IsLoadingImages = false;
+        IsImageLoadProgressIndeterminate = false;
+        ImageLoadProgressValue = 0d;
     }
 
     private static bool ShouldPreferIndexer(string? folderPath)
@@ -1363,7 +1436,10 @@ public partial class MainViewModel : ObservableRecipient
         _loadImagesCts?.Cancel();
         _loadImagesCts = new CancellationTokenSource();
         var cancellationToken = _loadImagesCts.Token;
+        var currentLoadCts = _loadImagesCts;
+        var completedSuccessfully = false;
         ResetRatingPreload(cancellationToken);
+        BeginImageLoadProgress();
 
         SelectedFolder = folderNode;
         UpdateBreadcrumbPath(folderNode);
@@ -1384,7 +1460,10 @@ public partial class MainViewModel : ObservableRecipient
         await SyncCurrentSubFoldersAsync(folderNode, cancellationToken);
 
         if (folderNode?.Folder == null)
+        {
+            await CompleteImageLoadProgressAsync(currentLoadCts, showComplete: false);
             return;
+        }
 
         await RecordFolderVisitAsync(folderNode);
 
@@ -1399,6 +1478,8 @@ public partial class MainViewModel : ObservableRecipient
             };
 
             var result = folderNode.Folder.CreateFileQueryWithOptions(queryOptions);
+            var totalFileCount = await result.GetItemCountAsync().AsTask(cancellationToken);
+            StartDeterminateImageLoadProgress(totalFileCount);
             
             var fileNameMap = new Dictionary<string, List<StorageFile>>(StringComparer.OrdinalIgnoreCase);
             var processedGroups = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -1467,6 +1548,7 @@ public partial class MainViewModel : ObservableRecipient
                 }
                 
                 index += (uint)batch.Count;
+                UpdateImageLoadProgress(index, totalFileCount);
             }
             
 
@@ -1478,6 +1560,7 @@ public partial class MainViewModel : ObservableRecipient
             RebuildBurstGroups();
             ApplyFilter();
             QueueRatingPreloadForCurrentImages(cancellationToken);
+            completedSuccessfully = true;
         }
         catch (OperationCanceledException)
         {
@@ -1491,6 +1574,10 @@ public partial class MainViewModel : ObservableRecipient
                 showToUser: true,
                 userMessage: $"无法刷新文件夹“{folderNode?.Name ?? "未知目录"}”中的图片。",
                 ("Folder", folderNode?.FullPath));
+        }
+        finally
+        {
+            await CompleteImageLoadProgressAsync(currentLoadCts, completedSuccessfully);
         }
     }
 

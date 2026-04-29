@@ -74,6 +74,7 @@ public sealed partial class MainPage
 
         UpdateShellToolbarState();
         UpdateFilterButtonState();
+        UpdateGlobalLoadProgress();
         _shellToolbarService.SetToolbar(this, toolbar);
     }
 
@@ -83,6 +84,14 @@ public sealed partial class MainPage
         {
             _shellDeleteButton.IsEnabled = ViewModel.PendingDeleteCount > 0;
         }
+    }
+
+    private void UpdateGlobalLoadProgress()
+    {
+        _shellToolbarService.UpdateProgress(
+            ViewModel.IsLoadingImages,
+            ViewModel.IsImageLoadProgressIndeterminate,
+            ViewModel.ImageLoadProgressValue);
     }
 
     private static Button CreateToolbarButton(string glyph, string tooltip)

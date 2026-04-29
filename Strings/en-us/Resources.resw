@@ -189,18 +189,6 @@
   <data name="Settings_Language.Description" xml:space="preserve">
     <value>Select application display language (requires restart)</value>
   </data>
-  <data name="Settings_LanguageRestart_Title" xml:space="preserve">
-    <value>Restart required</value>
-  </data>
-  <data name="Settings_LanguageRestart_Content" xml:space="preserve">
-    <value>Restart PhotoView now to apply the new display language?</value>
-  </data>
-  <data name="Settings_LanguageRestart_RestartNow" xml:space="preserve">
-    <value>Restart now</value>
-  </data>
-  <data name="Settings_LanguageRestart_Later" xml:space="preserve">
-    <value>Later</value>
-  </data>
   <data name="Settings_NavigationStyle.Header" xml:space="preserve">
     <value>Navigation style</value>
   </data>
@@ -309,20 +297,8 @@
   <data name="Common_Ok" xml:space="preserve">
     <value>OK</value>
   </data>
-  <data name="Common_Back" xml:space="preserve">
-    <value>Back</value>
-  </data>
-  <data name="Common_Filter" xml:space="preserve">
-    <value>Filter</value>
-  </data>
-  <data name="Common_Refresh" xml:space="preserve">
-    <value>Refresh</value>
-  </data>
-  <data name="Common_ThumbnailSize" xml:space="preserve">
-    <value>Thumbnail size</value>
-  </data>
   <data name="MainPage_Library.Text" xml:space="preserve">
-    <value>Library</value>
+    <value>Navigation</value>
   </data>
   <data name="MainPage_AddToPreview.Text" xml:space="preserve">
     <value>Add to Preview</value>
@@ -424,19 +400,19 @@
     <value>Folders</value>
   </data>
   <data name="MainPage_Subfolders.Text" xml:space="preserve">
-    <value>Subfolders</value>
+    <value>Contains </value>
   </data>
   <data name="MainPage_SubfoldersHeader.Text" xml:space="preserve">
-    <value>Subfolders</value>
+    <value>Contains </value>
   </data>
   <data name="MainPage_SubfolderSuffix.Text" xml:space="preserve">
-    <value> subfolders</value>
+    <value>subfolder</value>
   </data>
   <data name="MainPage_FolderPanelSubfolderSuffix.Text" xml:space="preserve">
-    <value> subfolders</value>
+    <value>subfolder</value>
   </data>
   <data name="MainPage_FolderDrawerSubfolderSuffix.Text" xml:space="preserve">
-    <value> subfolders</value>
+    <value>subfolder</value>
   </data>
   <data name="MainPage_Items.Text" xml:space="preserve">
     <value>Items</value>
@@ -456,14 +432,8 @@
   <data name="MainPage_NoDeletableFilesContent" xml:space="preserve">
     <value>No files match the selected delete options.</value>
   </data>
-  <data name="MainPage_Tooltip_AutoExpandBurst" xml:space="preserve">
-    <value>Auto-expand burst stacks during directional navigation</value>
-  </data>
-  <data name="MainPage_Tooltip_GoUp" xml:space="preserve">
-    <value>Go up one level</value>
-  </data>
   <data name="CollectPage_LoadArea.Text" xml:space="preserve">
-    <value>Load Area</value>
+    <value>Navigation</value>
   </data>
   <data name="CollectPage_Load.Text" xml:space="preserve">
     <value>Load</value>
@@ -482,66 +452,6 @@
   </data>
   <data name="CollectPage_Tooltip_IncludeSubfolders" xml:space="preserve">
     <value>Include subfolders</value>
-  </data>
-  <data name="CollectPage_Tooltip_CollapseThumbnails" xml:space="preserve">
-    <value>Collapse thumbnails</value>
-  </data>
-  <data name="CollectPage_Tooltip_ImageInfo" xml:space="preserve">
-    <value>File info</value>
-  </data>
-  <data name="CollectPage_Tooltip_DualPage" xml:space="preserve">
-    <value>Dual page view</value>
-  </data>
-  <data name="CollectPage_Tooltip_Compare" xml:space="preserve">
-    <value>Compare mode</value>
-  </data>
-  <data name="CollectPage_Tooltip_Continuous" xml:space="preserve">
-    <value>Continuous mode</value>
-  </data>
-  <data name="CollectPage_Tooltip_FlipHorizontal" xml:space="preserve">
-    <value>Flip horizontal</value>
-  </data>
-  <data name="CollectPage_Tooltip_Rotate" xml:space="preserve">
-    <value>Rotate</value>
-  </data>
-  <data name="CollectPage_Tooltip_FlipVertical" xml:space="preserve">
-    <value>Flip vertical</value>
-  </data>
-  <data name="CollectPage_Tooltip_ZoomOut" xml:space="preserve">
-    <value>Zoom out 10%</value>
-  </data>
-  <data name="CollectPage_Tooltip_ZoomIn" xml:space="preserve">
-    <value>Zoom in 10%</value>
-  </data>
-  <data name="CollectPage_Status_AddUpToFolders" xml:space="preserve">
-    <value>Add up to {0} folders, then load</value>
-  </data>
-  <data name="CollectPage_Status_MaxSources" xml:space="preserve">
-    <value>You can add up to {0} folders</value>
-  </data>
-  <data name="CollectPage_Status_AddFolder" xml:space="preserve">
-    <value>Add a folder, then load</value>
-  </data>
-  <data name="CollectPage_Status_UpToDate" xml:space="preserve">
-    <value>The current preview list is up to date</value>
-  </data>
-  <data name="CollectPage_Status_Appending" xml:space="preserve">
-    <value>Appending load...</value>
-  </data>
-  <data name="CollectPage_Status_Loading" xml:space="preserve">
-    <value>Loading...</value>
-  </data>
-  <data name="CollectPage_Status_LoadedImages" xml:space="preserve">
-    <value>Loaded {0} images</value>
-  </data>
-  <data name="CollectPage_Status_NoPreviewImages" xml:space="preserve">
-    <value>No previewable images found</value>
-  </data>
-  <data name="CollectPage_Status_Canceled" xml:space="preserve">
-    <value>Load canceled</value>
-  </data>
-  <data name="CollectPage_Status_Failed" xml:space="preserve">
-    <value>Load failed: {0}</value>
   </data>
   <data name="CollectPage_DualPage.Text" xml:space="preserve">
     <value>Dual Page</value>
@@ -875,5 +785,116 @@
   </data>
   <data name="PreviewCanvas_Empty.Text" xml:space="preserve">
     <value>Select an image</value>
+  </data>
+  <data name="Settings_LanguageRestart_Title" xml:space="preserve">
+    <value>Restart required</value>
+  </data>
+  <data name="Settings_LanguageRestart_Content" xml:space="preserve">
+    <value>Restart PhotoView now to apply the new display language?</value>
+  </data>
+  <data name="Settings_LanguageRestart_RestartNow" xml:space="preserve">
+    <value>Restart now</value>
+  </data>
+  <data name="Settings_LanguageRestart_Later" xml:space="preserve">
+    <value>Later</value>
+  </data>
+  <data name="Common_Back" xml:space="preserve">
+    <value>Back</value>
+  </data>
+  <data name="Common_Filter" xml:space="preserve">
+    <value>Filter</value>
+  </data>
+  <data name="Common_Refresh" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="Common_ThumbnailSize" xml:space="preserve">
+    <value>Thumbnail size</value>
+  </data>
+  <data name="MainPage_Tooltip_AutoExpandBurst" xml:space="preserve">
+    <value>Auto-expand burst stacks during directional navigation</value>
+  </data>
+  <data name="MainPage_Tooltip_GoUp" xml:space="preserve">
+    <value>Go up one level</value>
+  </data>
+  <data name="CollectPage_Tooltip_CollapseThumbnails" xml:space="preserve">
+    <value>Collapse thumbnails</value>
+  </data>
+  <data name="CollectPage_Tooltip_ImageInfo" xml:space="preserve">
+    <value>File info</value>
+  </data>
+  <data name="CollectPage_Tooltip_DualPage" xml:space="preserve">
+    <value>Dual page view</value>
+  </data>
+  <data name="CollectPage_Tooltip_Compare" xml:space="preserve">
+    <value>Compare mode</value>
+  </data>
+  <data name="CollectPage_Tooltip_Continuous" xml:space="preserve">
+    <value>Continuous mode</value>
+  </data>
+  <data name="CollectPage_Tooltip_FlipHorizontal" xml:space="preserve">
+    <value>Flip horizontal</value>
+  </data>
+  <data name="CollectPage_Tooltip_Rotate" xml:space="preserve">
+    <value>Rotate</value>
+  </data>
+  <data name="CollectPage_Tooltip_FlipVertical" xml:space="preserve">
+    <value>Flip vertical</value>
+  </data>
+  <data name="CollectPage_Tooltip_ZoomOut" xml:space="preserve">
+    <value>Zoom out 10%</value>
+  </data>
+  <data name="CollectPage_Tooltip_ZoomIn" xml:space="preserve">
+    <value>Zoom in 10%</value>
+  </data>
+  <data name="CollectPage_Status_AddUpToFolders" xml:space="preserve">
+    <value>Add up to {0} folders, then load</value>
+  </data>
+  <data name="CollectPage_Status_MaxSources" xml:space="preserve">
+    <value>You can add up to {0} folders</value>
+  </data>
+  <data name="CollectPage_Status_AddFolder" xml:space="preserve">
+    <value>Add a folder, then load</value>
+  </data>
+  <data name="CollectPage_Status_UpToDate" xml:space="preserve">
+    <value>The current preview list is up to date</value>
+  </data>
+  <data name="CollectPage_Status_Appending" xml:space="preserve">
+    <value>Appending load...</value>
+  </data>
+  <data name="CollectPage_Status_Loading" xml:space="preserve">
+    <value>Loading...</value>
+  </data>
+  <data name="CollectPage_Status_LoadedImages" xml:space="preserve">
+    <value>Loaded {0} images</value>
+  </data>
+  <data name="CollectPage_Status_NoPreviewImages" xml:space="preserve">
+    <value>No previewable images found</value>
+  </data>
+  <data name="CollectPage_Status_Canceled" xml:space="preserve">
+    <value>Load canceled</value>
+  </data>
+  <data name="CollectPage_Status_Failed" xml:space="preserve">
+    <value>Load failed: {0}</value>
+  </data>
+  <data name="CollectSourcePane_LoadFolders.Text" xml:space="preserve">
+    <value>Load folders</value>
+  </data>
+  <data name="CollectSourcePane_IncludeSubfolders.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Include subfolders</value>
+  </data>
+  <data name="CollectPage_IncludeAllSubfolders" xml:space="preserve">
+    <value>Include all subfolders</value>
+  </data>
+  <data name="CollectPage_Append" xml:space="preserve">
+    <value>Append</value>
+  </data>
+  <data name="CollectPage_Refresh" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="CollectPage_AppendLoad" xml:space="preserve">
+    <value>Append load</value>
+  </data>
+  <data name="CollectPage_RefreshLoad" xml:space="preserve">
+    <value>Refresh load</value>
   </data>
 </root>

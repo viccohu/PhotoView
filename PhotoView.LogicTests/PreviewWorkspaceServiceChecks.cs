@@ -8,8 +8,33 @@ internal static class PreviewWorkspaceServiceChecks
     {
         using var sandbox = new TempDirectorySandbox();
         AddSource_NormalizesPath_AndAvoidsDuplicates(sandbox.RootPath);
+        AddSource_StoresIncludeSubfolders(sandbox.RootPath);
+        AddSource_UpdatesDuplicateIncludeSubfolders(sandbox.RootPath);
         AddSource_StopsAtMaximumCount(sandbox.RootPath);
         RemoveSource_RaisesSourcesChanged(sandbox.RootPath);
+    }
+
+    private static void AddSource_StoresIncludeSubfolders(string rootPath)
+    {
+        var service = new PreviewWorkspaceService();
+        var folder = Directory.CreateDirectory(Path.Combine(rootPath, "Recursive"));
+
+        TestAssert.True(service.AddSource(folder.FullName, includeSubfolders: true), "Adding source should succeed.");
+        TestAssert.True(service.SelectedSources[0].IncludeSubfolders, "Workspace should store include-subfolders state.");
+    }
+
+    private static void AddSource_UpdatesDuplicateIncludeSubfolders(string rootPath)
+    {
+        var service = new PreviewWorkspaceService();
+        var folder = Directory.CreateDirectory(Path.Combine(rootPath, "DuplicateRecursive"));
+        service.AddSource(folder.FullName, includeSubfolders: false);
+        var changedCount = 0;
+        service.SourcesChanged += (_, _) => changedCount++;
+
+        TestAssert.True(service.AddSource(folder.FullName, includeSubfolders: true), "Duplicate source should still succeed.");
+        TestAssert.Equal(1, service.SelectedSources.Count, "Duplicate source should not create another item.");
+        TestAssert.True(service.SelectedSources[0].IncludeSubfolders, "Duplicate add should update include-subfolders state.");
+        TestAssert.Equal(1, changedCount, "Updating duplicate include-subfolders should raise SourcesChanged.");
     }
 
     private static void AddSource_NormalizesPath_AndAvoidsDuplicates(string rootPath)
