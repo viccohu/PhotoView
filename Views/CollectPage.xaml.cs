@@ -26,7 +26,7 @@ namespace PhotoView.Views;
 
 public sealed partial class CollectPage : Page
 {
-    private const double LoadDrawerExpandedWidth = 292;
+    private const double LoadDrawerExpandedWidth = 265;
     private const double LoadDrawerCollapsedWidth = 25;
     private const double InfoDrawerExpandedWidth = 340;
     private const double InfoDrawerCollapsedWidth = 0;
@@ -56,7 +56,7 @@ public sealed partial class CollectPage : Page
     private CollectSourcePane? _sourcePane;
     private SplitButton? _sourceSplitButton;
     private InfoBadge? _sourceBadge;
-    private FontIcon? _sourceLoadIcon;
+    private ContentControl? _sourceLoadIcon;
     private TextBlock? _sourceLoadText;
     private Microsoft.UI.Xaml.Shapes.Rectangle? _sourceLoadActiveIndicator;
     private (ImageFileInfo Image, uint Rating)? _pendingRatingUpdate;
@@ -1268,7 +1268,7 @@ public sealed partial class CollectPage : Page
             Value = 0,
             VerticalAlignment = VerticalAlignment.Top,
             HorizontalAlignment = HorizontalAlignment.Left,
-            Margin = new Thickness(-8, -10, 0, 0),
+            Margin = new Thickness(-8, -8, 0, 0),
         };
 
         _sourceSplitButton = new SplitButton
@@ -1330,11 +1330,12 @@ public sealed partial class CollectPage : Page
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(3) });
 
-        _sourceLoadIcon = new FontIcon
+        _sourceLoadIcon = new ContentControl
         {
-            Glyph = GetSourceLoadButtonGlyph(ViewModel.PreviewLoadState),
-            FontFamily = (FontFamily)Application.Current.Resources["SymbolThemeFontFamily"],
-            FontSize = 14,
+            Content = GetThemeBrush("TextFillColorPrimaryBrush", Windows.UI.Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF)),
+            ContentTemplate = GetSourceLoadButtonIconTemplate(ViewModel.PreviewLoadState),
+            Width = 18,
+            Height = 18,
             VerticalAlignment = VerticalAlignment.Center
         };
 
@@ -1394,7 +1395,7 @@ public sealed partial class CollectPage : Page
         var state = ViewModel.PreviewLoadState;
         if (_sourceLoadIcon != null)
         {
-            _sourceLoadIcon.Glyph = GetSourceLoadButtonGlyph(state);
+            _sourceLoadIcon.ContentTemplate = GetSourceLoadButtonIconTemplate(state);
         }
 
         if (_sourceLoadText != null)
@@ -1493,14 +1494,18 @@ public sealed partial class CollectPage : Page
         return LoadPreviewFromPaneAsync(ViewModel.PreviewLoadState == CollectPreviewLoadState.Refresh);
     }
 
-    private static string GetSourceLoadButtonGlyph(CollectPreviewLoadState state)
+    private static DataTemplate? GetSourceLoadButtonIconTemplate(CollectPreviewLoadState state)
     {
-        return state switch
+        var resourceKey = state switch
         {
-            CollectPreviewLoadState.Append => "\uEA63",
-            CollectPreviewLoadState.Refresh => "\uE8F7",
-            _ => "\uEA64",
+            CollectPreviewLoadState.Append => "CollectAppendIconTemplate",
+            CollectPreviewLoadState.Refresh => "CollectRefreshLoadIconTemplate",
+            _ => "CollectLoadIconTemplate",
         };
+
+        return Application.Current.Resources.TryGetValue(resourceKey, out var resource) && resource is DataTemplate template
+            ? template
+            : null;
     }
 
     private static string GetSourceLoadButtonText(CollectPreviewLoadState state)

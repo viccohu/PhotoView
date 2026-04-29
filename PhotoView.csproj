@@ -36,6 +36,9 @@
     <Content Remove="Assets\flip-vertical.svg" />
     <Content Remove="Assets\flip.svg" />
     <Content Remove="Assets\hsa star.svg" />
+    <Content Remove="Assets\icon\new\载入.svg" />
+    <Content Remove="Assets\icon\new\载入刷新.svg" />
+    <Content Remove="Assets\icon\new\追加.svg" />
     <Content Remove="Assets\lgo-08.png" />
     <Content Remove="Assets\no_start.svg" />
     <Content Remove="Assets\pictrue_file.svg" />

@@ -361,7 +361,7 @@ public partial class CollectViewModel : ObservableRecipient, IDisposable
 
             RefreshPreviewLoadState();
             completedSuccessfully = true;
-            return new LoadPreviewResult(true, true, loadedCount > 0, true);
+            return new LoadPreviewResult(true, true, loadedCount > 0, loadedCount > 0);
         }
         catch (OperationCanceledException)
         {
