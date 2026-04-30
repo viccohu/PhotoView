@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 
+using PhotoView.Dialogs;
 using PhotoView.Helpers;
 using PhotoView.Models;
 using PhotoView.ViewModels;
@@ -321,6 +322,11 @@ public sealed partial class SettingsPage : Page
         {
             RestartApplication();
         }
+    }
+
+    private async void KeyboardShortcutsCard_Click(object sender, RoutedEventArgs e)
+    {
+        await KeyboardShortcutsDialog.ShowAsync(XamlRoot);
     }
 
     private static void RestartApplication()

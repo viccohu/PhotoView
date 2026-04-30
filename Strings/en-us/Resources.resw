@@ -300,6 +300,66 @@
   <data name="Common_Ok" xml:space="preserve">
     <value>OK</value>
   </data>
+  <data name="Common_Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Settings_KeyboardShortcuts.Header" xml:space="preserve">
+    <value>Keyboard shortcuts</value>
+  </data>
+  <data name="Settings_KeyboardShortcuts.Description" xml:space="preserve">
+    <value>View keyboard controls for Album, Viewer, and Preview</value>
+  </data>
+  <data name="KeyboardShortcuts_Title" xml:space="preserve">
+    <value>Keyboard shortcuts</value>
+  </data>
+  <data name="KeyboardShortcuts_General" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="KeyboardShortcuts_Album" xml:space="preserve">
+    <value>Album</value>
+  </data>
+  <data name="KeyboardShortcuts_SelectionPages" xml:space="preserve">
+    <value>Album and Preview</value>
+  </data>
+  <data name="KeyboardShortcuts_Viewer" xml:space="preserve">
+    <value>Viewer</value>
+  </data>
+  <data name="KeyboardShortcuts_Preview" xml:space="preserve">
+    <value>Preview</value>
+  </data>
+  <data name="KeyboardShortcuts_General_Help" xml:space="preserve">
+    <value>Open keyboard shortcuts</value>
+  </data>
+  <data name="KeyboardShortcuts_Album_Space" xml:space="preserve">
+    <value>Open or close the viewer</value>
+  </data>
+  <data name="KeyboardShortcuts_Album_Escape" xml:space="preserve">
+    <value>Clear the selection</value>
+  </data>
+  <data name="KeyboardShortcuts_Common_Delete" xml:space="preserve">
+    <value>Mark or unmark pending delete</value>
+  </data>
+  <data name="KeyboardShortcuts_Album_SelectAll" xml:space="preserve">
+    <value>Select all</value>
+  </data>
+  <data name="KeyboardShortcuts_Common_Directions" xml:space="preserve">
+    <value>Switch images or move the current selection</value>
+  </data>
+  <data name="KeyboardShortcuts_Common_Rating" xml:space="preserve">
+    <value>Set or clear rating</value>
+  </data>
+  <data name="KeyboardShortcuts_Viewer_Close" xml:space="preserve">
+    <value>Close the viewer</value>
+  </data>
+  <data name="KeyboardShortcuts_Preview_ResetZoom" xml:space="preserve">
+    <value>Reset zoom</value>
+  </data>
+  <data name="KeyboardShortcuts_Preview_Tab" xml:space="preserve">
+    <value>Switch left/right preview focus in dual-page mode</value>
+  </data>
+  <data name="KeyboardShortcuts_Preview_Space" xml:space="preserve">
+    <value>When multiple thumbnails are selected, keep only the current preview image selected</value>
+  </data>
   <data name="MainPage_Library.Text" xml:space="preserve">
     <value>Navigation</value>
   </data>

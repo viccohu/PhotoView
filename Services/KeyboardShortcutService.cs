@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 
 using PhotoView.Contracts.Services;
+using PhotoView.Dialogs;
 using Windows.System;
 
 namespace PhotoView.Services;
@@ -66,6 +67,13 @@ public class KeyboardShortcutService : IKeyboardShortcutService
     {
         if (IsTextInputFocused())
             return;
+
+        if (e.Key == VirtualKey.F1 && _window?.Content is FrameworkElement rootElement)
+        {
+            _ = KeyboardShortcutsDialog.ShowAsync(rootElement.XamlRoot);
+            e.Handled = true;
+            return;
+        }
 
         if (string.IsNullOrEmpty(_currentPageKey))
             return;

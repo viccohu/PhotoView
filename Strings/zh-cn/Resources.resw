@@ -300,6 +300,66 @@
   <data name="Common_Ok" xml:space="preserve">
     <value>确定</value>
   </data>
+  <data name="Common_Close" xml:space="preserve">
+    <value>关闭</value>
+  </data>
+  <data name="Settings_KeyboardShortcuts.Header" xml:space="preserve">
+    <value>快捷键说明</value>
+  </data>
+  <data name="Settings_KeyboardShortcuts.Description" xml:space="preserve">
+    <value>查看相册、查看器和预览页的键盘操作</value>
+  </data>
+  <data name="KeyboardShortcuts_Title" xml:space="preserve">
+    <value>快捷键说明</value>
+  </data>
+  <data name="KeyboardShortcuts_General" xml:space="preserve">
+    <value>通用</value>
+  </data>
+  <data name="KeyboardShortcuts_Album" xml:space="preserve">
+    <value>相册页</value>
+  </data>
+  <data name="KeyboardShortcuts_SelectionPages" xml:space="preserve">
+    <value>相册与预览页</value>
+  </data>
+  <data name="KeyboardShortcuts_Viewer" xml:space="preserve">
+    <value>查看器</value>
+  </data>
+  <data name="KeyboardShortcuts_Preview" xml:space="preserve">
+    <value>预览页</value>
+  </data>
+  <data name="KeyboardShortcuts_General_Help" xml:space="preserve">
+    <value>打开快捷键说明</value>
+  </data>
+  <data name="KeyboardShortcuts_Album_Space" xml:space="preserve">
+    <value>打开或关闭查看器</value>
+  </data>
+  <data name="KeyboardShortcuts_Album_Escape" xml:space="preserve">
+    <value>清空选择</value>
+  </data>
+  <data name="KeyboardShortcuts_Common_Delete" xml:space="preserve">
+    <value>标记或取消预删除</value>
+  </data>
+  <data name="KeyboardShortcuts_Album_SelectAll" xml:space="preserve">
+    <value>全选</value>
+  </data>
+  <data name="KeyboardShortcuts_Common_Directions" xml:space="preserve">
+    <value>切换图片或移动当前选择</value>
+  </data>
+  <data name="KeyboardShortcuts_Common_Rating" xml:space="preserve">
+    <value>设置或清除评级</value>
+  </data>
+  <data name="KeyboardShortcuts_Viewer_Close" xml:space="preserve">
+    <value>关闭查看器</value>
+  </data>
+  <data name="KeyboardShortcuts_Preview_ResetZoom" xml:space="preserve">
+    <value>重置缩放</value>
+  </data>
+  <data name="KeyboardShortcuts_Preview_Tab" xml:space="preserve">
+    <value>双页模式下切换左右预览焦点</value>
+  </data>
+  <data name="KeyboardShortcuts_Preview_Space" xml:space="preserve">
+    <value>多个缩略图选中时，收拢为当前预览图</value>
+  </data>
   <data name="MainPage_Library.Text" xml:space="preserve">
     <value>导航</value>
   </data>

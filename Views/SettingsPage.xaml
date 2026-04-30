@@ -178,6 +178,18 @@
 
                     <TextBlock x:Uid="Settings_Section_About" Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" />
 
+                    <toolkit:SettingsCard
+                        x:Uid="Settings_KeyboardShortcuts"
+                        IsClickEnabled="True"
+                        Click="KeyboardShortcutsCard_Click">
+                        <toolkit:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE765;" />
+                        </toolkit:SettingsCard.HeaderIcon>
+                        <toolkit:SettingsCard.ActionIcon>
+                            <FontIcon Glyph="&#xE8A7;" />
+                        </toolkit:SettingsCard.ActionIcon>
+                    </toolkit:SettingsCard>
+
                     <toolkit:SettingsExpander Margin="0,0,0,36">
                         <toolkit:SettingsExpander.Header>
                             <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
