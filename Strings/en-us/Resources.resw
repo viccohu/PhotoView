@@ -360,6 +360,15 @@
   <data name="KeyboardShortcuts_Preview_Space" xml:space="preserve">
     <value>When multiple thumbnails are selected, keep only the current preview image selected</value>
   </data>
+  <data name="KeyboardShortcuts_Hint" xml:space="preserve">
+    <value>Press F1 to open this keyboard shortcut guide</value>
+  </data>
+  <data name="KeyboardShortcuts_Viewer_NextPrev" xml:space="preserve">
+    <value>Previous/Next image</value>
+  </data>
+  <data name="KeyboardShortcuts_Viewer_Rating" xml:space="preserve">
+    <value>Set or clear rating</value>
+  </data>
   <data name="MainPage_Library.Text" xml:space="preserve">
     <value>Navigation</value>
   </data>

@@ -360,6 +360,15 @@
   <data name="KeyboardShortcuts_Preview_Space" xml:space="preserve">
     <value>多个缩略图选中时，收拢为当前预览图</value>
   </data>
+  <data name="KeyboardShortcuts_Hint" xml:space="preserve">
+    <value>按 F1 可以在软件内打开此快捷键说明</value>
+  </data>
+  <data name="KeyboardShortcuts_Viewer_NextPrev" xml:space="preserve">
+    <value>上一张/下一张图片</value>
+  </data>
+  <data name="KeyboardShortcuts_Viewer_Rating" xml:space="preserve">
+    <value>设置或清除评级</value>
+  </data>
   <data name="MainPage_Library.Text" xml:space="preserve">
     <value>导航</value>
   </data>
