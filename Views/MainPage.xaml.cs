@@ -919,14 +919,18 @@ public sealed partial class MainPage : Page
     {
         if (args.Item is FolderNode node)
         {
-            FolderTreeView.SelectedItem = node;
-            await ViewModel.LoadChildrenAsync(node);
+            var navigationNode = ViewModel.IsNodeUnderFavoritesRoot(node) && !string.IsNullOrEmpty(node.FullPath)
+                ? (ViewModel.FindNodeByPath(node.FullPath!) ?? node)
+                : node;
+
+            FolderTreeView.SelectedItem = navigationNode;
+            await ViewModel.LoadChildrenAsync(navigationNode);
             if (_isUnloaded || AppLifetime.IsShuttingDown)
             {
                 return;
             }
 
-            ThrottleLoadImages(node);
+            ThrottleLoadImages(navigationNode);
         }
     }
 
@@ -934,14 +938,18 @@ public sealed partial class MainPage : Page
     {
         if (args.InvokedItem is FolderNode node)
         {
-            if (sender.ContainerFromItem(node) is TreeViewItem treeViewItem
-                && node.HasExpandableChildren
+            var navigationNode = ViewModel.IsNodeUnderFavoritesRoot(node) && !string.IsNullOrEmpty(node.FullPath)
+                ? (ViewModel.FindNodeByPath(node.FullPath!) ?? node)
+                : node;
+
+            if (sender.ContainerFromItem(navigationNode) is TreeViewItem treeViewItem
+                && navigationNode.HasExpandableChildren
                 && !treeViewItem.IsExpanded)
             {
                 treeViewItem.IsExpanded = true;
             }
 
-            ThrottleLoadImages(node);
+            ThrottleLoadImages(navigationNode);
         }
     }
 

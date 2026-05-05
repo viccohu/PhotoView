@@ -359,10 +359,36 @@ public sealed class FolderTreeService
             return;
         }
 
-        favoritesRoot.Children.Clear();
-        foreach (var node in desiredNodes)
+        for (int i = favoritesRoot.Children.Count - 1; i >= 0; i--)
         {
-            favoritesRoot.Children.Add(node);
+            if (!desiredNodes.Any(dn => IsSamePath(dn.FullPath, favoritesRoot.Children[i].FullPath)))
+            {
+                favoritesRoot.Children.RemoveAt(i);
+            }
+        }
+
+        for (int i = 0; i < desiredNodes.Count; i++)
+        {
+            var desired = desiredNodes[i];
+            var currentIndex = -1;
+            for (int j = i; j < favoritesRoot.Children.Count; j++)
+            {
+                if (IsSamePath(favoritesRoot.Children[j].FullPath, desired.FullPath))
+                {
+                    currentIndex = j;
+                    break;
+                }
+            }
+
+            if (currentIndex == i)
+                continue;
+
+            if (currentIndex >= 0)
+            {
+                favoritesRoot.Children.RemoveAt(currentIndex);
+            }
+
+            favoritesRoot.Children.Insert(i, desired);
         }
     }
 

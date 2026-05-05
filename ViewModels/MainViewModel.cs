@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using PhotoView.Contracts.Services;
 using PhotoView.Helpers;
 using PhotoView.Models;
@@ -354,7 +354,7 @@ public partial class MainViewModel : ObservableRecipient
             NormalizePath(path).StartsWith(NormalizePath(child.FullPath), StringComparison.OrdinalIgnoreCase));
     }
 
-    private bool IsNodeUnderFavoritesRoot(FolderNode? node)
+    internal bool IsNodeUnderFavoritesRoot(FolderNode? node)
     {
         while (node != null)
         {
@@ -538,6 +538,9 @@ public partial class MainViewModel : ObservableRecipient
 
         foreach (var rootNode in FolderTree)
         {
+            if (rootNode.NodeType == NodeType.FavoritesRoot)
+                continue;
+
             var found = FindNodeByPathRecursive(rootNode, path);
             if (found != null)
                 return found;

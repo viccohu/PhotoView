@@ -9,15 +9,15 @@
   IgnorableNamespaces="uap rescap systemai">
 
   <Identity
-    Name="a06fc951-4a48-44c2-adf3-a3a6a513ecf4"
-    Publisher="CN=Vicco"
+    Name="Vicco.SivoOne"
+    Publisher="CN=985F48A7-D563-400E-8E17-8281366D331A"
     Version="1.0.0.0" />
 
-  <mp:PhoneIdentity PhoneProductId="a06fc951-4a48-44c2-adf3-a3a6a513ecf4" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
+  <mp:PhoneIdentity PhoneProductId="9aef50b3-6595-4f3a-a1c9-b98913502c10" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
     <DisplayName>ms-resource:AppDisplayName</DisplayName>
-    <PublisherDisplayName>vicco</PublisherDisplayName>
+    <PublisherDisplayName>Vicco</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
