@@ -1,4 +1,4 @@
-# PhotoView
+# Sivo One
 
 ## 软件描述介绍
 
@@ -249,60 +249,5 @@ dotnet run
 
 ***
 
-## 开发规范
 
-### 线程模型（最重要）
-
-#### 规则 1.1：UI 对象必须在 UI 线程创建
-禁止在后台线程创建 BitmapImage、ImageSource、DependencyObject 等 UI 对象。
-
-#### 规则 1.2：禁止在 async 后直接操作 UI
-```csharp
-// ❌ 错误
-thumbnailImage.Source = await LoadImageAsync();
-
-// ✅ 正确：通过数据绑定
-```
-
-### UI 开发规范
-
-#### 规则 2.1：UI 不负责加载图片
-- 禁止在 Page / View 中加载图片
-- 禁止在 ElementPrepared 里操作 Image.Source
-- 图片加载必须在 Service 层完成
-
-### 元素复用规范
-
-#### 规则 3.1：必须防止元素复用错位
-所有 async 加载必须具备 version 校验或 CancellationToken。
-
-#### 规则 3.2：禁止遍历 Repeater 所有元素
-
-### 性能优化规范
-
-#### 规则 4.3：限制并发加载
-使用 SemaphoreSlim(4~8) 限制并发加载数量。
-
-#### 规则 5.1：禁止加载原图作为缩略图
-必须使用专门的缩略图服务。
-
-### 数据绑定规范
-
-#### 规则 6.1：UI 必须完全绑定驱动
-所有 UI 状态变化必须通过数据绑定实现。
-
-#### 规则 6.2：禁止代码控制 UI 状态
-禁止在代码中直接设置 UI 控件属性。
-
-### 异常处理规范
-
-#### 规则 7.1：禁止吞异常
-所有异常必须正确处理或抛出。
-
-#### 规则 7.2：Win32 异常不可忽略
-必须检查线程访问和 UI 对象访问安全。
-
-***
-
-**详细开发规范**：[.trae/rules/项目规则.md](.trae/rules/项目规则.md)
 
